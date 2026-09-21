@@ -564,6 +564,37 @@ public class LocationHelper implements BaseLocationProvider.Listener
     if (!mInertial.hasPosition())
       mInertial.onReferencePosition(from, false /* isGps */);
     mInertial.setHeading(from.bearingTo(to), InertialNavigator.HeadingSource.USER);
+    showInertialHeading();
+  }
+
+  /**
+   * Turns the car direction for the inertial navigation.
+   * @param deltaDeg clockwise rotation.
+   */
+  @UiThread
+  public void rotateHeading(double deltaDeg)
+  {
+    if (mInertial == null)
+      return;
+    mInertial.rotateHeading(deltaDeg);
+    showInertialHeading();
+  }
+
+  /**
+   * @return true if the position arrow must show the inertial heading instead of the compass: the compass is
+   * unreliable in a car, and the user sets the car direction by the arrow.
+   */
+  public boolean isInertialHeadingShown()
+  {
+    if (mInertial == null || !isInertialNavigationEnabled() || Double.isNaN(mInertial.getHeading()))
+      return false;
+    return mManualMode || SystemClock.elapsedRealtime() - mLastTrustedGpsMs >= GPS_FRESH_MS;
+  }
+
+  private void showInertialHeading()
+  {
+    if (isInertialHeadingShown() && Map.isEngineCreated())
+      Map.onCompassUpdated(Math.toRadians(mInertial.getHeading()), true /* forceRedraw */);
   }
 
   private void startInertialNavigation()
@@ -595,6 +626,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
       rebuildRouteIfOffRoute(location);
     mLastPositionSource = PositionSource.INERTIAL;
     notifyLocationUpdated();
+    showInertialHeading();
   }
 
   public boolean isManualMode()

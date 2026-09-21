@@ -1615,6 +1615,9 @@ public class MwmActivity extends BaseMwmFragmentActivity
   @UiThread
   public void onCompassUpdated(double north)
   {
+    // The inertial heading is shown instead.
+    if (MwmApplication.from(this).getLocationHelper().isInertialHeadingShown())
+      return;
     Map.onCompassUpdated(north, false);
   }
 

@@ -187,6 +187,24 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
     mHeadingSource = source;
   }
 
+  /**
+   * Turns the car direction, e.g. when the user adjusts it.
+   * @param deltaDeg clockwise rotation.
+   */
+  public void rotateHeading(double deltaDeg)
+  {
+    if (mDeadReckoning.hasHeading())
+      setHeading(mDeadReckoning.getHeading() + deltaDeg, HeadingSource.USER);
+  }
+
+  /**
+   * @return the car direction, clockwise from the north, or NaN if it is unknown.
+   */
+  public double getHeading()
+  {
+    return mDeadReckoning.hasHeading() ? mDeadReckoning.getHeading() : Double.NaN;
+  }
+
   public boolean isReady()
   {
     return mStarted && mBias != null && isSpeedFresh() && mDeadReckoning.isReady();
@@ -319,19 +337,16 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
         Math.min(MAX_SNAP_RADIUS_M, Math.max(MIN_SNAP_RADIUS_M, mDeadReckoning.getAccuracy()));
     final double lat = mDeadReckoning.getLat();
     final double lon = mDeadReckoning.getLon();
-    final double heading = mDeadReckoning.getHeading();
-    final double[] snapped = mRoadSnapper.snap(lat, lon, heading, radius);
-    mOnRoad = snapped != null && mDeadReckoning.snapToRoad(snapped[0], snapped[1], snapped[2]);
+    final double[] snapped = mRoadSnapper.snap(lat, lon, mDeadReckoning.getHeading(), radius);
     if (snapped == null)
-      Logger.d(TAG, "No road within " + Math.round(radius) + " m");
-    else
     {
-      final float[] shift = new float[1];
-      Location.distanceBetween(lat, lon, snapped[0], snapped[1], shift);
-      Logger.d(TAG, "Road snap " + (mOnRoad ? "applied" : "ignored") + ": shift " + Math.round(shift[0])
-                        + " m, heading " + Math.round(heading) + " -> " + Math.round(mDeadReckoning.getHeading())
-                        + ", road " + Math.round(snapped[2]) + ", speed " + mSpeedKmh + " km/h");
+      mOnRoad = false;
+      return;
     }
+    // Roads are searched in a square, its corners are farther than the radius.
+    final float[] shift = new float[1];
+    Location.distanceBetween(lat, lon, snapped[0], snapped[1], shift);
+    mOnRoad = shift[0] <= radius && mDeadReckoning.snapToRoad(snapped[0], snapped[1], snapped[2]);
   }
 
   /**

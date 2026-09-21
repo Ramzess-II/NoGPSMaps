@@ -95,6 +95,45 @@
       android:text="@string/nogps_sensors_set_heading" />
   </LinearLayout>
 
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="52dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+    <Button
+      android:id="@+id/nogps_rotate_left_45"
+      style="?borderlessButtonStyle"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:text="↺ 45°"
+      android:textSize="17sp" />
+    <Button
+      android:id="@+id/nogps_rotate_left_10"
+      style="?borderlessButtonStyle"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:text="↺ 10°"
+      android:textSize="17sp" />
+    <Button
+      android:id="@+id/nogps_rotate_right_10"
+      style="?borderlessButtonStyle"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:text="↻ 10°"
+      android:textSize="17sp" />
+    <Button
+      android:id="@+id/nogps_rotate_right_45"
+      style="?borderlessButtonStyle"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:text="↻ 45°"
+      android:textSize="17sp" />
+  </LinearLayout>
+
   <TextView
     android:id="@+id/nogps_readiness"
     android:layout_width="match_parent"
