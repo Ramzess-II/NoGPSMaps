@@ -5,6 +5,8 @@
 
 #include "app/organicmaps/sdk/platform/AndroidPlatform.hpp"
 
+#include "geometry/mercator.hpp"
+
 extern "C"
 {
 static void LocationStateModeChanged(location::EMyPositionMode mode, std::shared_ptr<jobject> const & listener)
@@ -79,5 +81,33 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_LocationState_nativeLocationUpd
 
   g_framework->OnLocationUpdated(info);
   GpsTracker::Instance().OnLocationUpdated(info);
+}
+
+// public static native double[] nativeScreenToLatLon(float x, float y);
+JNIEXPORT jdoubleArray Java_app_organicmaps_sdk_location_LocationState_nativeScreenToLatLon(JNIEnv * env,
+                                                                                            jclass clazz, jfloat x,
+                                                                                            jfloat y)
+{
+  // P3dtoG takes into account the perspective view used in navigation mode.
+  auto const ll = mercator::ToLatLon(g_framework->NativeFramework()->P3dtoG(m2::PointD(x, y)));
+  jdouble const coords[] = {ll.m_lat, ll.m_lon};
+  jdoubleArray result = env->NewDoubleArray(2);
+  env->SetDoubleArrayRegion(result, 0, 2, coords);
+  return result;
+}
+
+// public static native void nativeRebuildRouteIfOffRoute(long time, double lat, double lon, float accuracy);
+JNIEXPORT void Java_app_organicmaps_sdk_location_LocationState_nativeRebuildRouteIfOffRoute(JNIEnv * env,
+                                                                                            jclass clazz, jlong time,
+                                                                                            jdouble lat, jdouble lon,
+                                                                                            jfloat accuracy)
+{
+  location::GpsInfo info;
+  info.m_source = location::EUser;
+  info.m_timestamp = static_cast<double>(time) / 1000.0;
+  info.m_latitude = lat;
+  info.m_longitude = lon;
+  info.m_horizontalAccuracy = accuracy;
+  g_framework->NativeFramework()->GetRoutingManager().RebuildRouteIfOffRoute(info);
 }
 }  // extern "C"

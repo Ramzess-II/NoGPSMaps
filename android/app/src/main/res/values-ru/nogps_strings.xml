@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="nogps_manual_position">Указать своё местоположение вручную</string>
+  <string name="nogps_manual_mode_on">GPS отключён. Нажмите на карту там, где вы находитесь.</string>
+  <string name="nogps_manual_mode_off">GPS снова включён</string>
+  <string name="nogps_gps_spoofed">GPS подменён! Используем вышки и Wi-Fi. Можно также указать позицию вручную.</string>
+  <string name="nogps_gps_restored">GPS снова в норме</string>
+  <string name="nogps_status_network_spoofed">GPS подменён · вышки ±%s</string>
+  <string name="nogps_status_network_no_gps">Нет GPS · вышки ±%s</string>
+  <string name="nogps_status_manual_just_now">Ручной режим · только что</string>
+  <string name="nogps_status_manual_minutes">Ручной режим · %d мин назад</string>
+  <string name="nogps_status_none">Нет позиции</string>
+  <string name="nogps_meters">%d м</string>
+  <string name="nogps_kilometers">%.1f км</string>
+</resources>

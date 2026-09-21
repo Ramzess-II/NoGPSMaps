@@ -76,6 +76,7 @@ import app.organicmaps.routing.RoutingPlanViewModel;
 import app.organicmaps.sdk.ChoosePositionMode;
 import app.organicmaps.sdk.Framework;
 import app.organicmaps.sdk.Map;
+import app.organicmaps.sdk.MapView;
 import app.organicmaps.sdk.MapController;
 import app.organicmaps.sdk.MapRenderingListener;
 import app.organicmaps.sdk.PlacePageActivationListener;
@@ -199,6 +200,8 @@ public class MwmActivity extends BaseMwmFragmentActivity
   @SuppressWarnings("NotNullFieldNotInitialized")
   @NonNull
   private DisplayManager mDisplayManager;
+  private final LocationHelper.ManualModeListener mManualModeListener = this::onManualModeChanged;
+  private final LocationHelper.GpsSpoofingListener mGpsSpoofingListener = this::onGpsSpoofingChanged;
 
   private boolean mRemoveDisplayListener = true;
   private static int mLastUiMode = Configuration.UI_MODE_TYPE_UNDEFINED;
@@ -768,7 +771,28 @@ public class MwmActivity extends BaseMwmFragmentActivity
     }
     case help -> showHelp();
     case trackRecordingStatus -> toggleTrackRecordingPP();
+    case manualPosition -> toggleManualPositionMode();
     }
+  }
+
+  private void toggleManualPositionMode()
+  {
+    final LocationHelper locationHelper = MwmApplication.from(this).getLocationHelper();
+    final boolean enable = !locationHelper.isManualMode();
+    locationHelper.setManualMode(enable);
+    Toast.makeText(this, enable ? R.string.nogps_manual_mode_on : R.string.nogps_manual_mode_off, Toast.LENGTH_LONG)
+        .show();
+  }
+
+  private void onGpsSpoofingChanged(boolean spoofed)
+  {
+    Toast.makeText(this, spoofed ? R.string.nogps_gps_spoofed : R.string.nogps_gps_restored, Toast.LENGTH_LONG).show();
+  }
+
+  private void onManualModeChanged(boolean enabled)
+  {
+    final LocationHelper locationHelper = MwmApplication.from(this).getLocationHelper();
+    MapView.setTapInterceptor(enabled ? locationHelper::setManualLocationFromScreen : null);
   }
 
   private boolean closeBottomSheet(String id)
@@ -988,6 +1012,9 @@ public class MwmActivity extends BaseMwmFragmentActivity
     updateDrivingOptionCount();
     LocationState.nativeSetListener(this);
     MwmApplication.from(this).getLocationHelper().addListener(this);
+    MwmApplication.from(this).getLocationHelper().addManualModeListener(mManualModeListener);
+    MwmApplication.from(this).getLocationHelper().addGpsSpoofingListener(mGpsSpoofingListener);
+    onManualModeChanged(MwmApplication.from(this).getLocationHelper().isManualMode());
     Utils.keepScreenOn(Config.isKeepScreenOnEnabled() || RoutingController.get().isNavigating(), getWindow());
   }
 
@@ -999,6 +1026,9 @@ public class MwmActivity extends BaseMwmFragmentActivity
     Framework.nativeRemovePlacePageActivationListener(this);
     BookmarkManager.INSTANCE.removeLoadingListener(this);
     MwmApplication.from(this).getLocationHelper().removeListener(this);
+    MwmApplication.from(this).getLocationHelper().removeManualModeListener(mManualModeListener);
+    MwmApplication.from(this).getLocationHelper().removeGpsSpoofingListener(mGpsSpoofingListener);
+    MapView.setTapInterceptor(null);
     if (mDisplayManager.isDeviceDisplayUsed() && !RoutingController.get().isNavigating())
       LocationState.nativeRemoveListener();
     // Attached unconditionally in onStart()

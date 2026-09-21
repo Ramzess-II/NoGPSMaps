@@ -51,6 +51,15 @@ public final class LocationState
   static native void nativeLocationUpdated(long time, double lat, double lon, float accuracyH, double altitude,
                                            float accuracyV, float speed, float bearing);
 
+  /**
+   * Converts a point on the map view (in pixels) to geographic coordinates.
+   * @return {latitude, longitude}
+   */
+  @NonNull
+  static native double[] nativeScreenToLatLon(float x, float y);
+
+  static native void nativeRebuildRouteIfOffRoute(long time, double lat, double lon, float accuracy);
+
   private LocationState() {}
 
   @Value

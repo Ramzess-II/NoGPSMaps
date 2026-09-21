@@ -1397,6 +1397,36 @@ void RoutingManager::CheckLocationForRouting(location::GpsInfo const & info)
   }
 }
 
+void RoutingManager::RebuildRouteIfOffRoute(location::GpsInfo const & info)
+{
+  if (!IsRoutingActive())
+    return;
+
+  // Moves the route iterator to the closest point ahead, so the passed part of the route is cut off.
+  SessionState const state = m_routingSession.OnLocationPositionChanged(info);
+  if (state != SessionState::OnRoute && state != SessionState::RouteNeedRebuild)
+    return;
+
+  m2::PointD const position = mercator::FromLatLon(info.m_latitude, info.m_longitude);
+  if (state == SessionState::OnRoute)
+  {
+    location::GpsInfo matched(info);
+    location::RouteMatchingInfo routeMatchingInfo;
+    m_routingSession.MatchLocationToRoute(matched, routeMatchingInfo);
+    if (routeMatchingInfo.IsMatched() &&
+        mercator::DistanceOnEarth(routeMatchingInfo.GetPosition(), position) <= info.m_horizontalAccuracy)
+    {
+      return;
+    }
+  }
+
+  LOG(LINFO, ("Manual position is off the route, rebuilding"));
+  m_routingSession.RebuildRoute(position, [this](RoutesResult const & result, RouterResultCode code)
+  { OnRebuildRouteReady(result, code); }, nullptr /* needMoreMapsCallback */, nullptr /* removeRouteCallback */,
+                                RouterDelegate::kNoTimeout, SessionState::RouteRebuilding,
+                                false /* adjustToPrevRoute */);
+}
+
 void RoutingManager::CallRouteBuilded(RouterResultCode code, storage::CountriesSet const & absentCountries)
 {
   CHECK(m_routingBuildingCallback, ());

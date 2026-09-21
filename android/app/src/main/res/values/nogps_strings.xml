@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="nogps_manual_position">Set my position manually</string>
+  <string name="nogps_manual_mode_on">GPS is ignored. Tap the map where you are.</string>
+  <string name="nogps_manual_mode_off">GPS is on again</string>
+  <string name="nogps_gps_spoofed">GPS is spoofed! Using cell towers and Wi-Fi. You can also set your position manually.</string>
+  <string name="nogps_gps_restored">GPS is fine again</string>
+  <string name="nogps_status_gps" translatable="false">GPS</string>
+  <string name="nogps_status_network_spoofed">GPS spoofed · towers ±%s</string>
+  <string name="nogps_status_network_no_gps">No GPS · towers ±%s</string>
+  <string name="nogps_status_manual_just_now">Manual · just now</string>
+  <string name="nogps_status_manual_minutes">Manual · %d min ago</string>
+  <string name="nogps_status_none">No position</string>
+  <string name="nogps_meters">%d m</string>
+  <string name="nogps_kilometers">%.1f km</string>
+</resources>

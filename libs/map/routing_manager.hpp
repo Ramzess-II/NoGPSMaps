@@ -232,6 +232,9 @@ public:
   void RemoveRoute(bool deactivateFollowing);
 
   void CheckLocationForRouting(location::GpsInfo const & info);
+  // The user has set own position manually (e.g. GPS is jammed). Rebuilds the route at once if the position
+  // is off the route, without waiting for the several consecutive off-route updates as for GPS.
+  void RebuildRouteIfOffRoute(location::GpsInfo const & info);
   void CallRouteBuilded(routing::RouterResultCode code, storage::CountriesSet const & absentCountries);
   void OnBuildRouteReady(routing::RoutesResult const & result, routing::RouterResultCode code);
   void OnRebuildRouteReady(routing::RoutesResult const & result, routing::RouterResultCode code);

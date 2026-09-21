@@ -10,13 +10,16 @@ import android.location.Location;
 import android.location.LocationManager;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresPermission;
 import androidx.annotation.UiThread;
 import androidx.core.content.ContextCompat;
 import androidx.core.location.GnssStatusCompat;
+import androidx.core.location.LocationListenerCompat;
 import androidx.core.location.LocationManagerCompat;
+import androidx.core.location.LocationRequestCompat;
 import app.organicmaps.sdk.Framework;
 import app.organicmaps.sdk.Map;
 import app.organicmaps.sdk.bookmarks.data.MapObject;
@@ -40,6 +43,42 @@ public class LocationHelper implements BaseLocationProvider.Listener
 
   private static final long AGPS_EXPIRATION_TIME_MS = 16 * 60 * 60 * 1000; // 16 hours
   private static final long LOCATION_UPDATE_TIMEOUT_MS = 30 * 1000; // 30 seconds
+
+  public static final String MANUAL_PROVIDER = "manual";
+  // The manual position is re-sent to the core periodically, otherwise the location is treated as lost.
+  private static final long MANUAL_REPEAT_INTERVAL_MS = 5000;
+  // Taps on the map are not precise, so the core matches a manual position to the route within this radius.
+  private static final float MANUAL_ACCURACY_M = 50;
+  // Taps closer than this are too noisy to calculate a movement direction.
+  private static final float MANUAL_MIN_BEARING_DISTANCE_M = 30;
+
+  // Network (cell towers and Wi-Fi) positions are used to detect spoofed GPS.
+  private static final long INTERVAL_NETWORK_MS = 5000;
+
+  // A position without updates for longer than this is shown as lost.
+  private static final long POSITION_STALE_MS = 30 * 1000;
+  // Less accurate positions come from cell towers and Wi-Fi even if reported by the fused provider.
+  private static final float SATELLITE_MAX_ACCURACY_M = 100;
+
+  public enum PositionSource
+  {
+    NONE,
+    GPS,
+    // Cell towers and Wi-Fi.
+    NETWORK,
+    MANUAL
+    // TODO: INERTIAL (car speed from OBD + gyroscope).
+  }
+
+  public interface ManualModeListener
+  {
+    void onManualModeChanged(boolean enabled);
+  }
+
+  public interface GpsSpoofingListener
+  {
+    void onGpsSpoofingChanged(boolean spoofed);
+  }
 
   @NonNull
   private final Context mContext;
@@ -65,6 +104,22 @@ public class LocationHelper implements BaseLocationProvider.Listener
   private boolean mActive;
   private final Handler mHandler;
   private final Runnable mLocationTimeoutRunnable = this::notifyLocationUpdateTimeout;
+
+  // In the manual mode GPS is ignored (it is jammed or spoofed) and the position is set by the user.
+  private boolean mManualMode;
+  @Nullable
+  private Location mManualLocation;
+  private final Runnable mManualRepeatRunnable = this::applyManualLocation;
+  // Elapsed realtime of the last position set by the user.
+  private long mManualSetTimeMs;
+  private final ObserverList<ManualModeListener> mManualModeListeners = new ObserverList<>();
+
+  private final GpsSpoofingDetector mSpoofingDetector = new GpsSpoofingDetector();
+  @Nullable
+  private Location mNetworkLocation;
+  private final ObserverList<GpsSpoofingListener> mSpoofingListeners = new ObserverList<>();
+  // Some providers (e.g. Google fused) don't report network positions separately, so request them explicitly.
+  private final LocationListenerCompat mNetworkListener = this::onLocationChanged;
 
   @NonNull
   private final GnssStatusCompat.Callback mGnssStatusCallback = new GnssStatusCompat.Callback() {
@@ -206,13 +261,45 @@ public class LocationHelper implements BaseLocationProvider.Listener
       return;
     }
 
+    final boolean wasSpoofed = mSpoofingDetector.isSpoofed();
+    final boolean isNetwork = LocationManager.NETWORK_PROVIDER.equals(location.getProvider());
+    final long timeMs = location.getElapsedRealtimeNanos() / 1_000_000;
+    boolean trusted = true;
+    if (isNetwork)
+    {
+      mNetworkLocation = location;
+      mSpoofingDetector.onNetworkPosition(location.getLatitude(), location.getLongitude(), location.getAccuracy(),
+                                          timeMs);
+    }
+    else
+    {
+      trusted = mSpoofingDetector.checkSatellitePosition(location.getLatitude(), location.getLongitude(), timeMs);
+    }
+
+    final boolean spoofed = mSpoofingDetector.isSpoofed();
+    if (spoofed != wasSpoofed)
+      onGpsSpoofingChanged(spoofed);
+
+    if (!trusted)
+    {
+      Logger.w(TAG, "Untrusted location = " + location);
+      return;
+    }
+
+    if (mManualMode)
+    {
+      Logger.d(TAG, "Manual mode is on, ignoring location = " + location);
+      return;
+    }
+
     if (!LocationUtils.isAccuracySatisfied(location))
     {
       Logger.w(TAG, "Unsatisfied accuracy for location = " + location);
       return;
     }
 
-    if (mSavedLocation != null)
+    // While GPS is spoofed network positions are the only source, they must not compete with the spoofed ones.
+    if (mSavedLocation != null && !(spoofed && isNetwork))
     {
       if (!LocationUtils.isLocationBetterThanLast(location, mSavedLocation))
       {
@@ -263,6 +350,189 @@ public class LocationHelper implements BaseLocationProvider.Listener
     mLocationProvider = new AndroidNativeProvider(mContext, this);
     mActive = true;
     mLocationProvider.start(mInterval);
+  }
+
+  /**
+   * @return where the current position comes from, NONE if there is no position or it is too old.
+   */
+  @NonNull
+  public PositionSource getPositionSource()
+  {
+    if (mManualMode)
+      return mManualLocation != null ? PositionSource.MANUAL : PositionSource.NONE;
+    if (mSavedLocation == null || !isActive())
+      return PositionSource.NONE;
+    final long ageMs = SystemClock.elapsedRealtime() - mSavedLocation.getElapsedRealtimeNanos() / 1_000_000;
+    if (ageMs > POSITION_STALE_MS)
+      return PositionSource.NONE;
+    if (LocationManager.NETWORK_PROVIDER.equals(mSavedLocation.getProvider())
+        || mSavedLocation.getAccuracy() > SATELLITE_MAX_ACCURACY_M)
+      return PositionSource.NETWORK;
+    return PositionSource.GPS;
+  }
+
+  /**
+   * @return accuracy of the current position in meters.
+   */
+  public float getPositionAccuracy()
+  {
+    return mSavedLocation != null ? mSavedLocation.getAccuracy() : 0;
+  }
+
+  /**
+   * @return time since the user has set own position in the manual mode.
+   */
+  public long getManualPositionAgeMs()
+  {
+    return SystemClock.elapsedRealtime() - mManualSetTimeMs;
+  }
+
+  public boolean isGpsSpoofed()
+  {
+    return mSpoofingDetector.isSpoofed();
+  }
+
+  @UiThread
+  public void addGpsSpoofingListener(@NonNull GpsSpoofingListener listener)
+  {
+    mSpoofingListeners.addObserver(listener);
+  }
+
+  @UiThread
+  public void removeGpsSpoofingListener(@NonNull GpsSpoofingListener listener)
+  {
+    mSpoofingListeners.removeObserver(listener);
+  }
+
+  private void onGpsSpoofingChanged(boolean spoofed)
+  {
+    Logger.w(TAG, "GPS spoofed = " + spoofed);
+    for (GpsSpoofingListener listener : mSpoofingListeners)
+      listener.onGpsSpoofingChanged(spoofed);
+
+    // Replace the spoofed position with the network one right away instead of waiting for the next update.
+    if (spoofed && !mManualMode && mNetworkLocation != null)
+    {
+      mSavedLocation = mNetworkLocation;
+      mMyPosition = null;
+      notifyLocationUpdated();
+    }
+  }
+
+  @SuppressLint("MissingPermission")
+  private void startNetworkUpdates()
+  {
+    final LocationManager locationManager = (LocationManager) mContext.getSystemService(Context.LOCATION_SERVICE);
+    if (!locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER))
+    {
+      Logger.w(TAG, "Network provider is disabled, GPS spoofing detection is limited");
+      return;
+    }
+    // Verify the very first GPS positions too, the fresh network position may arrive only several seconds later.
+    final Location lastNetworkLocation = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+    if (lastNetworkLocation != null && mNetworkLocation == null)
+    {
+      Logger.i(TAG, "Last known network location = " + lastNetworkLocation);
+      mNetworkLocation = lastNetworkLocation;
+      mSpoofingDetector.onNetworkPosition(lastNetworkLocation.getLatitude(), lastNetworkLocation.getLongitude(),
+                                          lastNetworkLocation.getAccuracy(),
+                                          lastNetworkLocation.getElapsedRealtimeNanos() / 1_000_000);
+    }
+    final LocationRequestCompat request = new LocationRequestCompat.Builder(INTERVAL_NETWORK_MS).build();
+    LocationManagerCompat.requestLocationUpdates(locationManager, LocationManager.NETWORK_PROVIDER, request,
+                                                 mNetworkListener, Looper.getMainLooper());
+  }
+
+  private void stopNetworkUpdates()
+  {
+    final LocationManager locationManager = (LocationManager) mContext.getSystemService(Context.LOCATION_SERVICE);
+    LocationManagerCompat.removeUpdates(locationManager, mNetworkListener);
+  }
+
+  public boolean isManualMode()
+  {
+    return mManualMode;
+  }
+
+  @UiThread
+  public void setManualMode(boolean enabled)
+  {
+    if (mManualMode == enabled)
+      return;
+
+    Logger.i(TAG, "enabled = " + enabled);
+    mManualMode = enabled;
+    mManualLocation = null;
+    mHandler.removeCallbacks(mManualRepeatRunnable);
+
+    for (ManualModeListener listener : mManualModeListeners)
+      listener.onManualModeChanged(enabled);
+  }
+
+  @UiThread
+  public void addManualModeListener(@NonNull ManualModeListener listener)
+  {
+    mManualModeListeners.addObserver(listener);
+  }
+
+  @UiThread
+  public void removeManualModeListener(@NonNull ManualModeListener listener)
+  {
+    mManualModeListeners.removeObserver(listener);
+  }
+
+  /**
+   * Sets the user position to the point on the map view. Works only in the manual mode.
+   * @param x, y the point on the map view in pixels.
+   */
+  @UiThread
+  public void setManualLocationFromScreen(float x, float y)
+  {
+    final double[] latLon = LocationState.nativeScreenToLatLon(x, y);
+    setManualLocation(latLon[0], latLon[1]);
+  }
+
+  @UiThread
+  public void setManualLocation(double lat, double lon)
+  {
+    if (!mManualMode)
+      throw new IllegalStateException("Manual mode is off");
+
+    final Location location = new Location(MANUAL_PROVIDER);
+    location.setLatitude(lat);
+    location.setLongitude(lon);
+    location.setAccuracy(MANUAL_ACCURACY_M);
+
+    // The direction of movement is unknown, estimate it from the previous manual position.
+    if (mManualLocation != null)
+    {
+      if (mManualLocation.distanceTo(location) >= MANUAL_MIN_BEARING_DISTANCE_M)
+        location.setBearing(mManualLocation.bearingTo(location));
+      else if (mManualLocation.hasBearing())
+        location.setBearing(mManualLocation.getBearing());
+    }
+
+    Logger.i(TAG, "location = " + location);
+    mManualLocation = location;
+    mManualSetTimeMs = SystemClock.elapsedRealtime();
+    LocationState.nativeRebuildRouteIfOffRoute(System.currentTimeMillis(), lat, lon, MANUAL_ACCURACY_M);
+    applyManualLocation();
+  }
+
+  private void applyManualLocation()
+  {
+    mHandler.removeCallbacks(mManualRepeatRunnable);
+    if (mManualLocation == null)
+      return;
+
+    mManualLocation.setTime(System.currentTimeMillis());
+    mManualLocation.setElapsedRealtimeNanos(SystemClock.elapsedRealtimeNanos());
+    mSavedLocation = new Location(mManualLocation);
+    mMyPosition = null;
+    notifyLocationUpdated();
+
+    if (isActive())
+      mHandler.postDelayed(mManualRepeatRunnable, MANUAL_REPEAT_INTERVAL_MS);
   }
 
   // RouteSimulationProvider doesn't really require location permissions.
@@ -395,6 +665,9 @@ public class LocationHelper implements BaseLocationProvider.Listener
     mLocationProvider.start(mInterval);
     mHandler.postDelayed(mLocationTimeoutRunnable, LOCATION_UPDATE_TIMEOUT_MS);
     subscribeToGnssStatusUpdates();
+    startNetworkUpdates();
+    if (mManualLocation != null)
+      mHandler.post(mManualRepeatRunnable);
   }
 
   /**
@@ -411,8 +684,10 @@ public class LocationHelper implements BaseLocationProvider.Listener
     Logger.i(TAG);
     mLocationProvider.stop();
     unsubscribeFromGnssStatusUpdates();
+    stopNetworkUpdates();
     mSensorHelper.stop();
     mHandler.removeCallbacks(mLocationTimeoutRunnable);
+    mHandler.removeCallbacks(mManualRepeatRunnable);
     mActive = false;
   }
 

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="nogps_manual_position">Вказати своє місцезнаходження вручну</string>
+  <string name="nogps_manual_mode_on">GPS вимкнено. Торкніться карти там, де ви знаходитеся.</string>
+  <string name="nogps_manual_mode_off">GPS знову увімкнено</string>
+  <string name="nogps_gps_spoofed">GPS підмінено! Використовуємо вежі та Wi-Fi. Також можна вказати позицію вручну.</string>
+  <string name="nogps_gps_restored">GPS знову в нормі</string>
+  <string name="nogps_status_network_spoofed">GPS підмінено · вежі ±%s</string>
+  <string name="nogps_status_network_no_gps">Немає GPS · вежі ±%s</string>
+  <string name="nogps_status_manual_just_now">Ручний режим · щойно</string>
+  <string name="nogps_status_manual_minutes">Ручний режим · %d хв тому</string>
+  <string name="nogps_status_none">Немає позиції</string>
+  <string name="nogps_meters">%d м</string>
+  <string name="nogps_kilometers">%.1f км</string>
+</resources>

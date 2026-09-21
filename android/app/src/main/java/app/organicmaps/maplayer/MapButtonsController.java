@@ -3,18 +3,24 @@ package app.organicmaps.maplayer;
 import android.animation.ArgbEvaluator;
 import android.animation.ObjectAnimator;
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
+import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.OptIn;
+import androidx.core.content.ContextCompat;
+import androidx.core.widget.ImageViewCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
@@ -22,11 +28,13 @@ import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import app.organicmaps.MwmActivity;
+import app.organicmaps.MwmApplication;
 import app.organicmaps.R;
 import app.organicmaps.routing.RoutingPlanViewModel;
 import app.organicmaps.sdk.Framework;
 import app.organicmaps.sdk.downloader.MapManager;
 import app.organicmaps.sdk.downloader.UpdateInfo;
+import app.organicmaps.sdk.location.LocationHelper;
 import app.organicmaps.sdk.location.TrackRecorder;
 import app.organicmaps.sdk.maplayer.isolines.IsolinesManager;
 import app.organicmaps.sdk.maplayer.subway.SubwayManager;
@@ -61,6 +69,20 @@ public class MapButtonsController extends Fragment
   FloatingActionButton mTrackRecordingStatusButton;
   @Nullable
   private MyPositionButton mNavMyPosition;
+  @Nullable
+  private FloatingActionButton mManualPositionButton;
+  @Nullable
+  private TextView mPositionStatus;
+  private static final long POSITION_STATUS_UPDATE_INTERVAL_MS = 1000;
+  private final Handler mHandler = new Handler(Looper.getMainLooper());
+  private final Runnable mPositionStatusUpdater = new Runnable() {
+    @Override
+    public void run()
+    {
+      updatePositionStatus();
+      mHandler.postDelayed(this, POSITION_STATUS_UPDATE_INTERVAL_MS);
+    }
+  };
   private SearchWheel mSearchWheel;
   private BadgeDrawable mBadgeDrawable;
   @Nullable
@@ -119,6 +141,10 @@ public class MapButtonsController extends Fragment
     final View myPosition = mFrame.findViewById(R.id.my_position);
     mNavMyPosition =
         new MyPositionButton(myPosition, (v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.myPosition));
+    mManualPositionButton = mFrame.findViewById(R.id.manual_position);
+    mPositionStatus = mFrame.findViewById(R.id.position_status);
+    mManualPositionButton.setOnClickListener(
+        (v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.manualPosition));
 
     // Some buttons do not exist in navigation mode
     mToggleMapLayerButton = mFrame.findViewById(R.id.layers_button);
@@ -201,6 +227,8 @@ public class MapButtonsController extends Fragment
     case myPosition:
       if (mNavMyPosition != null)
         mNavMyPosition.showButton(show);
+      if (mManualPositionButton != null)
+        UiUtils.showIf(show, mManualPositionButton);
       break;
     case search: mSearchWheel.show(show);
     case bookmarks:
@@ -209,6 +237,72 @@ public class MapButtonsController extends Fragment
       UiUtils.showIf(show, buttonView);
       animateIconBlinking(show, (FloatingActionButton) buttonView);
     }
+  }
+
+  /**
+   * Shows where the current position comes from: GPS, cell towers, the user (manual mode) or nowhere.
+   */
+  private void updatePositionStatus()
+  {
+    final Context context = requireContext();
+    final LocationHelper locationHelper = MwmApplication.from(context).getLocationHelper();
+    final LocationHelper.PositionSource source = locationHelper.getPositionSource();
+
+    if (mPositionStatus != null)
+    {
+      final String text;
+      final int color;
+      switch (source)
+      {
+      case GPS ->
+      {
+        text = getString(R.string.nogps_status_gps);
+        color = R.color.nogps_status_gps;
+      }
+      case NETWORK ->
+      {
+        final String accuracy = formatAccuracy(locationHelper.getPositionAccuracy());
+        text = getString(locationHelper.isGpsSpoofed() ? R.string.nogps_status_network_spoofed
+                                                       : R.string.nogps_status_network_no_gps, accuracy);
+        color = R.color.nogps_status_network;
+      }
+      case MANUAL ->
+      {
+        final long minutes = locationHelper.getManualPositionAgeMs() / 60_000;
+        text = minutes == 0 ? getString(R.string.nogps_status_manual_just_now)
+                            : getString(R.string.nogps_status_manual_minutes, minutes);
+        color = R.color.nogps_status_manual;
+      }
+      default ->
+      {
+        text = getString(R.string.nogps_status_none);
+        color = R.color.nogps_status_none;
+      }
+      }
+      mPositionStatus.setText(text);
+      mPositionStatus.setBackgroundTintList(ColorStateList.valueOf(ContextCompat.getColor(context, color)));
+    }
+
+    if (mManualPositionButton != null)
+    {
+      // Blue in the manual mode, orange hints that GPS is spoofed and the manual mode may be needed.
+      final int tint;
+      if (locationHelper.isManualMode())
+        tint = ContextCompat.getColor(context, R.color.base_accent);
+      else if (locationHelper.isGpsSpoofed())
+        tint = ContextCompat.getColor(context, R.color.nogps_spoofed);
+      else
+        tint = ThemeUtils.getColor(context, R.attr.iconTint);
+      ImageViewCompat.setImageTintList(mManualPositionButton, ColorStateList.valueOf(tint));
+    }
+  }
+
+  @NonNull
+  private String formatAccuracy(float meters)
+  {
+    if (meters < 1000)
+      return getString(R.string.nogps_meters, Math.round(meters));
+    return getString(R.string.nogps_kilometers, meters / 1000);
   }
 
   void animateIconBlinking(boolean show, @NonNull FloatingActionButton button)
@@ -476,6 +570,7 @@ public class MapButtonsController extends Fragment
     mMapButtonsViewModel.getSearchOption().observe(viewLifecycleOwner, mSearchOptionObserver);
     mMapButtonsViewModel.getTrackRecorderState().observe(viewLifecycleOwner, mTrackRecorderObserver);
     mMapButtonsViewModel.getTopButtonsMarginTop().observe(viewLifecycleOwner, mTopButtonMarginObserver);
+    mHandler.post(mPositionStatusUpdater);
   }
 
   @Override
@@ -493,6 +588,7 @@ public class MapButtonsController extends Fragment
   public void onStop()
   {
     super.onStop();
+    mHandler.removeCallbacks(mPositionStatusUpdater);
     if (mBlinkingAnimator != null)
     {
       mBlinkingAnimator.cancel();
@@ -524,7 +620,8 @@ public class MapButtonsController extends Fragment
     bookmarks,
     menu,
     help,
-    trackRecordingStatus
+    trackRecordingStatus,
+    manualPosition
   }
 
   public interface MapButtonClickListener
