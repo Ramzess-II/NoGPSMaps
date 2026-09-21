@@ -110,4 +110,23 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_LocationState_nativeRebuildRout
   info.m_horizontalAccuracy = accuracy;
   g_framework->NativeFramework()->GetRoutingManager().RebuildRouteIfOffRoute(info);
 }
+
+// public static native double[] nativeSnapToRoad(double lat, double lon, double bearing, double radius);
+JNIEXPORT jdoubleArray Java_app_organicmaps_sdk_location_LocationState_nativeSnapToRoad(JNIEnv * env, jclass clazz,
+                                                                                        jdouble lat, jdouble lon,
+                                                                                        jdouble bearing,
+                                                                                        jdouble radius)
+{
+  ms::LatLon snapped;
+  double snappedBearing;
+  if (!g_framework->NativeFramework()->GetRoutingManager().SnapToRoad(ms::LatLon(lat, lon), bearing, radius, snapped,
+                                                                      snappedBearing))
+  {
+    return nullptr;
+  }
+  jdouble const values[] = {snapped.m_lat, snapped.m_lon, snappedBearing};
+  jdoubleArray result = env->NewDoubleArray(3);
+  env->SetDoubleArrayRegion(result, 0, 3, values);
+  return result;
+}
 }  // extern "C"

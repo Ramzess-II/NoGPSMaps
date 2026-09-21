@@ -571,7 +571,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
     if (!isInertialNavigationEnabled())
       return;
     if (mInertial == null)
-      mInertial = new InertialNavigator(mContext, this::onInertialLocation);
+      mInertial = new InertialNavigator(mContext, this::onInertialLocation, LocationState::nativeSnapToRoad);
     mInertial.start(Config.getElm327Address());
   }
 

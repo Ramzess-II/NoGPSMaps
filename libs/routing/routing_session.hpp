@@ -68,6 +68,9 @@ public:
   bool IsFinished() const;
   bool IsNoFollowing() const;
   bool IsOnRoute() const;
+  /// Finds the closest point on a road within |radius| meters, going in |direction| (zero means any).
+  bool FindClosestProjectionToRoad(m2::PointD const & point, m2::PointD const & direction, double radius,
+                                   EdgeProj & proj) const;
   bool IsFollowing() const;
   void Reset();
 

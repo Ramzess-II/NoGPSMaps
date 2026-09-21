@@ -28,12 +28,14 @@
 #include "platform/platform.hpp"
 
 #include "geometry/algorithm.hpp"
+#include "geometry/angles.hpp"
 #include "geometry/mercator.hpp"  // kPointEqualityEps
 #include "geometry/parametrized_segment.hpp"
 
 #include "coding/file_writer.hpp"
 
 #include "base/logging.hpp"
+#include "base/math.hpp"
 #include "base/scope_guard.hpp"
 #include "base/small_map.hpp"
 #include "base/stl_helpers.hpp"
@@ -1425,6 +1427,37 @@ void RoutingManager::RebuildRouteIfOffRoute(location::GpsInfo const & info)
   { OnRebuildRouteReady(result, code); }, nullptr /* needMoreMapsCallback */, nullptr /* removeRouteCallback */,
                                 RouterDelegate::kNoTimeout, SessionState::RouteRebuilding,
                                 false /* adjustToPrevRoute */);
+}
+
+bool RoutingManager::SnapToRoad(ms::LatLon const & latLon, double bearingDeg, double radiusM, ms::LatLon & snapped,
+                                double & snappedBearingDeg)
+{
+  if (IsRoutingActive() && m_routingSession.IsOnRoute())
+  {
+    location::GpsInfo info;
+    info.m_latitude = latLon.m_lat;
+    info.m_longitude = latLon.m_lon;
+    info.m_bearing = bearingDeg;
+    location::RouteMatchingInfo routeMatchingInfo;
+    // The route iterator follows the regular location updates, so it is the closest point ahead on the route.
+    if (m_routingSession.MatchLocationToRoute(info, routeMatchingInfo))
+    {
+      snapped = ms::LatLon(info.m_latitude, info.m_longitude);
+      snappedBearingDeg = info.m_bearing;
+      return true;
+    }
+  }
+
+  double const angle = math::DegToRad(location::BearingToAngle(bearingDeg));
+  m2::PointD const direction(std::cos(angle), std::sin(angle));
+  routing::EdgeProj proj;
+  if (!m_routingSession.FindClosestProjectionToRoad(mercator::FromLatLon(latLon), direction, radiusM, proj))
+    return false;
+
+  snapped = mercator::ToLatLon(proj.m_point);
+  snappedBearingDeg = location::AngleToBearing(
+      math::RadToDeg(ang::AngleTo(proj.m_edge.GetStartPoint(), proj.m_edge.GetEndPoint())));
+  return true;
 }
 
 void RoutingManager::CallRouteBuilded(RouterResultCode code, storage::CountriesSet const & absentCountries)

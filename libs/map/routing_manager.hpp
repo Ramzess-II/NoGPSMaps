@@ -19,6 +19,8 @@
 
 #include "drape/pointers.hpp"
 
+#include "geometry/latlon.hpp"
+
 #include "base/thread_checker.hpp"
 
 #include <chrono>
@@ -235,6 +237,10 @@ public:
   // The user has set own position manually (e.g. GPS is jammed). Rebuilds the route at once if the position
   // is off the route, without waiting for the several consecutive off-route updates as for GPS.
   void RebuildRouteIfOffRoute(location::GpsInfo const & info);
+  // Snaps a dead reckoning position (not from GPS) to the followed route, or to the closest road going
+  // in the |bearingDeg| direction within |radiusM|. Returns false if there is no such route or road.
+  bool SnapToRoad(ms::LatLon const & latLon, double bearingDeg, double radiusM, ms::LatLon & snapped,
+                  double & snappedBearingDeg);
   void CallRouteBuilded(routing::RouterResultCode code, storage::CountriesSet const & absentCountries);
   void OnBuildRouteReady(routing::RoutesResult const & result, routing::RouterResultCode code);
   void OnRebuildRouteReady(routing::RoutesResult const & result, routing::RouterResultCode code);

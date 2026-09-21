@@ -82,6 +82,41 @@ public class InertialTest
   }
 
   @Test
+  public void angleDiff()
+  {
+    assertEquals(20, DeadReckoning.angleDiff(10, 350), 1e-9);
+    assertEquals(-20, DeadReckoning.angleDiff(350, 10), 1e-9);
+    assertEquals(0, DeadReckoning.angleDiff(90, 90), 1e-9);
+  }
+
+  @Test
+  public void snapsToRoadAndCorrectsHeading()
+  {
+    final DeadReckoning dr = new DeadReckoning();
+    dr.setPosition(LAT, LON);
+    dr.setHeading(10);
+    // The road goes to the north: the position moves to it, the heading turns 30% towards it.
+    assertTrue(dr.snapToRoad(LAT + 0.0001, LON + 0.0002, 0));
+    assertEquals(LAT + 0.0001, dr.getLat(), 1e-12);
+    assertEquals(LON + 0.0002, dr.getLon(), 1e-12);
+    assertEquals(7, dr.getHeading(), 1e-9);
+    // The same road in the opposite direction.
+    assertTrue(dr.snapToRoad(LAT, LON, 180));
+    assertEquals(7 - 7 * DeadReckoning.SNAP_HEADING_WEIGHT, dr.getHeading(), 1e-9);
+  }
+
+  @Test
+  public void ignoresCrossingRoad()
+  {
+    final DeadReckoning dr = new DeadReckoning();
+    dr.setPosition(LAT, LON);
+    dr.setHeading(0);
+    assertFalse(dr.snapToRoad(LAT + 0.001, LON, 90));
+    assertEquals(LAT, dr.getLat(), 0);
+    assertEquals(0, dr.getHeading(), 0);
+  }
+
+  @Test
   public void yawRateForAnyPhoneOrientation()
   {
     final float[] noBias = {0, 0, 0};

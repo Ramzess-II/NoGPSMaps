@@ -33,6 +33,10 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
   // GPS bearing is noisy at low speeds.
   private static final double MIN_GPS_HEADING_SPEED_MPS = 3;
   private static final double MAX_SENSOR_DT_SEC = 0.1;
+  private static final long SNAP_INTERVAL_MS = 1000;
+  // Don't look for roads too far: a wrong road is worse than none.
+  private static final double MIN_SNAP_RADIUS_M = 20;
+  private static final double MAX_SNAP_RADIUS_M = 60;
 
   public enum CalibrationState
   {
@@ -56,10 +60,23 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
     void onInertialLocation(@NonNull Location location);
   }
 
+  public interface RoadSnapper
+  {
+    /**
+     * @return {latitude, longitude, road bearing} of the closest point on the route or a road, or null.
+     */
+    @Nullable
+    double[] snap(double lat, double lon, double bearing, double radius);
+  }
+
   @NonNull
   private final SensorManager mSensorManager;
   @NonNull
   private final Listener mListener;
+  @NonNull
+  private final RoadSnapper mRoadSnapper;
+  private long mLastSnapMs;
+  private boolean mOnRoad;
   @Nullable
   private Elm327Client mElm327;
   @NonNull
@@ -88,10 +105,11 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
   private long mSpeedTimeMs;
   private long mStoppedSinceMs;
 
-  public InertialNavigator(@NonNull Context context, @NonNull Listener listener)
+  public InertialNavigator(@NonNull Context context, @NonNull Listener listener, @NonNull RoadSnapper roadSnapper)
   {
     mSensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
     mListener = listener;
+    mRoadSnapper = roadSnapper;
   }
 
   /**
@@ -281,6 +299,11 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
       mDeadReckoning.advance(dt);
 
     final long now = SystemClock.elapsedRealtime();
+    if (isReady() && mDeadReckoning.getSpeed() > MOVING_SPEED_MPS && now - mLastSnapMs >= SNAP_INTERVAL_MS)
+    {
+      mLastSnapMs = now;
+      snapToRoad();
+    }
     if (isReady() && now - mLastOutputMs >= OUTPUT_INTERVAL_MS)
     {
       mLastOutputMs = now;
@@ -288,6 +311,35 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
       if (location != null)
         mListener.onInertialLocation(location);
     }
+  }
+
+  private void snapToRoad()
+  {
+    final double radius =
+        Math.min(MAX_SNAP_RADIUS_M, Math.max(MIN_SNAP_RADIUS_M, mDeadReckoning.getAccuracy()));
+    final double lat = mDeadReckoning.getLat();
+    final double lon = mDeadReckoning.getLon();
+    final double heading = mDeadReckoning.getHeading();
+    final double[] snapped = mRoadSnapper.snap(lat, lon, heading, radius);
+    mOnRoad = snapped != null && mDeadReckoning.snapToRoad(snapped[0], snapped[1], snapped[2]);
+    if (snapped == null)
+      Logger.d(TAG, "No road within " + Math.round(radius) + " m");
+    else
+    {
+      final float[] shift = new float[1];
+      Location.distanceBetween(lat, lon, snapped[0], snapped[1], shift);
+      Logger.d(TAG, "Road snap " + (mOnRoad ? "applied" : "ignored") + ": shift " + Math.round(shift[0])
+                        + " m, heading " + Math.round(heading) + " -> " + Math.round(mDeadReckoning.getHeading())
+                        + ", road " + Math.round(snapped[2]) + ", speed " + mSpeedKmh + " km/h");
+    }
+  }
+
+  /**
+   * @return true if the last position was snapped to a road or the route.
+   */
+  public boolean isOnRoad()
+  {
+    return mOnRoad;
   }
 
   private void updateCalibration(@NonNull float[] gyro)

@@ -660,6 +660,13 @@ void RoutingSession::MatchLocationToRoadGraph(location::GpsInfo & location)
   m_proj = proj;
 }
 
+bool RoutingSession::FindClosestProjectionToRoad(m2::PointD const & point, m2::PointD const & direction,
+                                                 double radius, EdgeProj & proj) const
+{
+  CHECK_THREAD_CHECKER(m_threadChecker, ());
+  return m_router && m_router->FindClosestProjectionToRoad(point, direction, radius, proj);
+}
+
 bool RoutingSession::MatchLocationToRoute(location::GpsInfo & location, location::RouteMatchingInfo & routeMatchingInfo)
 {
   CHECK_THREAD_CHECKER(m_threadChecker, ());

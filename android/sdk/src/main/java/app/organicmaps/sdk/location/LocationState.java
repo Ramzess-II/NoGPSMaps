@@ -3,6 +3,7 @@ package app.organicmaps.sdk.location;
 import androidx.annotation.IntDef;
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import app.organicmaps.sdk.Map;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -59,6 +60,13 @@ public final class LocationState
   static native double[] nativeScreenToLatLon(float x, float y);
 
   static native void nativeRebuildRouteIfOffRoute(long time, double lat, double lon, float accuracy);
+
+  /**
+   * Snaps a position to the followed route, or to the closest road going in the bearing direction.
+   * @return {latitude, longitude, road bearing}, or null if there is no route or road within the radius.
+   */
+  @Nullable
+  static native double[] nativeSnapToRoad(double lat, double lon, double bearing, double radius);
 
   private LocationState() {}
 

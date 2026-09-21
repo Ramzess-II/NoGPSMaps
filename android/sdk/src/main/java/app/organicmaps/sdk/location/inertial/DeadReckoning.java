@@ -10,6 +10,10 @@ public class DeadReckoning
 {
   static final double BASE_ACCURACY_M = 15;
   static final double ACCURACY_PER_METER = 0.05;
+  // A road going in a different direction is not the road the car is on (or the car is turning).
+  static final double MAX_SNAP_HEADING_DIFF_DEG = 30;
+  // The heading is pulled to the road gradually, so a single wrong snap doesn't turn the car.
+  static final double SNAP_HEADING_WEIGHT = 0.3;
 
   private static final double EARTH_RADIUS_M = 6_371_000;
 
@@ -65,6 +69,35 @@ public class DeadReckoning
     mLat += Math.toDegrees(distance * Math.cos(heading) / EARTH_RADIUS_M);
     mLon += Math.toDegrees(distance * Math.sin(heading) / (EARTH_RADIUS_M * Math.cos(Math.toRadians(mLat))));
     mDistanceSinceFixM += distance;
+  }
+
+  /**
+   * Pulls the position to the road the car is on: it removes the side error. The heading is corrected
+   * towards the road direction, it removes the gyroscope drift on straight roads.
+   * @param roadBearingDeg direction of the road, the opposite direction is the same road.
+   * @return false if the road goes in another direction and it is ignored.
+   */
+  public boolean snapToRoad(double lat, double lon, double roadBearingDeg)
+  {
+    if (!isReady())
+      return false;
+    double diff = angleDiff(roadBearingDeg, mHeadingDeg);
+    if (Math.abs(diff) > 90)
+      diff = angleDiff(roadBearingDeg + 180, mHeadingDeg);
+    if (Math.abs(diff) > MAX_SNAP_HEADING_DIFF_DEG)
+      return false;
+    mLat = lat;
+    mLon = lon;
+    mHeadingDeg = normalize(mHeadingDeg + diff * SNAP_HEADING_WEIGHT);
+    return true;
+  }
+
+  /**
+   * @return the shortest signed rotation from {@code from} to {@code to}, in [-180, 180).
+   */
+  static double angleDiff(double to, double from)
+  {
+    return normalize(to - from + 180) - 180;
   }
 
   public boolean hasPosition()
