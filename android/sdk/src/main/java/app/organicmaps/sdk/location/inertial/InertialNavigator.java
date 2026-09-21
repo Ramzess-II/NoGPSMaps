@@ -174,8 +174,18 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
     mDeadReckoning.setPosition(location.getLatitude(), location.getLongitude());
     if (isGps && location.hasBearing() && location.hasSpeed() && location.getSpeed() >= MIN_GPS_HEADING_SPEED_MPS)
       setHeading(location.getBearing(), HeadingSource.GPS);
-    else if (!isGps && location.hasBearing())
+    // The direction set by the user is more reliable than the one from rough marks.
+    else if (!isGps && location.hasBearing() && mHeadingSource != HeadingSource.USER)
       setHeading(location.getBearing(), HeadingSource.MANUAL_MARKS);
+  }
+
+  /**
+   * Moves the position without changing the heading, e.g. to the shown position while the inertial
+   * navigation doesn't work yet.
+   */
+  public void setPosition(double lat, double lon)
+  {
+    mDeadReckoning.setPosition(lat, lon);
   }
 
   /**

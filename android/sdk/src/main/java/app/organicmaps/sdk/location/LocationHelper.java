@@ -52,14 +52,16 @@ public class LocationHelper implements BaseLocationProvider.Listener
   private static final float MANUAL_ACCURACY_M = 50;
   // Taps closer than this are too noisy to calculate a movement direction.
   private static final float MANUAL_MIN_BEARING_DISTANCE_M = 30;
+  // Older marks tell nothing about the current direction of movement.
+  private static final long MANUAL_MAX_BEARING_AGE_MS = 3 * 60 * 1000;
 
   // Network (cell towers and Wi-Fi) positions are used to detect spoofed GPS.
   private static final long INTERVAL_NETWORK_MS = 5000;
 
   // A position without updates for longer than this is shown as lost.
   private static final long POSITION_STALE_MS = 30 * 1000;
-  // Less accurate positions come from cell towers and Wi-Fi even if reported by the fused provider.
-  private static final float SATELLITE_MAX_ACCURACY_M = 100;
+  // The fused provider mixes GPS with cell towers and Wi-Fi: less accurate positions are from the network.
+  private static final float FUSED_SATELLITE_MAX_ACCURACY_M = 30;
   // A position closer to the route than this is considered on the route even if it is very accurate.
   private static final float MIN_OFF_ROUTE_DISTANCE_M = 50;
   // Trusted GPS positions are preferred over the inertial ones while they are this fresh.
@@ -251,6 +253,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
         mSavedLocation.getAccuracy(), altitude != null ? altitude.altitude() : 0,
         altitude != null ? altitude.accuracy() : -1, mSavedLocation.hasSpeed() ? mSavedLocation.getSpeed() : -1,
         mSavedLocation.hasBearing() ? mSavedLocation.getBearing() : -1);
+    showInertialHeading();
   }
 
   private void notifyLocationUpdateTimeout()
@@ -343,9 +346,9 @@ public class LocationHelper implements BaseLocationProvider.Listener
     mSavedLocation = location;
     mMyPosition = null;
 
-    // A coarse start position is better than none, a manual mark or trusted GPS will refine it.
-    if (mInertial != null && !mInertial.hasPosition())
-      mInertial.onReferencePosition(location, false /* isGps */);
+    // While the inertial navigation doesn't work, it starts from the shown position.
+    if (mInertial != null && !isInertialActive())
+      mInertial.setPosition(location.getLatitude(), location.getLongitude());
 
     // The core detects that the user left the route only after several moving GPS positions. Check the route at once
     // when the position source changes (e.g. from the manual position, which can be wrong, to GPS or cell towers),
@@ -365,8 +368,10 @@ public class LocationHelper implements BaseLocationProvider.Listener
       return PositionSource.MANUAL;
     if (InertialNavigator.PROVIDER.equals(location.getProvider()))
       return PositionSource.INERTIAL;
+    if (LocationManager.GPS_PROVIDER.equals(location.getProvider()))
+      return PositionSource.GPS;
     if (LocationManager.NETWORK_PROVIDER.equals(location.getProvider())
-        || location.getAccuracy() > SATELLITE_MAX_ACCURACY_M)
+        || location.getAccuracy() > FUSED_SATELLITE_MAX_ACCURACY_M)
       return PositionSource.NETWORK;
     return PositionSource.GPS;
   }
@@ -554,15 +559,15 @@ public class LocationHelper implements BaseLocationProvider.Listener
   {
     if (mInertial == null)
       return;
-    final Location from = mInertial.hasPosition() ? mInertial.getLocation() : mSavedLocation;
+    // The direction is set from the arrow the user sees.
+    final Location from = mSavedLocation;
     if (from == null)
       return;
     final double[] latLon = LocationState.nativeScreenToLatLon(x, y);
     final Location to = new Location(MANUAL_PROVIDER);
     to.setLatitude(latLon[0]);
     to.setLongitude(latLon[1]);
-    if (!mInertial.hasPosition())
-      mInertial.onReferencePosition(from, false /* isGps */);
+    mInertial.setPosition(from.getLatitude(), from.getLongitude());
     mInertial.setHeading(from.bearingTo(to), InertialNavigator.HeadingSource.USER);
     showInertialHeading();
   }
@@ -626,7 +631,6 @@ public class LocationHelper implements BaseLocationProvider.Listener
       rebuildRouteIfOffRoute(location);
     mLastPositionSource = PositionSource.INERTIAL;
     notifyLocationUpdated();
-    showInertialHeading();
   }
 
   public boolean isManualMode()
@@ -685,7 +689,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
     location.setAccuracy(MANUAL_ACCURACY_M);
 
     // The direction of movement is unknown, estimate it from the previous manual position.
-    if (mManualLocation != null)
+    if (mManualLocation != null && SystemClock.elapsedRealtime() - mManualSetTimeMs < MANUAL_MAX_BEARING_AGE_MS)
     {
       if (mManualLocation.distanceTo(location) >= MANUAL_MIN_BEARING_DISTANCE_M)
         location.setBearing(mManualLocation.bearingTo(location));

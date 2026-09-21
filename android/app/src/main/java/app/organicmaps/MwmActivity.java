@@ -1200,7 +1200,8 @@ public class MwmActivity extends BaseMwmFragmentActivity
     mMapController.updateCompassOffset(offsetX, offsetY);
 
     final double north = MwmApplication.from(this).getSensorHelper().getSavedNorth();
-    if (!Double.isNaN(north))
+    // The inertial heading is shown instead of the compass.
+    if (!Double.isNaN(north) && !MwmApplication.from(this).getLocationHelper().isInertialHeadingShown())
       Map.onCompassUpdated(north, true);
   }
 
