@@ -331,11 +331,17 @@ public class MapButtonsController extends Fragment
 
   private void updateTopButtonsMargin(int margin)
   {
-    if (margin == -1 || mTrackRecordingStatusButton == null)
+    if (margin == -1)
       return;
-    ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) mTrackRecordingStatusButton.getLayoutParams();
-    params.topMargin = margin;
-    mTrackRecordingStatusButton.setLayoutParams(params);
+    // The navigation panel at the top must not cover these views.
+    for (View view : new View[] {mTrackRecordingStatusButton, mPositionStatus})
+    {
+      if (view == null)
+        continue;
+      final ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) view.getLayoutParams();
+      params.topMargin = margin;
+      view.setLayoutParams(params);
+    }
   }
 
   @OptIn(markerClass = ExperimentalBadgeUtils.class)

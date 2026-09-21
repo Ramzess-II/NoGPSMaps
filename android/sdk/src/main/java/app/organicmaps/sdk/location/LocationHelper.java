@@ -59,6 +59,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
   private static final long POSITION_STALE_MS = 30 * 1000;
   // Less accurate positions come from cell towers and Wi-Fi even if reported by the fused provider.
   private static final float SATELLITE_MAX_ACCURACY_M = 100;
+  // A position closer to the route than this is considered on the route even if it is very accurate.
+  private static final float MIN_OFF_ROUTE_DISTANCE_M = 50;
 
   public enum PositionSource
   {
@@ -112,6 +114,11 @@ public class LocationHelper implements BaseLocationProvider.Listener
   private final Runnable mManualRepeatRunnable = this::applyManualLocation;
   // Elapsed realtime of the last position set by the user.
   private long mManualSetTimeMs;
+  // After the manual mode the next real position must replace the manual one, even if it is less accurate.
+  private boolean mAcceptNextLocation;
+  // The source of the last position passed to the core, used to check the route when the source changes.
+  @NonNull
+  private PositionSource mLastPositionSource = PositionSource.NONE;
   private final ObserverList<ManualModeListener> mManualModeListeners = new ObserverList<>();
 
   private final GpsSpoofingDetector mSpoofingDetector = new GpsSpoofingDetector();
@@ -299,7 +306,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
     }
 
     // While GPS is spoofed network positions are the only source, they must not compete with the spoofed ones.
-    if (mSavedLocation != null && !(spoofed && isNetwork))
+    if (mSavedLocation != null && !(spoofed && isNetwork) && !mAcceptNextLocation)
     {
       if (!LocationUtils.isLocationBetterThanLast(location, mSavedLocation))
       {
@@ -308,9 +315,37 @@ public class LocationHelper implements BaseLocationProvider.Listener
       }
     }
 
+    mAcceptNextLocation = false;
     mSavedLocation = location;
     mMyPosition = null;
+
+    // The core detects that the user left the route only after several moving GPS positions. Check the route at once
+    // when the position source changes (e.g. from the manual position, which can be wrong, to GPS or cell towers),
+    // and on every network position, as they are rare and often don't change while the user stands still.
+    final PositionSource source = sourceOf(location);
+    if (source != mLastPositionSource || source == PositionSource.NETWORK)
+      rebuildRouteIfOffRoute(location);
+    mLastPositionSource = source;
+
     notifyLocationUpdated();
+  }
+
+  @NonNull
+  private static PositionSource sourceOf(@NonNull Location location)
+  {
+    if (MANUAL_PROVIDER.equals(location.getProvider()))
+      return PositionSource.MANUAL;
+    if (LocationManager.NETWORK_PROVIDER.equals(location.getProvider())
+        || location.getAccuracy() > SATELLITE_MAX_ACCURACY_M)
+      return PositionSource.NETWORK;
+    return PositionSource.GPS;
+  }
+
+  private static void rebuildRouteIfOffRoute(@NonNull Location location)
+  {
+    LocationState.nativeRebuildRouteIfOffRoute(System.currentTimeMillis(), location.getLatitude(),
+                                                location.getLongitude(),
+                                                Math.max(location.getAccuracy(), MIN_OFF_ROUTE_DISTANCE_M));
   }
 
   // Used by GoogleFusedLocationProvider.
@@ -365,10 +400,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
     final long ageMs = SystemClock.elapsedRealtime() - mSavedLocation.getElapsedRealtimeNanos() / 1_000_000;
     if (ageMs > POSITION_STALE_MS)
       return PositionSource.NONE;
-    if (LocationManager.NETWORK_PROVIDER.equals(mSavedLocation.getProvider())
-        || mSavedLocation.getAccuracy() > SATELLITE_MAX_ACCURACY_M)
-      return PositionSource.NETWORK;
-    return PositionSource.GPS;
+    return sourceOf(mSavedLocation);
   }
 
   /**
@@ -463,6 +495,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
     Logger.i(TAG, "enabled = " + enabled);
     mManualMode = enabled;
     mManualLocation = null;
+    mAcceptNextLocation = !enabled;
     mHandler.removeCallbacks(mManualRepeatRunnable);
 
     for (ManualModeListener listener : mManualModeListeners)
@@ -515,7 +548,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
     Logger.i(TAG, "location = " + location);
     mManualLocation = location;
     mManualSetTimeMs = SystemClock.elapsedRealtime();
-    LocationState.nativeRebuildRouteIfOffRoute(System.currentTimeMillis(), lat, lon, MANUAL_ACCURACY_M);
+    mLastPositionSource = PositionSource.MANUAL;
+    rebuildRouteIfOffRoute(location);
     applyManualLocation();
   }
 
