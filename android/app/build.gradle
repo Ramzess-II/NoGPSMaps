@@ -86,7 +86,7 @@ android {
       dimension 'default'
       versionName = android.defaultConfig.versionName + '-Google'
       buildConfigField 'String', 'SUPPORT_MAIL', '"googleplay@organicmaps.app"'
-      buildConfigField 'String', 'REVIEW_URL', '"market://details?id=app.organicmaps"'
+      buildConfigField 'String', 'REVIEW_URL', '"market://details?id=ua.nogps.maps"'
     }
 
     web {
@@ -107,7 +107,7 @@ android {
       versionName = android.defaultConfig.versionName + '-Huawei'
       versionCode = HUAWEI_VERSION_CODE_BASE + android.defaultConfig.versionCode
       buildConfigField 'String', 'SUPPORT_MAIL', '"huawei@organicmaps.app"'
-      buildConfigField 'String', 'REVIEW_URL', '"appmarket://details?id=app.organicmaps"'
+      buildConfigField 'String', 'REVIEW_URL', '"appmarket://details?id=ua.nogps.maps"'
     }
   }
 
@@ -302,7 +302,7 @@ def allowedPermissions = [
     // app.organicmaps.(debug|beta|profileable)
     // app.organicmaps.web
     // app.organicmaps.web.(debug|beta|profileable)
-    ~/name='app\.organicmaps(\.web)?(\.debug|\.beta|\.profileable)?\.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'/
+    ~/name='ua\.nogps\.maps(\.web)?(\.debug|\.beta|\.profileable)?\.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'/
 ]
 registerCheckApkPermissionsTasks(project, allowedPermissions)
 
