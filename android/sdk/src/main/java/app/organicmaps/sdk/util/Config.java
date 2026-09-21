@@ -40,6 +40,8 @@ public final class Config
   private static final String KEY_MISC_USE_MOBILE_DATA_TIMESTAMP = "UseMobileDataTimestamp";
   private static final String KEY_MISC_USE_MOBILE_DATA_ROAMING = "UseMobileDataRoaming";
   private static final String KEY_MISC_KEEP_SCREEN_ON = "KeepScreenOn";
+  private static final String KEY_NOGPS_INERTIAL_ENABLED = "NoGpsInertialEnabled";
+  private static final String KEY_NOGPS_ELM327_ADDRESS = "NoGpsElm327Address";
 
   private static final String KEY_MISC_SHOW_ON_LOCK_SCREEN = "ShowOnLockScreen";
   private static final String KEY_MISC_AGPS_TIMESTAMP = "AGPSTimestamp";
@@ -204,6 +206,31 @@ public final class Config
   public static void setKeepScreenOnEnabled(boolean enabled)
   {
     setBool(KEY_MISC_KEEP_SCREEN_ON, enabled);
+  }
+
+  public static boolean isInertialNavigationEnabled()
+  {
+    return getBool(KEY_NOGPS_INERTIAL_ENABLED, false);
+  }
+
+  public static void setInertialNavigationEnabled(boolean enabled)
+  {
+    setBool(KEY_NOGPS_INERTIAL_ENABLED, enabled);
+  }
+
+  /**
+   * @return Bluetooth address of the ELM327 OBD-II adapter, or null if it is not chosen.
+   */
+  @Nullable
+  public static String getElm327Address()
+  {
+    final String address = getString(KEY_NOGPS_ELM327_ADDRESS);
+    return address.isEmpty() ? null : address;
+  }
+
+  public static void setElm327Address(@NonNull String address)
+  {
+    setString(KEY_NOGPS_ELM327_ADDRESS, address);
   }
 
   public static boolean isShowOnLockScreenEnabled()

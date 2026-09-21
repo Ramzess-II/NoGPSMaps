@@ -23,6 +23,7 @@ import androidx.core.location.LocationRequestCompat;
 import app.organicmaps.sdk.Framework;
 import app.organicmaps.sdk.Map;
 import app.organicmaps.sdk.bookmarks.data.MapObject;
+import app.organicmaps.sdk.location.inertial.InertialNavigator;
 import app.organicmaps.sdk.routing.JunctionInfo;
 import app.organicmaps.sdk.routing.RoutingController;
 import app.organicmaps.sdk.util.Config;
@@ -61,6 +62,10 @@ public class LocationHelper implements BaseLocationProvider.Listener
   private static final float SATELLITE_MAX_ACCURACY_M = 100;
   // A position closer to the route than this is considered on the route even if it is very accurate.
   private static final float MIN_OFF_ROUTE_DISTANCE_M = 50;
+  // Trusted GPS positions are preferred over the inertial ones while they are this fresh.
+  private static final long GPS_FRESH_MS = 3000;
+  // The inertial navigation is considered active while its positions are used this recently.
+  private static final long INERTIAL_ACTIVE_MS = 1000;
 
   public enum PositionSource
   {
@@ -68,8 +73,9 @@ public class LocationHelper implements BaseLocationProvider.Listener
     GPS,
     // Cell towers and Wi-Fi.
     NETWORK,
-    MANUAL
-    // TODO: INERTIAL (car speed from OBD + gyroscope).
+    MANUAL,
+    // Car speed from OBD + phone gyroscope.
+    INERTIAL
   }
 
   public interface ManualModeListener
@@ -119,6 +125,11 @@ public class LocationHelper implements BaseLocationProvider.Listener
   // The source of the last position passed to the core, used to check the route when the source changes.
   @NonNull
   private PositionSource mLastPositionSource = PositionSource.NONE;
+
+  @Nullable
+  private InertialNavigator mInertial;
+  private long mLastTrustedGpsMs;
+  private long mLastInertialUsedMs;
   private final ObserverList<ManualModeListener> mManualModeListeners = new ObserverList<>();
 
   private final GpsSpoofingDetector mSpoofingDetector = new GpsSpoofingDetector();
@@ -293,9 +304,22 @@ public class LocationHelper implements BaseLocationProvider.Listener
       return;
     }
 
+    if (!mManualMode && sourceOf(location) == PositionSource.GPS)
+    {
+      mLastTrustedGpsMs = SystemClock.elapsedRealtime();
+      if (mInertial != null)
+        mInertial.onReferencePosition(location, true /* isGps */);
+    }
+
     if (mManualMode)
     {
       Logger.d(TAG, "Manual mode is on, ignoring location = " + location);
+      return;
+    }
+
+    if (isNetwork && isInertialActive())
+    {
+      Logger.d(TAG, "Inertial navigation is more accurate than location = " + location);
       return;
     }
 
@@ -319,6 +343,10 @@ public class LocationHelper implements BaseLocationProvider.Listener
     mSavedLocation = location;
     mMyPosition = null;
 
+    // A coarse start position is better than none, a manual mark or trusted GPS will refine it.
+    if (mInertial != null && !mInertial.hasPosition())
+      mInertial.onReferencePosition(location, false /* isGps */);
+
     // The core detects that the user left the route only after several moving GPS positions. Check the route at once
     // when the position source changes (e.g. from the manual position, which can be wrong, to GPS or cell towers),
     // and on every network position, as they are rare and often don't change while the user stands still.
@@ -335,6 +363,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
   {
     if (MANUAL_PROVIDER.equals(location.getProvider()))
       return PositionSource.MANUAL;
+    if (InertialNavigator.PROVIDER.equals(location.getProvider()))
+      return PositionSource.INERTIAL;
     if (LocationManager.NETWORK_PROVIDER.equals(location.getProvider())
         || location.getAccuracy() > SATELLITE_MAX_ACCURACY_M)
       return PositionSource.NETWORK;
@@ -393,6 +423,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
   @NonNull
   public PositionSource getPositionSource()
   {
+    if (isInertialActive())
+      return PositionSource.INERTIAL;
     if (mManualMode)
       return mManualLocation != null ? PositionSource.MANUAL : PositionSource.NONE;
     if (mSavedLocation == null || !isActive())
@@ -481,6 +513,90 @@ public class LocationHelper implements BaseLocationProvider.Listener
     LocationManagerCompat.removeUpdates(locationManager, mNetworkListener);
   }
 
+  public boolean isInertialNavigationEnabled()
+  {
+    return Config.isInertialNavigationEnabled();
+  }
+
+  @UiThread
+  public void setInertialNavigationEnabled(boolean enabled)
+  {
+    Logger.i(TAG, "enabled = " + enabled);
+    Config.setInertialNavigationEnabled(enabled);
+    if (enabled)
+      startInertialNavigation();
+    else if (mInertial != null)
+      mInertial.stop();
+  }
+
+  @UiThread
+  public void setElm327Address(@NonNull String address)
+  {
+    Config.setElm327Address(address);
+    if (isInertialNavigationEnabled() && mInertial != null)
+      mInertial.start(address);
+  }
+
+  /**
+   * @return the inertial navigation to show its state, null if it has never been enabled.
+   */
+  @Nullable
+  public InertialNavigator getInertialNavigator()
+  {
+    return mInertial;
+  }
+
+  /**
+   * Sets the direction the car looks at by a point on the map view in pixels.
+   */
+  @UiThread
+  public void setHeadingFromScreen(float x, float y)
+  {
+    if (mInertial == null)
+      return;
+    final Location from = mInertial.hasPosition() ? mInertial.getLocation() : mSavedLocation;
+    if (from == null)
+      return;
+    final double[] latLon = LocationState.nativeScreenToLatLon(x, y);
+    final Location to = new Location(MANUAL_PROVIDER);
+    to.setLatitude(latLon[0]);
+    to.setLongitude(latLon[1]);
+    if (!mInertial.hasPosition())
+      mInertial.onReferencePosition(from, false /* isGps */);
+    mInertial.setHeading(from.bearingTo(to), InertialNavigator.HeadingSource.USER);
+  }
+
+  private void startInertialNavigation()
+  {
+    if (!isInertialNavigationEnabled())
+      return;
+    if (mInertial == null)
+      mInertial = new InertialNavigator(mContext, this::onInertialLocation);
+    mInertial.start(Config.getElm327Address());
+  }
+
+  private boolean isInertialActive()
+  {
+    return mInertial != null && SystemClock.elapsedRealtime() - mLastInertialUsedMs < INERTIAL_ACTIVE_MS;
+  }
+
+  private void onInertialLocation(@NonNull Location location)
+  {
+    // Trusted GPS is better. In the manual mode GPS is ignored, so the inertial navigation is used.
+    if (!mManualMode && SystemClock.elapsedRealtime() - mLastTrustedGpsMs < GPS_FRESH_MS)
+      return;
+    if (!isActive())
+      return;
+
+    mLastInertialUsedMs = SystemClock.elapsedRealtime();
+    mSavedLocation = location;
+    mMyPosition = null;
+    if (mLastPositionSource != PositionSource.INERTIAL)
+      rebuildRouteIfOffRoute(location);
+    mLastPositionSource = PositionSource.INERTIAL;
+    notifyLocationUpdated();
+  }
+
   public boolean isManualMode()
   {
     return mManualMode;
@@ -550,6 +666,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
     mManualSetTimeMs = SystemClock.elapsedRealtime();
     mLastPositionSource = PositionSource.MANUAL;
     rebuildRouteIfOffRoute(location);
+    if (mInertial != null)
+      mInertial.onReferencePosition(location, false /* isGps */);
     applyManualLocation();
   }
 
@@ -559,11 +677,15 @@ public class LocationHelper implements BaseLocationProvider.Listener
     if (mManualLocation == null)
       return;
 
-    mManualLocation.setTime(System.currentTimeMillis());
-    mManualLocation.setElapsedRealtimeNanos(SystemClock.elapsedRealtimeNanos());
-    mSavedLocation = new Location(mManualLocation);
-    mMyPosition = null;
-    notifyLocationUpdated();
+    // The inertial navigation moves the car from the manual mark, it must not be moved back.
+    if (!isInertialActive())
+    {
+      mManualLocation.setTime(System.currentTimeMillis());
+      mManualLocation.setElapsedRealtimeNanos(SystemClock.elapsedRealtimeNanos());
+      mSavedLocation = new Location(mManualLocation);
+      mMyPosition = null;
+      notifyLocationUpdated();
+    }
 
     if (isActive())
       mHandler.postDelayed(mManualRepeatRunnable, MANUAL_REPEAT_INTERVAL_MS);
@@ -700,6 +822,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
     mHandler.postDelayed(mLocationTimeoutRunnable, LOCATION_UPDATE_TIMEOUT_MS);
     subscribeToGnssStatusUpdates();
     startNetworkUpdates();
+    startInertialNavigation();
     if (mManualLocation != null)
       mHandler.post(mManualRepeatRunnable);
   }
@@ -719,6 +842,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
     mLocationProvider.stop();
     unsubscribeFromGnssStatusUpdates();
     stopNetworkUpdates();
+    if (mInertial != null)
+      mInertial.stop();
     mSensorHelper.stop();
     mHandler.removeCallbacks(mLocationTimeoutRunnable);
     mHandler.removeCallbacks(mManualRepeatRunnable);

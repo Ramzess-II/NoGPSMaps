@@ -47,6 +47,9 @@
     Services (FGS)) notifications from an app.
   //-->
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <!-- ELM327 OBD-II adapter for the inertial navigation. -->
+  <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+  <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
   <queries>
     <intent>

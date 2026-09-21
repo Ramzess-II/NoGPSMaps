@@ -65,6 +65,7 @@ import app.organicmaps.intent.Factory;
 import app.organicmaps.intent.IntentProcessor;
 import app.organicmaps.location.TrackRecordingService;
 import app.organicmaps.maplayer.MapButtonsController;
+import app.organicmaps.nogps.SensorsBottomSheet;
 import app.organicmaps.maplayer.MapButtonsViewModel;
 import app.organicmaps.maplayer.ToggleMapLayerFragment;
 import app.organicmaps.routing.NavigationController;
@@ -772,6 +773,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
     case help -> showHelp();
     case trackRecordingStatus -> toggleTrackRecordingPP();
     case manualPosition -> toggleManualPositionMode();
+    case positionStatus -> new SensorsBottomSheet().show(getSupportFragmentManager(), SensorsBottomSheet.TAG);
     }
   }
 
@@ -793,6 +795,19 @@ public class MwmActivity extends BaseMwmFragmentActivity
   {
     final LocationHelper locationHelper = MwmApplication.from(this).getLocationHelper();
     MapView.setTapInterceptor(enabled ? locationHelper::setManualLocationFromScreen : null);
+  }
+
+  /**
+   * The next tap on the map sets the direction the car looks at for the inertial navigation.
+   */
+  public void startHeadingSelection()
+  {
+    Toast.makeText(this, R.string.nogps_tap_heading, Toast.LENGTH_LONG).show();
+    MapView.setTapInterceptor((x, y) -> {
+      final LocationHelper locationHelper = MwmApplication.from(this).getLocationHelper();
+      locationHelper.setHeadingFromScreen(x, y);
+      onManualModeChanged(locationHelper.isManualMode());
+    });
   }
 
   private boolean closeBottomSheet(String id)

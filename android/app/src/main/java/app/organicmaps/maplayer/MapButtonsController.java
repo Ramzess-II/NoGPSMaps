@@ -143,6 +143,8 @@ public class MapButtonsController extends Fragment
         new MyPositionButton(myPosition, (v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.myPosition));
     mManualPositionButton = mFrame.findViewById(R.id.manual_position);
     mPositionStatus = mFrame.findViewById(R.id.position_status);
+    mPositionStatus.setOnClickListener(
+        (v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.positionStatus));
     mManualPositionButton.setOnClickListener(
         (v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.manualPosition));
 
@@ -265,6 +267,11 @@ public class MapButtonsController extends Fragment
         text = getString(locationHelper.isGpsSpoofed() ? R.string.nogps_status_network_spoofed
                                                        : R.string.nogps_status_network_no_gps, accuracy);
         color = R.color.nogps_status_network;
+      }
+      case INERTIAL ->
+      {
+        text = getString(R.string.nogps_status_inertial, formatAccuracy(locationHelper.getPositionAccuracy()));
+        color = R.color.nogps_status_inertial;
       }
       case MANUAL ->
       {
@@ -627,7 +634,8 @@ public class MapButtonsController extends Fragment
     menu,
     help,
     trackRecordingStatus,
-    manualPosition
+    manualPosition,
+    positionStatus
   }
 
   public interface MapButtonClickListener

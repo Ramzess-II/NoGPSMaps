@@ -288,6 +288,9 @@ def allowedPermissions = [
     "name='android.permission.POST_NOTIFICATIONS'",
     // wake lock
     "name='android.permission.WAKE_LOCK'",
+    // ELM327 OBD-II adapter
+    "name='android.permission.BLUETOOTH' maxSdkVersion='30'",
+    "name='android.permission.BLUETOOTH_CONNECT'",
     // Android Auto
     "name='androidx.car.app.NAVIGATION_TEMPLATES'",
     "name='androidx.car.app.ACCESS_SURFACE'",
