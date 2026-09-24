@@ -3,7 +3,7 @@ package app.organicmaps.sdk.location.inertial;
 /**
  * The speed from the car differs from the real one: the speedometer is rounded and usually optimistic, and
  * the road is not flat. The difference is estimated from the corrections the user applies to the calculated
- * position and is compensated for the rest of the trip.
+ * position and is compensated. The speedometer error stays the same, so the estimation is kept between trips.
  */
 public class SpeedScale
 {
@@ -48,6 +48,16 @@ public class SpeedScale
   public double get()
   {
     return mScale;
+  }
+
+  /**
+   * Restores the ratio estimated before, e.g. on a previous trip.
+   */
+  public void set(double scale)
+  {
+    mScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale));
+    mDistanceM = 0;
+    mCorrectionM = 0;
   }
 
   public void reset()

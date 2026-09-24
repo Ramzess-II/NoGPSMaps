@@ -43,6 +43,7 @@ public final class Config
   private static final String KEY_NOGPS_INERTIAL_ENABLED = "NoGpsInertialEnabled";
   private static final String KEY_NOGPS_ELM327_ADDRESS = "NoGpsElm327Address";
   private static final String KEY_NOGPS_SHIFT_STEP = "NoGpsShiftStep";
+  private static final String KEY_NOGPS_SPEED_SCALE = "NoGpsSpeedScale";
 
   private static final String KEY_MISC_SHOW_ON_LOCK_SCREEN = "ShowOnLockScreen";
   private static final String KEY_MISC_AGPS_TIMESTAMP = "AGPSTimestamp";
@@ -245,6 +246,19 @@ public final class Config
   public static void setPositionShiftStepM(int meters)
   {
     setInt(KEY_NOGPS_SHIFT_STEP, meters);
+  }
+
+  /**
+   * @return the ratio the speed from the car is multiplied by, estimated on the previous trips.
+   */
+  public static float getNoGpsSpeedScale()
+  {
+    return getFloat(KEY_NOGPS_SPEED_SCALE, 1);
+  }
+
+  public static void setNoGpsSpeedScale(float scale)
+  {
+    setFloat(KEY_NOGPS_SPEED_SCALE, scale);
   }
 
   public static boolean isShowOnLockScreenEnabled()

@@ -9,6 +9,7 @@ import android.location.Location;
 import android.os.SystemClock;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import app.organicmaps.sdk.util.Config;
 import app.organicmaps.sdk.util.log.Logger;
 
 /**
@@ -129,6 +130,8 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
     if (mStarted)
       stop();
     mStarted = true;
+    // The speedometer error is the same on every trip.
+    mSpeedScale.set(Config.getNoGpsSpeedScale());
     Logger.i(TAG, "ELM327 = " + elm327Address);
 
     Sensor gyro = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE_UNCALIBRATED);
@@ -163,8 +166,6 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
     mElm327State = Elm327Client.State.DISCONNECTED;
     mSpeedKmh = -1;
     mLastGyroTimestampNs = 0;
-    // The speed scale is valid for the current trip only: the load and the tyre pressure change.
-    mSpeedScale.reset();
   }
 
   /**
@@ -207,6 +208,7 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
   public void onPositionCorrected(double lat, double lon, double bearingDeg, double appliedM)
   {
     mSpeedScale.onCorrection(appliedM);
+    Config.setNoGpsSpeedScale((float) mSpeedScale.get());
     Logger.i(TAG, "Corrected by " + Math.round(appliedM) + " m, speed scale = " + mSpeedScale.get());
     setRoadPosition(lat, lon, bearingDeg);
   }

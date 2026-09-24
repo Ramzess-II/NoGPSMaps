@@ -174,6 +174,24 @@ public class InertialTest
   }
 
   @Test
+  public void restoresSpeedScale()
+  {
+    final SpeedScale scale = new SpeedScale();
+    scale.set(1.07);
+    assertEquals(1.07, scale.get(), 0);
+
+    // A distance driven before the restore is not mixed with the new trip.
+    scale.onDistance(200);
+    scale.set(1.07);
+    scale.onDistance(200);
+    scale.onCorrection(100);
+    assertEquals(1.07, scale.get(), 0);
+
+    scale.set(5);
+    assertEquals(SpeedScale.MAX_SCALE, scale.get(), 0);
+  }
+
+  @Test
   public void yawRateForAnyPhoneOrientation()
   {
     final float[] noBias = {0, 0, 0};
