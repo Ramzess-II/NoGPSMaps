@@ -1426,20 +1426,21 @@ void RoutingManager::RebuildRouteIfOffRoute(location::GpsInfo const & info)
     return;
 
   m2::PointD const position = mercator::FromLatLon(info.m_latitude, info.m_longitude);
+  // How far the car is shown from the position on the route, for the log of a drive.
+  double shownAwayM = -1.0;
   if (state == SessionState::OnRoute)
   {
     location::GpsInfo matched(info);
     location::RouteMatchingInfo routeMatchingInfo;
     m_routingSession.MatchLocationToRoute(matched, routeMatchingInfo);
-    if (routeMatchingInfo.IsMatched() &&
-        mercator::DistanceOnEarth(routeMatchingInfo.GetPosition(), position) <= info.m_horizontalAccuracy &&
-        !IsAgainstRoute(info))
-    {
+    if (routeMatchingInfo.IsMatched())
+      shownAwayM = mercator::DistanceOnEarth(routeMatchingInfo.GetPosition(), position);
+    if (routeMatchingInfo.IsMatched() && shownAwayM <= info.m_horizontalAccuracy && !IsAgainstRoute(info))
       return;
-    }
   }
 
-  LOG(LINFO, ("Manual position is off the route, rebuilding, bearing", info.m_bearing));
+  LOG(LINFO, ("Manual position is off the route, rebuilding, bearing", info.m_bearing, "shown", shownAwayM,
+              "m away on the route"));
   m_routingSession.RebuildRoute(position, [this](RoutesResult const & result, RouterResultCode code)
   { OnRebuildRouteReady(result, code); }, nullptr /* needMoreMapsCallback */, nullptr /* removeRouteCallback */,
                                 RouterDelegate::kNoTimeout, SessionState::RouteRebuilding,

@@ -76,6 +76,10 @@ public class LocationHelper implements BaseLocationProvider.Listener
   private static final float FUSED_SATELLITE_MAX_ACCURACY_M = 30;
   // A position closer to the route than this is considered on the route even if it is very accurate.
   private static final float MIN_OFF_ROUTE_DISTANCE_M = 50;
+  // A position set by the user lies on the axis of the route if the car is on the route. The core keeps the
+  // car on the route ahead of a farther one: it moves along the route forward only, and the car would be
+  // shown ahead of the mark, e.g. after a mark behind the previous one. The route is rebuilt from it then.
+  private static final float MANUAL_OFF_ROUTE_DISTANCE_M = 10;
   // Trusted GPS positions are preferred over the inertial ones while they are this fresh.
   private static final long GPS_FRESH_MS = 3000;
   // The inertial navigation is considered active while its positions are used this recently.
@@ -421,9 +425,11 @@ public class LocationHelper implements BaseLocationProvider.Listener
     final PositionSource source = sourceOf(location);
     final boolean hasDirection = location.hasBearing()
                               && (source == PositionSource.MANUAL || source == PositionSource.INERTIAL);
+    final float offRouteDistanceM = source == PositionSource.MANUAL
+                                      ? MANUAL_OFF_ROUTE_DISTANCE_M
+                                      : Math.max(location.getAccuracy(), MIN_OFF_ROUTE_DISTANCE_M);
     LocationState.nativeRebuildRouteIfOffRoute(System.currentTimeMillis(), location.getLatitude(),
-                                                location.getLongitude(),
-                                                Math.max(location.getAccuracy(), MIN_OFF_ROUTE_DISTANCE_M),
+                                                location.getLongitude(), offRouteDistanceM,
                                                 hasDirection ? location.getBearing() : -1);
   }
 
