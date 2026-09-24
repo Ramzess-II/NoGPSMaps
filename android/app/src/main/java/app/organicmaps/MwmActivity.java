@@ -774,7 +774,28 @@ public class MwmActivity extends BaseMwmFragmentActivity
     case trackRecordingStatus -> toggleTrackRecordingPP();
     case manualPosition -> toggleManualPositionMode();
     case positionStatus -> new SensorsBottomSheet().show(getSupportFragmentManager(), SensorsBottomSheet.TAG);
+    case shiftPositionForward -> shiftPosition(Config.getPositionShiftStepM());
+    case shiftPositionBack -> shiftPosition(-Config.getPositionShiftStepM());
     }
+  }
+
+  /**
+   * Moves the position along the road when it lags behind the car or has run ahead of it.
+   * @param distanceM meters to move forward, negative to move back.
+   */
+  private void shiftPosition(int distanceM)
+  {
+    final double applied = MwmApplication.from(this).getLocationHelper().shiftPosition(distanceM);
+    // The position stops at the closest turn, so the user has to know when it was moved by less.
+    final long appliedM = Math.round(Math.abs(applied));
+    if (appliedM >= Math.abs(distanceM))
+      return;
+    Toast
+        .makeText(this,
+                  appliedM == 0 ? getString(R.string.nogps_shift_failed)
+                                : getString(R.string.nogps_shift_limited, appliedM),
+                  Toast.LENGTH_SHORT)
+        .show();
   }
 
   private void toggleManualPositionMode()

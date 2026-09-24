@@ -62,11 +62,21 @@ public final class LocationState
   static native void nativeRebuildRouteIfOffRoute(long time, double lat, double lon, float accuracy);
 
   /**
-   * Snaps a position to the followed route, or to the closest road going in the bearing direction.
+   * Snaps a position to the closest road, preferring the one going in the bearing direction.
+   * @param bearing the direction of the movement, NaN if it is unknown.
+   * @param matchRoute prefer the followed route to the roads around.
    * @return {latitude, longitude, road bearing}, or null if there is no route or road within the radius.
    */
   @Nullable
-  static native double[] nativeSnapToRoad(double lat, double lon, double bearing, double radius);
+  static native double[] nativeSnapToRoad(double lat, double lon, double bearing, double radius, boolean matchRoute);
+
+  /**
+   * Moves the current position along the followed route, stopping at the closest turn.
+   * @param distance meters to move forward, negative to move back.
+   * @return {latitude, longitude, route bearing, applied distance}, or null if there is no followed route.
+   */
+  @Nullable
+  static native double[] nativeShiftAlongRoute(double distance);
 
   private LocationState() {}
 

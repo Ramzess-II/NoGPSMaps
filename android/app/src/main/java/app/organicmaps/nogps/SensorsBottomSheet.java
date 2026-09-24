@@ -31,6 +31,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Inertial navigation settings and state: the ELM327 adapter, speed, gyroscope zeroing and the car direction.
@@ -59,6 +60,7 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
   private SwitchCompat mSwitch;
   private TextView mAdapter;
   private TextView mSpeed;
+  private TextView mScale;
   private TextView mGyro;
   private TextView mHeading;
   private TextView mReadiness;
@@ -73,6 +75,7 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     mSwitch = view.findViewById(R.id.nogps_inertial_switch);
     mAdapter = view.findViewById(R.id.nogps_adapter);
     mSpeed = view.findViewById(R.id.nogps_speed);
+    mScale = view.findViewById(R.id.nogps_scale);
     mGyro = view.findViewById(R.id.nogps_gyro);
     mHeading = view.findViewById(R.id.nogps_heading);
     mReadiness = view.findViewById(R.id.nogps_readiness);
@@ -231,6 +234,10 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     mSpeed.setText(getString(R.string.nogps_sensors_speed, speed >= 0 ? getString(R.string.nogps_speed_kmh, speed)
                                                                        : getString(R.string.nogps_unknown)));
 
+    mScale.setText(getString(R.string.nogps_sensors_scale,
+                             enabled ? String.format(Locale.US, "\u00D7%.2f", inertial.getSpeedScale())
+                                     : getString(R.string.nogps_unknown)));
+
     final InertialNavigator.CalibrationState calibration =
         enabled ? inertial.getCalibrationState() : InertialNavigator.CalibrationState.NONE;
     final String gyro = switch (calibration)
@@ -249,6 +256,7 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
       case NONE -> R.string.nogps_heading_none;
       case GPS -> R.string.nogps_heading_gps;
       case MANUAL_MARKS -> R.string.nogps_heading_marks;
+      case ROAD -> R.string.nogps_heading_road;
       case USER -> R.string.nogps_heading_user;
     };
     final double headingDeg = enabled ? inertial.getHeading() : Double.NaN;

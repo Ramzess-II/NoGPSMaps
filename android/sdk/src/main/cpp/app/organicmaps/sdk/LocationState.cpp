@@ -111,22 +111,39 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_LocationState_nativeRebuildRout
   g_framework->NativeFramework()->GetRoutingManager().RebuildRouteIfOffRoute(info);
 }
 
-// public static native double[] nativeSnapToRoad(double lat, double lon, double bearing, double radius);
+// public static native double[] nativeSnapToRoad(double lat, double lon, double bearing, double radius,
+//                                                 boolean matchRoute);
 JNIEXPORT jdoubleArray Java_app_organicmaps_sdk_location_LocationState_nativeSnapToRoad(JNIEnv * env, jclass clazz,
                                                                                         jdouble lat, jdouble lon,
-                                                                                        jdouble bearing,
-                                                                                        jdouble radius)
+                                                                                        jdouble bearing, jdouble radius,
+                                                                                        jboolean matchRoute)
 {
   ms::LatLon snapped;
   double snappedBearing;
-  if (!g_framework->NativeFramework()->GetRoutingManager().SnapToRoad(ms::LatLon(lat, lon), bearing, radius, snapped,
-                                                                      snappedBearing))
+  if (!g_framework->NativeFramework()->GetRoutingManager().SnapToRoad(ms::LatLon(lat, lon), bearing, radius, matchRoute,
+                                                                      snapped, snappedBearing))
   {
     return nullptr;
   }
   jdouble const values[] = {snapped.m_lat, snapped.m_lon, snappedBearing};
   jdoubleArray result = env->NewDoubleArray(3);
   env->SetDoubleArrayRegion(result, 0, 3, values);
+  return result;
+}
+
+// public static native double[] nativeShiftAlongRoute(double distance);
+JNIEXPORT jdoubleArray Java_app_organicmaps_sdk_location_LocationState_nativeShiftAlongRoute(JNIEnv * env, jclass clazz,
+                                                                                             jdouble distance)
+{
+  ms::LatLon shifted;
+  double bearing;
+  double applied;
+  if (!g_framework->NativeFramework()->GetRoutingManager().ShiftAlongRoute(distance, shifted, bearing, applied))
+    return nullptr;
+
+  jdouble const values[] = {shifted.m_lat, shifted.m_lon, bearing, applied};
+  jdoubleArray result = env->NewDoubleArray(4);
+  env->SetDoubleArrayRegion(result, 0, 4, values);
   return result;
 }
 }  // extern "C"

@@ -65,9 +65,9 @@ public class DeadReckoning
       return;
 
     final double distance = mSpeedMps * dtSec;
-    final double heading = Math.toRadians(mHeadingDeg);
-    mLat += Math.toDegrees(distance * Math.cos(heading) / EARTH_RADIUS_M);
-    mLon += Math.toDegrees(distance * Math.sin(heading) / (EARTH_RADIUS_M * Math.cos(Math.toRadians(mLat))));
+    final double[] moved = move(mLat, mLon, mHeadingDeg, distance);
+    mLat = moved[0];
+    mLon = moved[1];
     mDistanceSinceFixM += distance;
   }
 
@@ -93,9 +93,21 @@ public class DeadReckoning
   }
 
   /**
+   * @return {latitude, longitude} of the point at the distance in the bearing direction.
+   */
+  public static double[] move(double lat, double lon, double bearingDeg, double distanceM)
+  {
+    final double bearing = Math.toRadians(bearingDeg);
+    final double movedLat = lat + Math.toDegrees(distanceM * Math.cos(bearing) / EARTH_RADIUS_M);
+    final double movedLon =
+        lon + Math.toDegrees(distanceM * Math.sin(bearing) / (EARTH_RADIUS_M * Math.cos(Math.toRadians(movedLat))));
+    return new double[] {movedLat, movedLon};
+  }
+
+  /**
    * @return the shortest signed rotation from {@code from} to {@code to}, in [-180, 180).
    */
-  static double angleDiff(double to, double from)
+  public static double angleDiff(double to, double from)
   {
     return normalize(to - from + 180) - 180;
   }
@@ -145,7 +157,7 @@ public class DeadReckoning
     return BASE_ACCURACY_M + ACCURACY_PER_METER * mDistanceSinceFixM;
   }
 
-  static double normalize(double deg)
+  public static double normalize(double deg)
   {
     final double result = deg % 360;
     return result < 0 ? result + 360 : result;

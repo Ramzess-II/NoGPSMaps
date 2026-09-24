@@ -48,4 +48,11 @@
   <string name="nogps_choose_adapter">Виберіть OBD-адаптер</string>
   <string name="nogps_no_paired">Немає спарених Bluetooth-пристроїв. Спарте ELM327 у налаштуваннях Bluetooth (PIN зазвичай 1234).</string>
   <string name="nogps_bt_permission_denied">Без доступу до Bluetooth адаптер не підключити</string>
+  <string name="nogps_shift_forward">Перенести позицію вперед по дорозі</string>
+  <string name="nogps_shift_back">Перенести позицію назад по дорозі</string>
+  <string name="nogps_shift_step">На скільки переносити позицію</string>
+  <string name="nogps_shift_limited">Перенос на %1$d м, до повороту</string>
+  <string name="nogps_shift_failed">Позицію нікуди переносити</string>
+  <string name="nogps_heading_road">по дорозі</string>
+  <string name="nogps_sensors_scale">Поправка швидкості: %1$s</string>
 </resources>

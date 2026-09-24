@@ -42,6 +42,7 @@ public final class Config
   private static final String KEY_MISC_KEEP_SCREEN_ON = "KeepScreenOn";
   private static final String KEY_NOGPS_INERTIAL_ENABLED = "NoGpsInertialEnabled";
   private static final String KEY_NOGPS_ELM327_ADDRESS = "NoGpsElm327Address";
+  private static final String KEY_NOGPS_SHIFT_STEP = "NoGpsShiftStep";
 
   private static final String KEY_MISC_SHOW_ON_LOCK_SCREEN = "ShowOnLockScreen";
   private static final String KEY_MISC_AGPS_TIMESTAMP = "AGPSTimestamp";
@@ -231,6 +232,19 @@ public final class Config
   public static void setElm327Address(@NonNull String address)
   {
     setString(KEY_NOGPS_ELM327_ADDRESS, address);
+  }
+
+  /**
+   * @return meters the position is moved by, when the user corrects its lag along the road.
+   */
+  public static int getPositionShiftStepM()
+  {
+    return getInt(KEY_NOGPS_SHIFT_STEP, 50);
+  }
+
+  public static void setPositionShiftStepM(int meters)
+  {
+    setInt(KEY_NOGPS_SHIFT_STEP, meters);
   }
 
   public static boolean isShowOnLockScreenEnabled()

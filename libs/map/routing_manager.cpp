@@ -43,6 +43,7 @@
 
 #include <glaze/json.hpp>
 
+#include <cmath>
 #include <map>
 
 using namespace routing;
@@ -1429,10 +1430,10 @@ void RoutingManager::RebuildRouteIfOffRoute(location::GpsInfo const & info)
                                 false /* adjustToPrevRoute */);
 }
 
-bool RoutingManager::SnapToRoad(ms::LatLon const & latLon, double bearingDeg, double radiusM, ms::LatLon & snapped,
-                                double & snappedBearingDeg)
+bool RoutingManager::SnapToRoad(ms::LatLon const & latLon, double bearingDeg, double radiusM, bool matchRoute,
+                                ms::LatLon & snapped, double & snappedBearingDeg)
 {
-  if (IsRoutingActive() && m_routingSession.IsOnRoute())
+  if (matchRoute && IsRoutingActive() && m_routingSession.IsOnRoute())
   {
     location::GpsInfo info;
     info.m_latitude = latLon.m_lat;
@@ -1448,16 +1449,92 @@ bool RoutingManager::SnapToRoad(ms::LatLon const & latLon, double bearingDeg, do
     }
   }
 
-  double const angle = math::DegToRad(location::BearingToAngle(bearingDeg));
-  m2::PointD const direction(std::cos(angle), std::sin(angle));
+  m2::PointD const point = mercator::FromLatLon(latLon);
   routing::EdgeProj proj;
-  if (!m_routingSession.FindClosestProjectionToRoad(mercator::FromLatLon(latLon), direction, radiusM, proj))
+  bool found = false;
+  if (!std::isnan(bearingDeg))
+  {
+    double const angle = math::DegToRad(location::BearingToAngle(bearingDeg));
+    found = m_routingSession.FindClosestProjectionToRoad(point, m2::PointD(std::cos(angle), std::sin(angle)), radiusM,
+                                                         proj);
+  }
+  // A codirectional road is searched within 14 degrees only, which is too strict for a rough direction
+  // from the user, so the closest road is taken instead and its direction is checked by the caller.
+  if (!found && !m_routingSession.FindClosestProjectionToRoad(point, m2::PointD::Zero(), radiusM, proj))
     return false;
 
   snapped = mercator::ToLatLon(proj.m_point);
   snappedBearingDeg = location::AngleToBearing(
       math::RadToDeg(ang::AngleTo(proj.m_edge.GetStartPoint(), proj.m_edge.GetEndPoint())));
   return true;
+}
+
+bool RoutingManager::ShiftAlongRoute(double distanceM, ms::LatLon & shifted, double & bearingDeg, double & appliedM)
+{
+  // A sharp bend of the route is a turn to another street, the position must not be shifted past it.
+  double constexpr kTurnBendDeg = 45.0;
+
+  appliedM = 0.0;
+  if (!IsRoutingActive() || !m_routingSession.IsOnRoute())
+    return false;
+
+  Route const * route = m_routingSession.GetRoute();
+  if (route == nullptr || !route->IsValid())
+    return false;
+
+  auto const & points = route->GetPoly().GetPoints();
+  auto const iter = route->GetCurrentIter();
+  if (!iter.IsValid() || iter.m_ind + 1 >= points.size())
+    return false;
+
+  bool const forward = distanceM >= 0.0;
+  // Ends of the current segment in the order of the movement.
+  size_t from = forward ? iter.m_ind : iter.m_ind + 1;
+  size_t to = forward ? iter.m_ind + 1 : iter.m_ind;
+  m2::PointD position = iter.m_pt;
+  double remainingM = std::fabs(distanceM);
+
+  // The position must not be moved past the turn ahead: the car would appear on another street.
+  if (forward)
+  {
+    double distanceToTurnM = 0.0;
+    turns::TurnItem turn;
+    route->GetNearestTurn(distanceToTurnM, turn);
+    remainingM = std::min(remainingM, distanceToTurnM);
+  }
+
+  while (remainingM > 0.0)
+  {
+    double const segmentM = mercator::DistanceOnEarth(position, points[to]);
+    if (remainingM <= segmentM)
+    {
+      position += (points[to] - position) * (remainingM / segmentM);
+      appliedM += remainingM;
+      break;
+    }
+    position = points[to];
+    appliedM += segmentM;
+    remainingM -= segmentM;
+
+    if (forward ? to + 1 >= points.size() : to == 0)
+      break;  // The end of the route.
+
+    size_t const following = forward ? to + 1 : to - 1;
+    double const bendDeg = std::fabs(math::RadToDeg(
+        ang::GetShortestDistance(ang::AngleTo(points[from], points[to]), ang::AngleTo(points[to], points[following]))));
+    if (bendDeg > kTurnBendDeg)
+      break;
+
+    from = to;
+    to = following;
+  }
+
+  shifted = mercator::ToLatLon(position);
+  bearingDeg = location::AngleToBearing(
+      math::RadToDeg(forward ? ang::AngleTo(points[from], points[to]) : ang::AngleTo(points[to], points[from])));
+  if (!forward)
+    appliedM = -appliedM;
+  return appliedM != 0.0;
 }
 
 void RoutingManager::CallRouteBuilded(RouterResultCode code, storage::CountriesSet const & absentCountries)

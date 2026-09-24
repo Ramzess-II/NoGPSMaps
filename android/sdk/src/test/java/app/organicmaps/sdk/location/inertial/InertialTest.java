@@ -117,6 +117,63 @@ public class InertialTest
   }
 
   @Test
+  public void movesByBearing()
+  {
+    final double[] north = DeadReckoning.move(LAT, LON, 0, 500);
+    assertEquals(500, (north[0] - LAT) * M_PER_DEG, 1);
+    assertEquals(LON, north[1], 1e-9);
+
+    final double[] back = DeadReckoning.move(north[0], north[1], 180, 500);
+    assertEquals(LAT, back[0], 1e-6);
+    assertEquals(LON, back[1], 1e-9);
+  }
+
+  @Test
+  public void estimatesSpeedScaleFromCorrections()
+  {
+    final SpeedScale scale = new SpeedScale();
+    assertEquals(1, scale.get(), 0);
+
+    // A correction on a short distance says nothing about the speed.
+    scale.onDistance(100);
+    scale.onCorrection(50);
+    assertEquals(1, scale.get(), 0);
+
+    // The position lagged by 150 m on 1000 m, a half of the error is compensated.
+    scale.onDistance(900);
+    scale.onCorrection(100);
+    assertEquals(1 + 150.0 / 1000 * SpeedScale.CORRECTION_WEIGHT, scale.get(), 1e-9);
+
+    // The position ran ahead, the speed is lowered.
+    final double overestimated = scale.get();
+    scale.onDistance(1000);
+    scale.onCorrection(-100);
+    assertTrue(scale.get() < overestimated);
+
+    scale.reset();
+    assertEquals(1, scale.get(), 0);
+  }
+
+  @Test
+  public void limitsSpeedScale()
+  {
+    final SpeedScale scale = new SpeedScale();
+    for (int i = 0; i < 100; i++)
+    {
+      scale.onDistance(1000);
+      scale.onCorrection(1000);
+    }
+    assertEquals(SpeedScale.MAX_SCALE, scale.get(), 0);
+
+    for (int i = 0; i < 100; i++)
+    {
+      scale.onDistance(1000);
+      scale.onCorrection(-1000);
+    }
+    assertEquals(SpeedScale.MIN_SCALE, scale.get(), 0);
+  }
+
+  @Test
   public void yawRateForAnyPhoneOrientation()
   {
     final float[] noBias = {0, 0, 0};

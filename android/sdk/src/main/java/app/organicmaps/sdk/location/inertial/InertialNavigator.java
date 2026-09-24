@@ -52,6 +52,8 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
     NONE,
     GPS,
     MANUAL_MARKS,
+    // The direction of the road the user has marked the position on.
+    ROAD,
     USER,
   }
 
@@ -105,6 +107,8 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
   private long mSpeedTimeMs;
   private long mStoppedSinceMs;
 
+  private final SpeedScale mSpeedScale = new SpeedScale();
+
   public InertialNavigator(@NonNull Context context, @NonNull Listener listener, @NonNull RoadSnapper roadSnapper)
   {
     mSensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
@@ -154,6 +158,8 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
     mElm327State = Elm327Client.State.DISCONNECTED;
     mSpeedKmh = -1;
     mLastGyroTimestampNs = 0;
+    // The speed scale is valid for the current trip only: the load and the tyre pressure change.
+    mSpeedScale.reset();
   }
 
   /**
@@ -174,9 +180,43 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
     mDeadReckoning.setPosition(location.getLatitude(), location.getLongitude());
     if (isGps && location.hasBearing() && location.hasSpeed() && location.getSpeed() >= MIN_GPS_HEADING_SPEED_MPS)
       setHeading(location.getBearing(), HeadingSource.GPS);
-    // The direction set by the user is more reliable than the one from rough marks.
-    else if (!isGps && location.hasBearing() && mHeadingSource != HeadingSource.USER)
+    // The direction set by the user or taken from a road is more reliable than the one from rough marks.
+    else if (!isGps && location.hasBearing() && !isHeadingReliable())
       setHeading(location.getBearing(), HeadingSource.MANUAL_MARKS);
+  }
+
+  /**
+   * The position is on a road: its direction is more reliable than the calculated one.
+   * @param bearingDeg direction of the road in the direction of the movement.
+   */
+  public void setRoadPosition(double lat, double lon, double bearingDeg)
+  {
+    mDeadReckoning.setPosition(lat, lon);
+    setHeading(bearingDeg, HeadingSource.ROAD);
+  }
+
+  /**
+   * The user has corrected the lag of the calculated position along the road.
+   * @param appliedM the distance the position was moved by, negative if it was moved back.
+   */
+  public void onPositionCorrected(double lat, double lon, double bearingDeg, double appliedM)
+  {
+    mSpeedScale.onCorrection(appliedM);
+    Logger.i(TAG, "Corrected by " + Math.round(appliedM) + " m, speed scale = " + mSpeedScale.get());
+    setRoadPosition(lat, lon, bearingDeg);
+  }
+
+  private boolean isHeadingReliable()
+  {
+    return mHeadingSource == HeadingSource.USER || mHeadingSource == HeadingSource.ROAD;
+  }
+
+  /**
+   * @return the ratio the speed from the car is multiplied by, 1 if it is not corrected yet.
+   */
+  public double getSpeedScale()
+  {
+    return mSpeedScale.get();
   }
 
   /**
@@ -319,12 +359,15 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
     updateCalibration(gyro);
 
     final boolean speedFresh = isSpeedFresh();
-    mDeadReckoning.setSpeed(speedFresh ? mSpeedKmh / 3.6 : 0);
+    mDeadReckoning.setSpeed(speedFresh ? mSpeedKmh / 3.6 * mSpeedScale.get() : 0);
     // A standing car can't turn, so the remaining gyroscope drift doesn't rotate the heading at stops.
     if (mBias != null && mUp != null && speedFresh && mDeadReckoning.getSpeed() > MOVING_SPEED_MPS)
       mDeadReckoning.rotate(GyroCalibrator.yawRateDeg(gyro, mBias, mUp) * dt);
     if (speedFresh)
+    {
       mDeadReckoning.advance(dt);
+      mSpeedScale.onDistance(mDeadReckoning.getSpeed() * dt);
+    }
 
     final long now = SystemClock.elapsedRealtime();
     if (isReady() && mDeadReckoning.getSpeed() > MOVING_SPEED_MPS && now - mLastSnapMs >= SNAP_INTERVAL_MS)

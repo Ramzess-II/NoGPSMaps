@@ -73,6 +73,12 @@ public class MapButtonsController extends Fragment
   private FloatingActionButton mManualPositionButton;
   @Nullable
   private TextView mPositionStatus;
+  @Nullable
+  private View mShiftPositionContainer;
+  @Nullable
+  private TextView mShiftPositionStep;
+  // Meters the position is moved by, the user chooses one of them.
+  private static final int[] SHIFT_STEPS_M = {10, 20, 50, 100};
   private static final long POSITION_STATUS_UPDATE_INTERVAL_MS = 1000;
   private final Handler mHandler = new Handler(Looper.getMainLooper());
   private final Runnable mPositionStatusUpdater = new Runnable() {
@@ -147,6 +153,17 @@ public class MapButtonsController extends Fragment
         (v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.positionStatus));
     mManualPositionButton.setOnClickListener(
         (v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.manualPosition));
+    mShiftPositionContainer = mFrame.findViewById(R.id.shift_position_container);
+    mShiftPositionStep = mFrame.findViewById(R.id.shift_position_step);
+    mFrame.findViewById(R.id.shift_position_forward)
+        .setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.shiftPositionForward));
+    mFrame.findViewById(R.id.shift_position_back)
+        .setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.shiftPositionBack));
+    mShiftPositionStep.setOnClickListener((v) -> {
+      Config.setPositionShiftStepM(nextShiftStep());
+      updateShiftPositionStep();
+    });
+    updateShiftPositionStep();
 
     // Some buttons do not exist in navigation mode
     mToggleMapLayerButton = mFrame.findViewById(R.id.layers_button);
@@ -290,6 +307,11 @@ public class MapButtonsController extends Fragment
       mPositionStatus.setBackgroundTintList(ColorStateList.valueOf(ContextCompat.getColor(context, color)));
     }
 
+    // The position is corrected by hand only when it is not taken from GPS.
+    if (mShiftPositionContainer != null)
+      UiUtils.showIf(locationHelper.isManualMode() || locationHelper.isInertialNavigationEnabled(),
+                     mShiftPositionContainer);
+
     if (mManualPositionButton != null)
     {
       // Blue in the manual mode, orange hints that GPS is spoofed and the manual mode may be needed.
@@ -302,6 +324,21 @@ public class MapButtonsController extends Fragment
         tint = ThemeUtils.getColor(context, R.attr.iconTint);
       ImageViewCompat.setImageTintList(mManualPositionButton, ColorStateList.valueOf(tint));
     }
+  }
+
+  private static int nextShiftStep()
+  {
+    final int current = Config.getPositionShiftStepM();
+    for (int i = 0; i < SHIFT_STEPS_M.length; i++)
+      if (SHIFT_STEPS_M[i] == current)
+        return SHIFT_STEPS_M[(i + 1) % SHIFT_STEPS_M.length];
+    return SHIFT_STEPS_M[0];
+  }
+
+  private void updateShiftPositionStep()
+  {
+    if (mShiftPositionStep != null)
+      mShiftPositionStep.setText(getString(R.string.nogps_meters, Config.getPositionShiftStepM()));
   }
 
   @NonNull
@@ -635,7 +672,9 @@ public class MapButtonsController extends Fragment
     help,
     trackRecordingStatus,
     manualPosition,
-    positionStatus
+    positionStatus,
+    shiftPositionForward,
+    shiftPositionBack
   }
 
   public interface MapButtonClickListener

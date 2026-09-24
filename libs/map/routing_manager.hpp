@@ -237,10 +237,16 @@ public:
   // The user has set own position manually (e.g. GPS is jammed). Rebuilds the route at once if the position
   // is off the route, without waiting for the several consecutive off-route updates as for GPS.
   void RebuildRouteIfOffRoute(location::GpsInfo const & info);
-  // Snaps a dead reckoning position (not from GPS) to the followed route, or to the closest road going
-  // in the |bearingDeg| direction within |radiusM|. Returns false if there is no such route or road.
-  bool SnapToRoad(ms::LatLon const & latLon, double bearingDeg, double radiusM, ms::LatLon & snapped,
+  // Snaps a dead reckoning position (not from GPS) to the closest road within |radiusM|, preferring the
+  // one going in the |bearingDeg| direction (NaN if the direction is unknown). With |matchRoute| the
+  // followed route is preferred, it is where the car really is. Returns false if there is no road.
+  bool SnapToRoad(ms::LatLon const & latLon, double bearingDeg, double radiusM, bool matchRoute, ms::LatLon & snapped,
                   double & snappedBearingDeg);
+  // Moves the current position along the followed route by |distanceM| (negative moves back), e.g. when a
+  // dead reckoning position lags behind the car. The movement stops at the closest turn, so the position
+  // never jumps to another street. |appliedM| is the distance the position was really moved by.
+  // Returns false if there is no followed route.
+  bool ShiftAlongRoute(double distanceM, ms::LatLon & shifted, double & bearingDeg, double & appliedM);
   void CallRouteBuilded(routing::RouterResultCode code, storage::CountriesSet const & absentCountries);
   void OnBuildRouteReady(routing::RoutesResult const & result, routing::RouterResultCode code);
   void OnRebuildRouteReady(routing::RoutesResult const & result, routing::RouterResultCode code);
