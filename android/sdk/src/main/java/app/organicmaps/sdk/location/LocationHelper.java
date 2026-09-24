@@ -107,6 +107,11 @@ public class LocationHelper implements BaseLocationProvider.Listener
   public interface ManualModeListener
   {
     void onManualModeChanged(boolean enabled);
+
+    /**
+     * The manual mode has been left by itself: GPS is trusted again.
+     */
+    default void onGpsBack() {}
   }
 
   public interface GpsSpoofingListener
@@ -176,6 +181,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
   private final ObserverList<ManualModeListener> mManualModeListeners = new ObserverList<>();
 
   private final GpsSpoofingDetector mSpoofingDetector = new GpsSpoofingDetector();
+  private final GpsReturnDetector mGpsReturnDetector = new GpsReturnDetector();
   @Nullable
   private Location mNetworkLocation;
   private final ObserverList<GpsSpoofingListener> mSpoofingListeners = new ObserverList<>();
@@ -344,6 +350,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
 
     if (!trusted)
     {
+      mGpsReturnDetector.reset();
       Logger.w(TAG, "Untrusted location = " + location);
       return;
     }
@@ -353,6 +360,13 @@ public class LocationHelper implements BaseLocationProvider.Listener
                          && LocationUtils.isAccuracySatisfied(location);
     if (goodGps)
       mLastGoodGps = location;
+    if (mManualMode && goodGps && isGpsBack(location))
+    {
+      Logger.i(TAG, "GPS is trusted again, leaving the manual mode, location = " + location);
+      setManualMode(false);
+      for (ManualModeListener listener : mManualModeListeners)
+        listener.onGpsBack();
+    }
     if (!mManualMode && goodGps)
     {
       mLastTrustedGpsMs = SystemClock.elapsedRealtime();
@@ -413,6 +427,32 @@ public class LocationHelper implements BaseLocationProvider.Listener
     mLastPositionSource = source;
 
     notifyLocationUpdated();
+  }
+
+  /**
+   * @return true if GPS has worked long enough in the manual mode and agrees with the position known without
+   * it, so the manual mode is not needed anymore.
+   */
+  private boolean isGpsBack(@NonNull Location gps)
+  {
+    double ownErrorM = Double.NaN;
+    Location own = null;
+    if (isInertialActive() && mSavedLocation != null)
+    {
+      own = mSavedLocation;
+      ownErrorM = own.getAccuracy();
+    }
+    else if (mManualLocation != null)
+    {
+      // The car has driven on since the mark.
+      own = mManualLocation;
+      ownErrorM = own.getAccuracy()
+                + GpsReturnDetector.MAX_SPEED_MPS * (SystemClock.elapsedRealtime() - mManualSetTimeMs) / 1000.0;
+    }
+    return mGpsReturnDetector.onGpsPosition(gps.getLatitude(), gps.getLongitude(), gps.getAccuracy(),
+                                            gps.getElapsedRealtimeNanos() / 1_000_000,
+                                            own != null ? own.getLatitude() : 0, own != null ? own.getLongitude() : 0,
+                                            ownErrorM);
   }
 
   @NonNull
@@ -819,6 +859,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
     mManualLocation = null;
     mLastMark = null;
     mAcceptNextLocation = !enabled;
+    mGpsReturnDetector.reset();
     mHandler.removeCallbacks(mManualRepeatRunnable);
 
     for (ManualModeListener listener : mManualModeListeners)

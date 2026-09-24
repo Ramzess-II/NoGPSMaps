@@ -201,7 +201,19 @@ public class MwmActivity extends BaseMwmFragmentActivity
   @SuppressWarnings("NotNullFieldNotInitialized")
   @NonNull
   private DisplayManager mDisplayManager;
-  private final LocationHelper.ManualModeListener mManualModeListener = this::onManualModeChanged;
+  private final LocationHelper.ManualModeListener mManualModeListener = new LocationHelper.ManualModeListener() {
+    @Override
+    public void onManualModeChanged(boolean enabled)
+    {
+      MwmActivity.this.onManualModeChanged(enabled);
+    }
+
+    @Override
+    public void onGpsBack()
+    {
+      Toast.makeText(MwmActivity.this, R.string.nogps_gps_back_auto, Toast.LENGTH_LONG).show();
+    }
+  };
   private final LocationHelper.GpsSpoofingListener mGpsSpoofingListener = this::onGpsSpoofingChanged;
 
   private boolean mRemoveDisplayListener = true;

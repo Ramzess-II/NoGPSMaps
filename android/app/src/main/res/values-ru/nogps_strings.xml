@@ -60,4 +60,5 @@
   <string name="nogps_status_gps_spoofed">GPS подменён</string>
   <string name="nogps_status_no_gps">Нет GPS</string>
   <string name="nogps_status_towers">вышки ±%s</string>
+  <string name="nogps_gps_back_auto">GPS снова надёжный, ручной режим выключен</string>
 </resources>
