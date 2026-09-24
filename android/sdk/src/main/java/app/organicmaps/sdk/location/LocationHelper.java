@@ -60,6 +60,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
   private static final double MANUAL_SNAP_RADIUS_M = 30;
   // A road going another way is a crossing road: the car is on it, but it does not drive along it.
   private static final double MAX_ROAD_BEARING_DIFF_DEG = 45;
+  // Closer to the previous position, the side the car has turned to is not known.
+  private static final float MIN_TURN_DISTANCE_M = 5;
   // The position stopped at a turn is not moved further: the car can turn to another street there.
   // It is moved again after the car has really left the turn by this distance.
   private static final float SHIFT_BLOCK_RADIUS_M = 10;
@@ -813,6 +815,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
     // driven with it, a turn around too, and a mark then only corrects the position and the road axis.
     // Without it, two marks one after another tell the way, a mark behind the previous one means the car
     // has turned around.
+    final double tapLat = lat;
+    final double tapLon = lon;
     final double marksBearing = bearingFromLastMark(lat, lon);
     final boolean gyroTracked = mInertial != null && isInertialNavigationEnabled() && mInertial.isHeadingTracked();
     final double directionBearing = gyroTracked ? mInertial.getHeading() : marksBearing;
@@ -827,7 +831,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
         && Math.abs(DeadReckoning.angleDiff(road[2], directionBearing)) > 90)
       road = null;
     if (road == null)
-      road = snapToRoad(lat, lon, bearing, MANUAL_SNAP_RADIUS_M);
+      road = snapToRoad(lat, lon, bearing, MANUAL_SNAP_RADIUS_M, mSavedLocation);
     if (road != null)
     {
       lat = road[0];
@@ -842,7 +846,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
     if (!Double.isNaN(bearing))
       location.setBearing((float) bearing);
 
-    Logger.i(TAG, "location = " + location + " on a road = " + (road != null) + " marks bearing = " + marksBearing
+    Logger.i(TAG, String.format(Locale.US, "tap = %.6f,%.6f ", tapLat, tapLon) + "location = " + location
+                      + " on a road = " + (road != null) + " marks bearing = " + marksBearing
                       + " gyro tracked = " + gyroTracked);
     mManualLocation = location;
     mLastMark = new Location(location);
@@ -907,11 +912,14 @@ public class LocationHelper implements BaseLocationProvider.Listener
   /**
    * Moves a position to the axis of the closest road, preferring the one going in the direction of the
    * movement.
+   * @param turnedFrom where the car was before, if it may have turned to another road since, e.g. a new
+   * mark. Null if it goes on along the same road.
    * @return {latitude, longitude, road bearing}, the bearing is NaN if the direction is unknown, or null
    * if there is no road within the radius.
    */
   @Nullable
-  private static double[] snapToRoad(double lat, double lon, double bearingDeg, double radiusM)
+  private static double[] snapToRoad(double lat, double lon, double bearingDeg, double radiusM,
+                                     @Nullable Location turnedFrom)
   {
     final double[] road = LocationState.nativeSnapToRoad(lat, lon, bearingDeg, radiusM, false /* matchRoute */);
     if (road == null)
@@ -933,9 +941,26 @@ public class LocationHelper implements BaseLocationProvider.Listener
     // The road goes in the direction of the movement, but it can be returned in the opposite one.
     if (Math.abs(DeadReckoning.angleDiff(road[2], bearingDeg)) > 90)
       road[2] = DeadReckoning.normalize(road[2] + 180);
-    // The closest road can be a crossing one, then it only tells where the car is, not where it looks.
-    if (Math.abs(DeadReckoning.angleDiff(road[2], bearingDeg)) > MAX_ROAD_BEARING_DIFF_DEG)
+    if (Math.abs(DeadReckoning.angleDiff(road[2], bearingDeg)) <= MAX_ROAD_BEARING_DIFF_DEG)
+      return road;
+
+    // The road is a crossing one. The car going on along its road is only near it: the road tells where the
+    // car is, not where it looks.
+    if (turnedFrom == null)
+    {
       road[2] = bearingDeg;
+      return road;
+    }
+    // The car has turned to it, a road going the car's way is preferred and would be returned otherwise.
+    // It goes away from where it was, to the left or to the right.
+    final Location to = new Location(MANUAL_PROVIDER);
+    to.setLatitude(road[0]);
+    to.setLongitude(road[1]);
+    if (turnedFrom.distanceTo(to) >= MIN_TURN_DISTANCE_M
+        && Math.abs(DeadReckoning.angleDiff(road[2], turnedFrom.bearingTo(to))) > 90)
+    {
+      road[2] = DeadReckoning.normalize(road[2] + 180);
+    }
     return road;
   }
 
@@ -1053,7 +1078,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
 
     final double[] moved = DeadReckoning.move(from.getLatitude(), from.getLongitude(),
                                               distanceM >= 0 ? bearing : bearing + 180, Math.abs(distanceM));
-    final double[] road = snapToRoad(moved[0], moved[1], bearing, MANUAL_SNAP_RADIUS_M);
+    final double[] road = snapToRoad(moved[0], moved[1], bearing, MANUAL_SNAP_RADIUS_M, null /* turnedFrom */);
     if (road == null)
       return new double[] {moved[0], moved[1], bearing, distanceM};
     return new double[] {road[0], road[1], road[2], distanceM};
