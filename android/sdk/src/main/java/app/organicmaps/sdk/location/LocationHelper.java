@@ -807,6 +807,10 @@ public class LocationHelper implements BaseLocationProvider.Listener
   {
     final double[] latLon = LocationState.nativeScreenToLatLon(x, y);
     setManualLocation(latLon[0], latLon[1]);
+    // The map moved away by the user comes back to the car by itself in a while, and the car seems to drive
+    // along the road then. It comes back at once instead, the user has just shown where the car is.
+    if (LocationState.getMode() == LocationState.NOT_FOLLOW)
+      LocationState.nativeSwitchToNextMode();
   }
 
   @UiThread
