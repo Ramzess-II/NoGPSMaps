@@ -59,7 +59,11 @@ public final class LocationState
   @NonNull
   static native double[] nativeScreenToLatLon(float x, float y);
 
-  static native void nativeRebuildRouteIfOffRoute(long time, double lat, double lon, float accuracy);
+  /**
+   * @param bearing the direction the car goes, negative if it is unknown: the route is built that way.
+   */
+  static native void nativeRebuildRouteIfOffRoute(long time, double lat, double lon, float accuracy,
+                                                  float bearing);
 
   /**
    * Snaps a position to the closest road, preferring the one going in the bearing direction.

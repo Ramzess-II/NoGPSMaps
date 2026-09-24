@@ -1405,6 +1405,21 @@ void RoutingManager::RebuildRouteIfOffRoute(location::GpsInfo const & info)
   if (!IsRoutingActive())
     return;
 
+  // A position set by hand has no track of positions behind it, so the router does not know where the car
+  // goes and turns it around to the fastest way. The direction along the road is known, a track is made.
+  if (info.HasBearing())
+  {
+    // Long enough for the track, the shorter segments are ignored.
+    double constexpr kTrackLengthM = 40.0;
+    m2::PointD const current = mercator::FromLatLon(info.m_latitude, info.m_longitude);
+    double const angle = math::DegToRad(location::BearingToAngle(info.m_bearing));
+    m2::PointD const behind =
+        current - m2::PointD(std::cos(angle), std::sin(angle)) * mercator::MetersToMercator(kTrackLengthM);
+    m_routingSession.ClearPositionAccumulator();
+    m_routingSession.PushPositionAccumulator(behind);
+    m_routingSession.PushPositionAccumulator(current);
+  }
+
   // Moves the route iterator to the closest point ahead, so the passed part of the route is cut off.
   SessionState const state = m_routingSession.OnLocationPositionChanged(info);
   if (state != SessionState::OnRoute && state != SessionState::RouteNeedRebuild)
@@ -1423,7 +1438,7 @@ void RoutingManager::RebuildRouteIfOffRoute(location::GpsInfo const & info)
     }
   }
 
-  LOG(LINFO, ("Manual position is off the route, rebuilding"));
+  LOG(LINFO, ("Manual position is off the route, rebuilding, bearing", info.m_bearing));
   m_routingSession.RebuildRoute(position, [this](RoutesResult const & result, RouterResultCode code)
   { OnRebuildRouteReady(result, code); }, nullptr /* needMoreMapsCallback */, nullptr /* removeRouteCallback */,
                                 RouterDelegate::kNoTimeout, SessionState::RouteRebuilding,

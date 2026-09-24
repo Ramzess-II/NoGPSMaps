@@ -236,6 +236,7 @@ public:
   void CheckLocationForRouting(location::GpsInfo const & info);
   // The user has set own position manually (e.g. GPS is jammed). Rebuilds the route at once if the position
   // is off the route, without waiting for the several consecutive off-route updates as for GPS.
+  // The route goes the |info| bearing way if it is known.
   void RebuildRouteIfOffRoute(location::GpsInfo const & info);
   // Snaps a dead reckoning position (not from GPS) to the closest road within |radiusM|, preferring the
   // one going in the |bearingDeg| direction (NaN if the direction is unknown). With |matchRoute| the

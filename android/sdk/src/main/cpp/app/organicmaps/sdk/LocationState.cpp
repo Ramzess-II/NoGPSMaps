@@ -96,11 +96,13 @@ JNIEXPORT jdoubleArray Java_app_organicmaps_sdk_location_LocationState_nativeScr
   return result;
 }
 
-// public static native void nativeRebuildRouteIfOffRoute(long time, double lat, double lon, float accuracy);
+// public static native void nativeRebuildRouteIfOffRoute(long time, double lat, double lon, float accuracy,
+//                                                         float bearing);
 JNIEXPORT void Java_app_organicmaps_sdk_location_LocationState_nativeRebuildRouteIfOffRoute(JNIEnv * env,
                                                                                             jclass clazz, jlong time,
                                                                                             jdouble lat, jdouble lon,
-                                                                                            jfloat accuracy)
+                                                                                            jfloat accuracy,
+                                                                                            jfloat bearing)
 {
   location::GpsInfo info;
   info.m_source = location::EUser;
@@ -108,6 +110,7 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_LocationState_nativeRebuildRout
   info.m_latitude = lat;
   info.m_longitude = lon;
   info.m_horizontalAccuracy = accuracy;
+  info.m_bearing = bearing;
   g_framework->NativeFramework()->GetRoutingManager().RebuildRouteIfOffRoute(info);
 }
 

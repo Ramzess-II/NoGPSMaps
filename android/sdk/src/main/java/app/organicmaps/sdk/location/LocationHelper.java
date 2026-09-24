@@ -409,9 +409,15 @@ public class LocationHelper implements BaseLocationProvider.Listener
 
   private static void rebuildRouteIfOffRoute(@NonNull Location location)
   {
+    // The core knows where the car goes from the GPS track, a position set by hand or calculated has no
+    // track, so its direction is passed, otherwise the route can turn the car around.
+    final PositionSource source = sourceOf(location);
+    final boolean hasDirection = location.hasBearing()
+                              && (source == PositionSource.MANUAL || source == PositionSource.INERTIAL);
     LocationState.nativeRebuildRouteIfOffRoute(System.currentTimeMillis(), location.getLatitude(),
                                                 location.getLongitude(),
-                                                Math.max(location.getAccuracy(), MIN_OFF_ROUTE_DISTANCE_M));
+                                                Math.max(location.getAccuracy(), MIN_OFF_ROUTE_DISTANCE_M),
+                                                hasDirection ? location.getBearing() : -1);
   }
 
   // Used by GoogleFusedLocationProvider.
