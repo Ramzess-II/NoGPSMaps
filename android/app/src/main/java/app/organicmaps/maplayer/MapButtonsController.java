@@ -76,6 +76,8 @@ public class MapButtonsController extends Fragment
   private View mShiftPositionContainer;
   @Nullable
   private TextView mShiftPositionStep;
+  @Nullable
+  private View mShiftPositionForward;
   // Meters the position is moved by, the user chooses one of them.
   private static final int[] SHIFT_STEPS_M = {10, 20, 50, 100};
   private static final long POSITION_STATUS_UPDATE_INTERVAL_MS = 1000;
@@ -154,8 +156,9 @@ public class MapButtonsController extends Fragment
         (v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.manualPosition));
     mShiftPositionContainer = mFrame.findViewById(R.id.shift_position_container);
     mShiftPositionStep = mFrame.findViewById(R.id.shift_position_step);
-    mFrame.findViewById(R.id.shift_position_forward)
-        .setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.shiftPositionForward));
+    mShiftPositionForward = mFrame.findViewById(R.id.shift_position_forward);
+    mShiftPositionForward.setOnClickListener(
+        (v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.shiftPositionForward));
     mFrame.findViewById(R.id.shift_position_back)
         .setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.shiftPositionBack));
     mShiftPositionStep.setOnClickListener((v) -> {
@@ -310,6 +313,14 @@ public class MapButtonsController extends Fragment
     if (mShiftPositionContainer != null)
       UiUtils.showIf(locationHelper.isManualMode() || locationHelper.isInertialNavigationEnabled(),
                      mShiftPositionContainer);
+
+    // The position waits at the turn until the car leaves it, otherwise it would go to another street.
+    if (mShiftPositionForward != null)
+    {
+      final boolean blocked = locationHelper.isShiftForwardBlocked();
+      mShiftPositionForward.setEnabled(!blocked);
+      mShiftPositionForward.setAlpha(blocked ? 0.4f : 1f);
+    }
 
     // The icon tells where the position comes from now: from satellites or from the user.
     if (mManualPositionButton != null)

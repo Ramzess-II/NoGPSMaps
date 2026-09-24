@@ -1520,10 +1520,14 @@ bool RoutingManager::ShiftAlongRoute(double distanceM, ms::LatLon & shifted, dou
       break;  // The end of the route.
 
     size_t const following = forward ? to + 1 : to - 1;
-    double const bendDeg = std::fabs(math::RadToDeg(
-        ang::GetShortestDistance(ang::AngleTo(points[from], points[to]), ang::AngleTo(points[to], points[following]))));
-    if (bendDeg > kTurnBendDeg)
-      break;
+    // Moving back is safe at a turn: the car came that way. Moving forward is not.
+    if (forward)
+    {
+      double const bendDeg = std::fabs(math::RadToDeg(ang::GetShortestDistance(
+          ang::AngleTo(points[from], points[to]), ang::AngleTo(points[to], points[following]))));
+      if (bendDeg > kTurnBendDeg)
+        break;
+    }
 
     from = to;
     to = following;

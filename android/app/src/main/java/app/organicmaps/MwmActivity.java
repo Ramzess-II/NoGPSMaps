@@ -785,7 +785,14 @@ public class MwmActivity extends BaseMwmFragmentActivity
    */
   private void shiftPosition(int distanceM)
   {
-    final double applied = MwmApplication.from(this).getLocationHelper().shiftPosition(distanceM);
+    final LocationHelper locationHelper = MwmApplication.from(this).getLocationHelper();
+    if (distanceM > 0 && locationHelper.isShiftForwardBlocked())
+    {
+      Toast.makeText(this, R.string.nogps_shift_at_turn, Toast.LENGTH_SHORT).show();
+      return;
+    }
+
+    final double applied = locationHelper.shiftPosition(distanceM);
     // The position stops at the closest turn, so the user has to know when it was moved by less.
     final long appliedM = Math.round(Math.abs(applied));
     if (appliedM >= Math.abs(distanceM))

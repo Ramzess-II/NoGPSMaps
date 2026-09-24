@@ -60,6 +60,9 @@ public class LocationHelper implements BaseLocationProvider.Listener
   private static final double MANUAL_SNAP_RADIUS_M = 30;
   // A road going another way is a crossing road: the car is on it, but it does not drive along it.
   private static final double MAX_ROAD_BEARING_DIFF_DEG = 45;
+  // The position stopped at a turn is not moved further: the car can turn to another street there.
+  // It is moved again after the car has really left the turn by this distance.
+  private static final float SHIFT_BLOCK_RADIUS_M = 10;
 
   // Network (cell towers and Wi-Fi) positions are used to detect spoofed GPS.
   private static final long INTERVAL_NETWORK_MS = 5000;
@@ -138,6 +141,10 @@ public class LocationHelper implements BaseLocationProvider.Listener
   // The source of the last position passed to the core, used to check the route when the source changes.
   @NonNull
   private PositionSource mLastPositionSource = PositionSource.NONE;
+
+  // The turn the position has stopped at, null if the position can be moved forward.
+  @Nullable
+  private Location mShiftStopLocation;
 
   @Nullable
   private InertialNavigator mInertial;
@@ -888,7 +895,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
   public double shiftPosition(double distanceM)
   {
     final Location from = mSavedLocation;
-    if (from == null)
+    if (from == null || (distanceM > 0 && isShiftForwardBlocked()))
       return 0;
 
     double[] shifted = LocationState.nativeShiftAlongRoute(distanceM);
@@ -928,10 +935,31 @@ public class LocationHelper implements BaseLocationProvider.Listener
     mSavedLocation = location;
     mLastPositionSource = PositionSource.MANUAL;
     mMyPosition = null;
+    // The position has stopped at a turn: the car can go to another street there, so the position is
+    // not moved any further until the car really leaves the turn.
+    if (distanceM > 0 && applied < distanceM - 0.5)
+      mShiftStopLocation = new Location(location);
+
     // Moving back returns the car to the passed part of the route, which is cut off, so it is rebuilt.
     rebuildRouteIfOffRoute(location);
     notifyLocationUpdated();
     return applied;
+  }
+
+  /**
+   * @return true if the position has stopped at a turn and must not be moved forward until the car
+   * leaves the turn: the car can take another street there.
+   */
+  public boolean isShiftForwardBlocked()
+  {
+    if (mShiftStopLocation == null)
+      return false;
+    if (mSavedLocation == null || mShiftStopLocation.distanceTo(mSavedLocation) >= SHIFT_BLOCK_RADIUS_M)
+    {
+      mShiftStopLocation = null;
+      return false;
+    }
+    return true;
   }
 
   /**

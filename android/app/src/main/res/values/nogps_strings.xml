@@ -56,4 +56,5 @@
   <string name="nogps_shift_failed">There is nowhere to move the position</string>
   <string name="nogps_heading_road">from the road</string>
   <string name="nogps_sensors_scale">Speed correction: %1$s</string>
+  <string name="nogps_shift_at_turn">The position is at the turn, move it after the turn</string>
 </resources>
