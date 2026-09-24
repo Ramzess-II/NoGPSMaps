@@ -87,6 +87,8 @@ public:
   bool FindClosestProjectionToRoad(m2::PointD const & point, m2::PointD const & direction, double radius,
                                    EdgeProj & proj) override;
 
+  void FindRoadCrossings(m2::RectD const & rect, std::vector<m2::PointD> & crossings) override;
+
   void SwapAltRouteToActive() override;
 
   bool GetBestOutgoingEdges(m2::PointD const & checkpoint, WorldGraph & graph, std::vector<Edge> & edges);

@@ -77,6 +77,9 @@ public:
   virtual bool FindClosestProjectionToRoad(m2::PointD const & point, m2::PointD const & direction, double radius,
                                            EdgeProj & proj) = 0;
 
+  /// Collects the points in |rect| where roads cross or branch, i.e. where a car can turn.
+  virtual void FindRoadCrossings(m2::RectD const & /* rect */, std::vector<m2::PointD> & /* crossings */) {}
+
   /// Swap the saved last-route state with the alternative's saved state. Called when the user
   /// picks an alternative variant so subsequent adjustments and full rebuilds (off-route rebuilds)
   /// keep the selected variant rather than the original primary. Default: no-op.

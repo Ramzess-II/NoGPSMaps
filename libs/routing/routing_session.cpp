@@ -667,6 +667,13 @@ bool RoutingSession::FindClosestProjectionToRoad(m2::PointD const & point, m2::P
   return m_router && m_router->FindClosestProjectionToRoad(point, direction, radius, proj);
 }
 
+void RoutingSession::FindRoadCrossings(m2::RectD const & rect, std::vector<m2::PointD> & crossings) const
+{
+  CHECK_THREAD_CHECKER(m_threadChecker, ());
+  if (m_router)
+    m_router->FindRoadCrossings(rect, crossings);
+}
+
 bool RoutingSession::MatchLocationToRoute(location::GpsInfo & location, location::RouteMatchingInfo & routeMatchingInfo)
 {
   CHECK_THREAD_CHECKER(m_threadChecker, ());

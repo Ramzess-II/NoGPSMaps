@@ -52,9 +52,9 @@
   <string name="nogps_shift_forward">Move the position forward along the road</string>
   <string name="nogps_shift_back">Move the position back along the road</string>
   <string name="nogps_shift_step">Distance to move the position by</string>
-  <string name="nogps_shift_limited">Moved by %1$d m, up to the turn</string>
+  <string name="nogps_shift_limited">Moved by %1$d m, up to the crossing</string>
   <string name="nogps_shift_failed">There is nowhere to move the position</string>
   <string name="nogps_heading_road">from the road</string>
   <string name="nogps_sensors_scale">Speed correction: %1$s</string>
-  <string name="nogps_shift_at_turn">The position is at a turn, it can not be moved further</string>
+  <string name="nogps_shift_at_turn">The position is at a crossing, it can not be moved further</string>
 </resources>

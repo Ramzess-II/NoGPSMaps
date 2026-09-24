@@ -57,6 +57,7 @@ public:
 
   bool FindClosestProjectionToRoad(m2::PointD const & point, m2::PointD const & direction, double radius,
                                    EdgeProj & proj);
+  void FindRoadCrossings(m2::RectD const & rect, std::vector<m2::PointD> & crossings);
 
 private:
   /// Worker thread function

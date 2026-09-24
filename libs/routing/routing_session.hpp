@@ -71,6 +71,8 @@ public:
   /// Finds the closest point on a road within |radius| meters, going in |direction| (zero means any).
   bool FindClosestProjectionToRoad(m2::PointD const & point, m2::PointD const & direction, double radius,
                                    EdgeProj & proj) const;
+  /// Collects the points in |rect| where roads cross or branch.
+  void FindRoadCrossings(m2::RectD const & rect, std::vector<m2::PointD> & crossings) const;
   bool IsFollowing() const;
   void Reset();
 

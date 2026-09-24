@@ -437,6 +437,23 @@ bool IndexRouter::FindClosestProjectionToRoad(m2::PointD const & point, m2::Poin
   return true;
 }
 
+void IndexRouter::FindRoadCrossings(m2::RectD const & rect, std::vector<m2::PointD> & crossings)
+{
+  // Counts the ways out of every road point: two for an inner point of a road, one for its end. A point
+  // with three or more ways out is a crossing, two ways out are just a road split into several features.
+  std::map<m2::PointD, uint32_t> waysOut;
+  for (auto const & road : m_roadGraph.FindRoads(rect, nullptr /* isGoodFeature */))
+  {
+    auto const & junctions = road.m_roadInfo.m_junctions;
+    for (size_t i = 0; i < junctions.size(); ++i)
+      waysOut[junctions[i].GetPoint()] += (i == 0 || i + 1 == junctions.size()) ? 1 : 2;
+  }
+
+  for (auto const & [point, count] : waysOut)
+    if (count >= 3 && rect.IsPointInside(point))
+      crossings.push_back(point);
+}
+
 void IndexRouter::SetGuides(GuidesTracks && guides)
 {
   m_guides = GuidesConnections(std::move(guides));

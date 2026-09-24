@@ -786,6 +786,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
   private void shiftPosition(int distanceM)
   {
     final LocationHelper locationHelper = MwmApplication.from(this).getLocationHelper();
+    // The position stands at a crossing, it is moved that way after the car passes it.
     if (locationHelper.isShiftBlocked(distanceM > 0))
     {
       Toast.makeText(this, R.string.nogps_shift_at_turn, Toast.LENGTH_SHORT).show();
@@ -793,6 +794,11 @@ public class MwmActivity extends BaseMwmFragmentActivity
     }
 
     final double applied = locationHelper.shiftPosition(distanceM);
+    if (applied == 0 && locationHelper.isShiftBlocked(distanceM > 0))
+    {
+      Toast.makeText(this, R.string.nogps_shift_at_turn, Toast.LENGTH_SHORT).show();
+      return;
+    }
     // The position stops at the closest turn, so the user has to know when it was moved by less.
     final long appliedM = Math.round(Math.abs(applied));
     if (appliedM >= Math.abs(distanceM))

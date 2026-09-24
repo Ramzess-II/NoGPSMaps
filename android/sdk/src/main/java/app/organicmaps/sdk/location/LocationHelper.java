@@ -63,6 +63,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
   // The position stopped at a turn is not moved further: the car can turn to another street there.
   // It is moved again after the car has really left the turn by this distance.
   private static final float SHIFT_BLOCK_RADIUS_M = 10;
+  private static final double MIN_SHIFT_M = 0.5;
 
   // Network (cell towers and Wi-Fi) positions are used to detect spoofed GPS.
   private static final long INTERVAL_NETWORK_MS = 5000;
@@ -796,7 +797,13 @@ public class LocationHelper implements BaseLocationProvider.Listener
     // The car stands along a road, not between houses: the tap is moved to the axis of the closest road and
     // the direction of the movement is taken from that road. A tap is too rough to measure the direction.
     double bearing = guessMovementBearing(lat, lon);
-    final double[] road = snapToRoad(lat, lon, bearing, MANUAL_SNAP_RADIUS_M);
+    // While navigating, the car is on the route and drives the way the route goes: the guessed direction
+    // can be wrong after a turn or an old mark.
+    double[] road = RoutingController.get().isNavigating()
+                        ? LocationState.nativeProjectToRoute(lat, lon, MANUAL_SNAP_RADIUS_M)
+                        : null;
+    if (road == null)
+      road = snapToRoad(lat, lon, bearing, MANUAL_SNAP_RADIUS_M);
     if (road != null)
     {
       lat = road[0];
@@ -912,10 +919,14 @@ public class LocationHelper implements BaseLocationProvider.Listener
       return 0;
 
     final double applied = shifted[3];
-    if (applied == 0)
+    // The position has stopped at a crossing: the car can go to another street there, so the position is
+    // not moved that way any more until the car really leaves the crossing.
+    final boolean atCrossing = shifted.length > 4 && shifted[4] != 0;
+    // Less than this is no movement at all, and the direction of such a move means nothing.
+    if (Math.abs(applied) < MIN_SHIFT_M)
     {
-      // The position stands right at a turn, it is not moved that way until the car leaves the turn.
-      blockShift(forward, from);
+      if (atCrossing)
+        blockShift(forward, from);
       return 0;
     }
 
@@ -947,9 +958,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
     mSavedLocation = location;
     mLastPositionSource = PositionSource.MANUAL;
     mMyPosition = null;
-    // The position has stopped at a turn: the car can go to another street there, so the position is
-    // not moved that way any more until the car really leaves the turn.
-    if (Math.abs(applied) < Math.abs(distanceM) - 0.5)
+    if (atCrossing)
       blockShift(forward, location);
 
     // Moving back returns the car to the passed part of the route, which is cut off, so it is rebuilt.

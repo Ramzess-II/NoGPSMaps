@@ -244,11 +244,15 @@ public:
                   double & snappedBearingDeg);
   // Moves |latLon| along the followed route by |distanceM| (negative moves back), e.g. when a dead
   // reckoning position lags behind the car. |bearingDeg| is where the car looks, NaN if it is unknown.
-  // The movement stops at the closest turn in both directions, so the position never jumps to another
-  // street. |appliedM| is the distance the position was really moved by, negative when moved back.
-  // Returns false if there is no followed route or the position is not on it.
+  // The movement stops at the closest turn or crossing in both directions, so the position never jumps
+  // to another street. |appliedM| is the distance the position was really moved by, negative when moved back.
+  // |atCrossing| is true if the position has stopped at a turn or crossing. Returns false if there is no
+  // followed route, the position is not on it or it is at the start of the route and is moved back.
   bool ShiftAlongRoute(ms::LatLon const & latLon, double bearingDeg, double distanceM, ms::LatLon & shifted,
-                       double & shiftedBearingDeg, double & appliedM);
+                       double & shiftedBearingDeg, double & appliedM, bool & atCrossing);
+  // Moves |latLon| to the closest point of the followed route within |radiusM|, |bearingDeg| is the
+  // direction of the route there. Returns false if there is no route so close.
+  bool ProjectToRoute(ms::LatLon const & latLon, double radiusM, ms::LatLon & projected, double & bearingDeg);
   void CallRouteBuilded(routing::RouterResultCode code, storage::CountriesSet const & absentCountries);
   void OnBuildRouteReady(routing::RoutesResult const & result, routing::RouterResultCode code);
   void OnRebuildRouteReady(routing::RoutesResult const & result, routing::RouterResultCode code);

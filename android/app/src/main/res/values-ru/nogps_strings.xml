@@ -51,9 +51,9 @@
   <string name="nogps_shift_forward">Перенести позицию вперёд по дороге</string>
   <string name="nogps_shift_back">Перенести позицию назад по дороге</string>
   <string name="nogps_shift_step">На сколько переносить позицию</string>
-  <string name="nogps_shift_limited">Перенос на %1$d м, до поворота</string>
+  <string name="nogps_shift_limited">Перенос на %1$d м, до перекрёстка</string>
   <string name="nogps_shift_failed">Позицию некуда переносить</string>
   <string name="nogps_heading_road">по дороге</string>
   <string name="nogps_sensors_scale">Поправка скорости: %1$s</string>
-  <string name="nogps_shift_at_turn">Позиция у поворота, дальше переносить нельзя</string>
+  <string name="nogps_shift_at_turn">Позиция у перекрёстка, дальше переносить нельзя</string>
 </resources>

@@ -131,6 +131,24 @@ JNIEXPORT jdoubleArray Java_app_organicmaps_sdk_location_LocationState_nativeSna
   return result;
 }
 
+// public static native double[] nativeProjectToRoute(double lat, double lon, double radius);
+JNIEXPORT jdoubleArray Java_app_organicmaps_sdk_location_LocationState_nativeProjectToRoute(JNIEnv * env, jclass clazz,
+                                                                                            jdouble lat, jdouble lon,
+                                                                                            jdouble radius)
+{
+  ms::LatLon projected;
+  double bearing;
+  if (!g_framework->NativeFramework()->GetRoutingManager().ProjectToRoute(ms::LatLon(lat, lon), radius, projected,
+                                                                          bearing))
+  {
+    return nullptr;
+  }
+  jdouble const values[] = {projected.m_lat, projected.m_lon, bearing};
+  jdoubleArray result = env->NewDoubleArray(3);
+  env->SetDoubleArrayRegion(result, 0, 3, values);
+  return result;
+}
+
 // public static native double[] nativeShiftAlongRoute(double lat, double lon, double bearing, double distance);
 JNIEXPORT jdoubleArray Java_app_organicmaps_sdk_location_LocationState_nativeShiftAlongRoute(
     JNIEnv * env, jclass clazz, jdouble lat, jdouble lon, jdouble bearing, jdouble distance)
@@ -138,15 +156,17 @@ JNIEXPORT jdoubleArray Java_app_organicmaps_sdk_location_LocationState_nativeShi
   ms::LatLon shifted;
   double shiftedBearing;
   double applied;
+  bool atCrossing;
   if (!g_framework->NativeFramework()->GetRoutingManager().ShiftAlongRoute(ms::LatLon(lat, lon), bearing, distance,
-                                                                           shifted, shiftedBearing, applied))
+                                                                           shifted, shiftedBearing, applied,
+                                                                           atCrossing))
   {
     return nullptr;
   }
 
-  jdouble const values[] = {shifted.m_lat, shifted.m_lon, shiftedBearing, applied};
-  jdoubleArray result = env->NewDoubleArray(4);
-  env->SetDoubleArrayRegion(result, 0, 4, values);
+  jdouble const values[] = {shifted.m_lat, shifted.m_lon, shiftedBearing, applied, atCrossing ? 1.0 : 0.0};
+  jdoubleArray result = env->NewDoubleArray(5);
+  env->SetDoubleArrayRegion(result, 0, 5, values);
   return result;
 }
 }  // extern "C"

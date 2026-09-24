@@ -71,12 +71,20 @@ public final class LocationState
   static native double[] nativeSnapToRoad(double lat, double lon, double bearing, double radius, boolean matchRoute);
 
   /**
-   * Moves a position along the followed route, stopping at the closest turn in both directions.
+   * Moves a position to the closest point of the followed route.
+   * @return {latitude, longitude, route bearing}, or null if there is no route within the radius.
+   */
+  @Nullable
+  static native double[] nativeProjectToRoute(double lat, double lon, double radius);
+
+  /**
+   * Moves a position along the followed route, stopping at the closest turn or crossing in both directions.
    * @param bearing where the car looks, NaN if it is unknown. Parts of the route going another way are
    * skipped: they are streets the car has already left or has not reached yet.
    * @param distance meters to move forward, negative to move back.
-   * @return {latitude, longitude, route bearing, applied distance}, negative when moved back, or null if
-   * there is no followed route or the position is not on it.
+   * @return {latitude, longitude, route bearing, applied distance (negative when moved back), 1 if stopped
+   * at a turn or crossing and 0 otherwise}, or null if there is no followed route, the position is not on
+   * it or it is moved back from the start of the route.
    */
   @Nullable
   static native double[] nativeShiftAlongRoute(double lat, double lon, double bearing, double distance);
