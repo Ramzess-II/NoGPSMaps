@@ -78,6 +78,8 @@ public class MapButtonsController extends Fragment
   private TextView mShiftPositionStep;
   @Nullable
   private View mShiftPositionForward;
+  @Nullable
+  private View mShiftPositionBack;
   // Meters the position is moved by, the user chooses one of them.
   private static final int[] SHIFT_STEPS_M = {10, 20, 50, 100};
   private static final long POSITION_STATUS_UPDATE_INTERVAL_MS = 1000;
@@ -159,8 +161,9 @@ public class MapButtonsController extends Fragment
     mShiftPositionForward = mFrame.findViewById(R.id.shift_position_forward);
     mShiftPositionForward.setOnClickListener(
         (v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.shiftPositionForward));
-    mFrame.findViewById(R.id.shift_position_back)
-        .setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.shiftPositionBack));
+    mShiftPositionBack = mFrame.findViewById(R.id.shift_position_back);
+    mShiftPositionBack.setOnClickListener(
+        (v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.shiftPositionBack));
     mShiftPositionStep.setOnClickListener((v) -> {
       Config.setPositionShiftStepM(nextShiftStep());
       updateShiftPositionStep();
@@ -314,13 +317,9 @@ public class MapButtonsController extends Fragment
       UiUtils.showIf(locationHelper.isManualMode() || locationHelper.isInertialNavigationEnabled(),
                      mShiftPositionContainer);
 
-    // The position waits at the turn until the car leaves it, otherwise it would go to another street.
-    if (mShiftPositionForward != null)
-    {
-      final boolean blocked = locationHelper.isShiftForwardBlocked();
-      mShiftPositionForward.setEnabled(!blocked);
-      mShiftPositionForward.setAlpha(blocked ? 0.4f : 1f);
-    }
+    // The position waits at a turn until the car leaves it, otherwise it would go to another street.
+    setShiftEnabled(mShiftPositionForward, !locationHelper.isShiftBlocked(true));
+    setShiftEnabled(mShiftPositionBack, !locationHelper.isShiftBlocked(false));
 
     // The icon tells where the position comes from now: from satellites or from the user.
     if (mManualPositionButton != null)
@@ -328,6 +327,14 @@ public class MapButtonsController extends Fragment
       mManualPositionButton.setImageResource(locationHelper.isManualMode() ? R.drawable.ic_manual_position
                                                                           : R.drawable.ic_gps_position);
     }
+  }
+
+  private static void setShiftEnabled(@Nullable View button, boolean enabled)
+  {
+    if (button == null)
+      return;
+    button.setEnabled(enabled);
+    button.setAlpha(enabled ? 1f : 0.4f);
   }
 
   private static int nextShiftStep()

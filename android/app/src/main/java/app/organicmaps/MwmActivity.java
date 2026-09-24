@@ -786,7 +786,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
   private void shiftPosition(int distanceM)
   {
     final LocationHelper locationHelper = MwmApplication.from(this).getLocationHelper();
-    if (distanceM > 0 && locationHelper.isShiftForwardBlocked())
+    if (locationHelper.isShiftBlocked(distanceM > 0))
     {
       Toast.makeText(this, R.string.nogps_shift_at_turn, Toast.LENGTH_SHORT).show();
       return;

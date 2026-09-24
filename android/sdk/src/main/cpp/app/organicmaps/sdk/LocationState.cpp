@@ -131,21 +131,20 @@ JNIEXPORT jdoubleArray Java_app_organicmaps_sdk_location_LocationState_nativeSna
   return result;
 }
 
-// public static native double[] nativeShiftAlongRoute(double lat, double lon, double distance);
-JNIEXPORT jdoubleArray Java_app_organicmaps_sdk_location_LocationState_nativeShiftAlongRoute(JNIEnv * env, jclass clazz,
-                                                                                             jdouble lat, jdouble lon,
-                                                                                             jdouble distance)
+// public static native double[] nativeShiftAlongRoute(double lat, double lon, double bearing, double distance);
+JNIEXPORT jdoubleArray Java_app_organicmaps_sdk_location_LocationState_nativeShiftAlongRoute(
+    JNIEnv * env, jclass clazz, jdouble lat, jdouble lon, jdouble bearing, jdouble distance)
 {
   ms::LatLon shifted;
-  double bearing;
+  double shiftedBearing;
   double applied;
-  if (!g_framework->NativeFramework()->GetRoutingManager().ShiftAlongRoute(ms::LatLon(lat, lon), distance, shifted,
-                                                                           bearing, applied))
+  if (!g_framework->NativeFramework()->GetRoutingManager().ShiftAlongRoute(ms::LatLon(lat, lon), bearing, distance,
+                                                                           shifted, shiftedBearing, applied))
   {
     return nullptr;
   }
 
-  jdouble const values[] = {shifted.m_lat, shifted.m_lon, bearing, applied};
+  jdouble const values[] = {shifted.m_lat, shifted.m_lon, shiftedBearing, applied};
   jdoubleArray result = env->NewDoubleArray(4);
   env->SetDoubleArrayRegion(result, 0, 4, values);
   return result;

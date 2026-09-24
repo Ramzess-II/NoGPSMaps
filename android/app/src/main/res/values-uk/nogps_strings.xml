@@ -55,5 +55,5 @@
   <string name="nogps_shift_failed">Позицію нікуди переносити</string>
   <string name="nogps_heading_road">по дорозі</string>
   <string name="nogps_sensors_scale">Поправка швидкості: %1$s</string>
-  <string name="nogps_shift_at_turn">Позиція біля повороту, далі — після повороту</string>
+  <string name="nogps_shift_at_turn">Позиція біля повороту, далі переносити не можна</string>
 </resources>

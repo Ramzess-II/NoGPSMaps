@@ -142,9 +142,11 @@ public class LocationHelper implements BaseLocationProvider.Listener
   @NonNull
   private PositionSource mLastPositionSource = PositionSource.NONE;
 
-  // The turn the position has stopped at, null if the position can be moved forward.
+  // The turns the position has stopped at, null if the position can be moved that way.
   @Nullable
-  private Location mShiftStopLocation;
+  private Location mShiftStopForward;
+  @Nullable
+  private Location mShiftStopBack;
 
   @Nullable
   private InertialNavigator mInertial;
@@ -894,19 +896,28 @@ public class LocationHelper implements BaseLocationProvider.Listener
   @UiThread
   public double shiftPosition(double distanceM)
   {
+    final boolean forward = distanceM > 0;
     final Location from = mSavedLocation;
-    if (from == null || (distanceM > 0 && isShiftForwardBlocked()))
+    if (from == null || isShiftBlocked(forward))
       return 0;
 
-    double[] shifted = LocationState.nativeShiftAlongRoute(from.getLatitude(), from.getLongitude(), distanceM);
+    // The direction of the movement tells which part of the route the car drives along: the route passes
+    // the car several times, e.g. the street it has just turned from is still a part of the route.
+    final double movementBearing = guessMovementBearing(from.getLatitude(), from.getLongitude());
+    double[] shifted =
+        LocationState.nativeShiftAlongRoute(from.getLatitude(), from.getLongitude(), movementBearing, distanceM);
     if (shifted == null)
-      shifted = shiftWithoutRoute(from, distanceM);
+      shifted = shiftWithoutRoute(from, movementBearing, distanceM);
     if (shifted == null)
       return 0;
 
     final double applied = shifted[3];
     if (applied == 0)
+    {
+      // The position stands right at a turn, it is not moved that way until the car leaves the turn.
+      blockShift(forward, from);
       return 0;
+    }
 
     final double lat = shifted[0];
     final double lon = shifted[1];
@@ -937,9 +948,9 @@ public class LocationHelper implements BaseLocationProvider.Listener
     mLastPositionSource = PositionSource.MANUAL;
     mMyPosition = null;
     // The position has stopped at a turn: the car can go to another street there, so the position is
-    // not moved any further until the car really leaves the turn.
-    if (distanceM > 0 && applied < distanceM - 0.5)
-      mShiftStopLocation = new Location(location);
+    // not moved that way any more until the car really leaves the turn.
+    if (Math.abs(applied) < Math.abs(distanceM) - 0.5)
+      blockShift(forward, location);
 
     // Moving back returns the car to the passed part of the route, which is cut off, so it is rebuilt.
     rebuildRouteIfOffRoute(location);
@@ -947,17 +958,30 @@ public class LocationHelper implements BaseLocationProvider.Listener
     return applied;
   }
 
-  /**
-   * @return true if the position has stopped at a turn and must not be moved forward until the car
-   * leaves the turn: the car can take another street there.
-   */
-  public boolean isShiftForwardBlocked()
+  private void blockShift(boolean forward, @NonNull Location at)
   {
-    if (mShiftStopLocation == null)
+    if (forward)
+      mShiftStopForward = new Location(at);
+    else
+      mShiftStopBack = new Location(at);
+  }
+
+  /**
+   * @return true if the position has stopped at a turn and must not be moved that way until the car
+   * leaves the turn: the car can take another street there.
+   * @param forward true for the direction of the movement, false for the opposite one.
+   */
+  public boolean isShiftBlocked(boolean forward)
+  {
+    final Location stop = forward ? mShiftStopForward : mShiftStopBack;
+    if (stop == null)
       return false;
-    if (mSavedLocation == null || mShiftStopLocation.distanceTo(mSavedLocation) >= SHIFT_BLOCK_RADIUS_M)
+    if (mSavedLocation == null || stop.distanceTo(mSavedLocation) >= SHIFT_BLOCK_RADIUS_M)
     {
-      mShiftStopLocation = null;
+      if (forward)
+        mShiftStopForward = null;
+      else
+        mShiftStopBack = null;
       return false;
     }
     return true;
@@ -968,9 +992,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
    * @return {latitude, longitude, bearing, applied distance}, or null if the direction is unknown.
    */
   @Nullable
-  private double[] shiftWithoutRoute(@NonNull Location from, double distanceM)
+  private double[] shiftWithoutRoute(@NonNull Location from, double bearing, double distanceM)
   {
-    final double bearing = guessMovementBearing(from.getLatitude(), from.getLongitude());
     if (Double.isNaN(bearing))
       return null;
 

@@ -1469,13 +1469,58 @@ bool RoutingManager::SnapToRoad(ms::LatLon const & latLon, double bearingDeg, do
   return true;
 }
 
-bool RoutingManager::ShiftAlongRoute(ms::LatLon const & latLon, double distanceM, ms::LatLon & shifted,
-                                     double & bearingDeg, double & appliedM)
+namespace
+{
+// A turn to another street stops the position moved along the route. Turns going straight are junctions
+// the route passes without leaving the street, the position crosses them as the car does.
+bool IsStreetTurn(turns::TurnItem const & turn)
+{
+  return turn.m_turn != turns::CarDirection::GoStraight;
+}
+
+// Returns the point index of the closest turn after |segIdx|, |lastIdx| if there is no turn.
+size_t FindTurnAfterIdx(Route const & route, size_t segIdx, size_t lastIdx)
+{
+  turns::TurnItem turn;
+  for (size_t idx = segIdx; idx < lastIdx;)
+  {
+    route.GetTurnAfterIdx(idx, turn);
+    if (turn.m_index >= lastIdx)
+      break;
+    if (IsStreetTurn(turn))
+      return turn.m_index;
+    idx = turn.m_index + 1;
+  }
+  return lastIdx;
+}
+
+// Returns the point index of the closest turn before |segIdx|, 0 if there is no turn.
+size_t FindTurnBeforeIdx(Route const & route, size_t segIdx)
+{
+  turns::TurnItem turn;
+  size_t found = 0;
+  for (size_t idx = 0; idx <= segIdx;)
+  {
+    route.GetTurnAfterIdx(idx, turn);
+    if (turn.m_index > segIdx)
+      break;
+    if (IsStreetTurn(turn))
+      found = turn.m_index;
+    idx = turn.m_index + 1;
+  }
+  return found;
+}
+}  // namespace
+
+bool RoutingManager::ShiftAlongRoute(ms::LatLon const & latLon, double bearingDeg, double distanceM,
+                                     ms::LatLon & shifted, double & shiftedBearingDeg, double & appliedM)
 {
   // A sharp bend of the route is a turn to another street, the position must not be shifted past it.
   double constexpr kTurnBendDeg = 45.0;
   // A position farther than this is not on the route, moving it along the route would teleport the car.
-  double constexpr kMaxDistanceToRouteM = 50.0;
+  double constexpr kMaxDistanceToRouteM = 25.0;
+  // A part of the route going another way is a street the car has already left or has not reached yet.
+  double constexpr kMaxBearingDiffDeg = 60.0;
 
   appliedM = 0.0;
   if (!IsRoutingActive() || !m_routingSession.IsOnRoute())
@@ -1492,11 +1537,22 @@ bool RoutingManager::ShiftAlongRoute(ms::LatLon const & latLon, double distanceM
   // The position is moved from where the user sees it and not from the route iterator: the iterator
   // lags behind when the position is off the route, and the car would jump back to it.
   m2::PointD const point = mercator::FromLatLon(latLon);
+  double const carAngle = std::isnan(bearingDeg) ? 0.0 : math::DegToRad(location::BearingToAngle(bearingDeg));
   size_t anchorIdx = 0;
   m2::PointD anchor;
   double distanceToRouteM = std::numeric_limits<double>::max();
   for (size_t i = 0; i + 1 < points.size(); ++i)
   {
+    // The route passes the car several times, e.g. the street it has just turned from is still a part of
+    // the route. Only a part going the way the car looks is the one the car drives along now.
+    if (!std::isnan(bearingDeg))
+    {
+      double const diffDeg = std::fabs(
+          math::RadToDeg(ang::GetShortestDistance(ang::AngleTo(points[i], points[i + 1]), carAngle)));
+      if (diffDeg > kMaxBearingDiffDeg)
+        continue;
+    }
+
     m2::PointD const projection = m2::ParametrizedSegment<m2::PointD>(points[i], points[i + 1]).ClosestPointTo(point);
     double const distanceM = mercator::DistanceOnEarth(projection, point);
     if (distanceM < distanceToRouteM)
@@ -1507,7 +1563,10 @@ bool RoutingManager::ShiftAlongRoute(ms::LatLon const & latLon, double distanceM
     }
   }
   if (distanceToRouteM > kMaxDistanceToRouteM)
+  {
+    LOG(LINFO, ("The position is", distanceToRouteM, "m from the route, not moving it along the route"));
     return false;
+  }
 
   bool const forward = distanceM >= 0.0;
   // Ends of the current segment in the order of the movement.
@@ -1516,14 +1575,10 @@ bool RoutingManager::ShiftAlongRoute(ms::LatLon const & latLon, double distanceM
   m2::PointD position = anchor;
   double remainingM = std::fabs(distanceM);
 
-  // The position must not be moved past the turn ahead: the car would appear on another street.
-  size_t stopIdx = points.size() - 1;
-  if (forward)
-  {
-    turns::TurnItem turn;
-    route->GetTurnAfterIdx(anchorIdx, turn);
-    stopIdx = std::min(static_cast<size_t>(turn.m_index), stopIdx);
-  }
+  // The position must not be moved past a turn: the car may take another street there, and the car
+  // that has already turned must not be dragged back to the street it has left.
+  size_t const stopIdx = forward ? FindTurnAfterIdx(*route, anchorIdx, points.size() - 1)
+                                 : FindTurnBeforeIdx(*route, anchorIdx);
 
   while (remainingM > 0.0)
   {
@@ -1538,25 +1593,23 @@ bool RoutingManager::ShiftAlongRoute(ms::LatLon const & latLon, double distanceM
     appliedM += segmentM;
     remainingM -= segmentM;
 
-    if (forward ? to >= stopIdx : to == 0)
-      break;  // The turn ahead or the end of the route.
+    if (forward ? to >= stopIdx : to <= stopIdx)
+      break;  // A turn or an end of the route.
 
     size_t const following = forward ? to + 1 : to - 1;
-    // Moving back is safe at a turn: the car came that way. Moving forward is not.
-    if (forward)
-    {
-      double const bendDeg = std::fabs(math::RadToDeg(ang::GetShortestDistance(
-          ang::AngleTo(points[from], points[to]), ang::AngleTo(points[to], points[following]))));
-      if (bendDeg > kTurnBendDeg)
-        break;
-    }
+    // A turn is not crossed in either direction: the car may have taken another street there, and going
+    // back through it would drag the position to a street the car is not on.
+    double const bendDeg = std::fabs(math::RadToDeg(ang::GetShortestDistance(
+        ang::AngleTo(points[from], points[to]), ang::AngleTo(points[to], points[following]))));
+    if (bendDeg > kTurnBendDeg)
+      break;
 
     from = to;
     to = following;
   }
 
   shifted = mercator::ToLatLon(position);
-  bearingDeg = location::AngleToBearing(
+  shiftedBearingDeg = location::AngleToBearing(
       math::RadToDeg(forward ? ang::AngleTo(points[from], points[to]) : ang::AngleTo(points[to], points[from])));
   if (!forward)
     appliedM = -appliedM;
