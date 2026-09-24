@@ -137,6 +137,11 @@ public class LocationHelper implements BaseLocationProvider.Listener
   private final Runnable mTripLogRunnable = this::logTrip;
   // Elapsed realtime of the last position set by the user.
   private long mManualSetTimeMs;
+  // The last mark tapped by the user and its elapsed realtime: unlike the manual position, it is not moved
+  // by the plus and minus buttons, two marks one after another tell where the car goes.
+  @Nullable
+  private Location mLastMark;
+  private long mLastMarkTimeMs;
   // After the manual mode the next real position must replace the manual one, even if it is less accurate.
   private boolean mAcceptNextLocation;
   // The source of the last position passed to the core, used to check the route when the source changes.
@@ -764,6 +769,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
     Logger.i(TAG, "enabled = " + enabled);
     mManualMode = enabled;
     mManualLocation = null;
+    mLastMark = null;
     mAcceptNextLocation = !enabled;
     mHandler.removeCallbacks(mManualRepeatRunnable);
 
@@ -801,13 +807,20 @@ public class LocationHelper implements BaseLocationProvider.Listener
       throw new IllegalStateException("Manual mode is off");
 
     // The car stands along a road, not between houses: the tap is moved to the axis of the closest road and
-    // the direction of the movement is taken from that road. A tap is too rough to measure the direction.
-    double bearing = guessMovementBearing(lat, lon);
+    // the direction of the movement is taken from that road, the way the car goes.
+    // Two marks one after another tell that way, a mark behind the previous one means the car has turned
+    // around. It is known better than the calculated direction, which does not see a turn around without
+    // the gyroscope.
+    final double marksBearing = bearingFromLastMark(lat, lon);
+    double bearing = Double.isNaN(marksBearing) ? guessMovementBearing(lat, lon) : marksBearing;
     // While navigating, the car is on the route and drives the way the route goes: the guessed direction
     // can be wrong after a turn or an old mark.
     double[] road = RoutingController.get().isNavigating()
                         ? LocationState.nativeProjectToRoute(lat, lon, MANUAL_SNAP_RADIUS_M)
                         : null;
+    // The car goes against the route: it has turned around, the road is taken the way the marks go.
+    if (road != null && !Double.isNaN(marksBearing) && Math.abs(DeadReckoning.angleDiff(road[2], marksBearing)) > 90)
+      road = null;
     if (road == null)
       road = snapToRoad(lat, lon, bearing, MANUAL_SNAP_RADIUS_M);
     if (road != null)
@@ -824,8 +837,10 @@ public class LocationHelper implements BaseLocationProvider.Listener
     if (!Double.isNaN(bearing))
       location.setBearing((float) bearing);
 
-    Logger.i(TAG, "location = " + location + " on a road = " + (road != null));
+    Logger.i(TAG, "location = " + location + " on a road = " + (road != null) + " marks bearing = " + marksBearing);
     mManualLocation = location;
+    mLastMark = new Location(location);
+    mLastMarkTimeMs = SystemClock.elapsedRealtime();
     mManualSetTimeMs = SystemClock.elapsedRealtime();
     mLastPositionSource = PositionSource.MANUAL;
     rebuildRouteIfOffRoute(location);
@@ -842,6 +857,22 @@ public class LocationHelper implements BaseLocationProvider.Listener
   /**
    * @return the direction the car moves in, NaN if it is unknown.
    */
+  /**
+   * @return the direction from the previous mark to a new one, NaN if there is no recent mark or it is so
+   * close that the new mark is a correction of the same place.
+   */
+  private double bearingFromLastMark(double lat, double lon)
+  {
+    if (mLastMark == null || SystemClock.elapsedRealtime() - mLastMarkTimeMs >= MANUAL_MAX_BEARING_AGE_MS)
+      return Double.NaN;
+    final Location to = new Location(MANUAL_PROVIDER);
+    to.setLatitude(lat);
+    to.setLongitude(lon);
+    if (mLastMark.distanceTo(to) < MANUAL_MIN_BEARING_DISTANCE_M)
+      return Double.NaN;
+    return DeadReckoning.normalize(mLastMark.bearingTo(to));
+  }
+
   private double guessMovementBearing(double lat, double lon)
   {
     if (mInertial != null && isInertialNavigationEnabled() && !Double.isNaN(mInertial.getHeading())

@@ -1432,7 +1432,8 @@ void RoutingManager::RebuildRouteIfOffRoute(location::GpsInfo const & info)
     location::RouteMatchingInfo routeMatchingInfo;
     m_routingSession.MatchLocationToRoute(matched, routeMatchingInfo);
     if (routeMatchingInfo.IsMatched() &&
-        mercator::DistanceOnEarth(routeMatchingInfo.GetPosition(), position) <= info.m_horizontalAccuracy)
+        mercator::DistanceOnEarth(routeMatchingInfo.GetPosition(), position) <= info.m_horizontalAccuracy &&
+        !IsAgainstRoute(info))
     {
       return;
     }
@@ -1680,6 +1681,21 @@ bool RoutingManager::ShiftAlongRoute(ms::LatLon const & latLon, double bearingDe
     return false;
   atCrossing = stopReason == "turn" || stopReason == "crossing" || stopReason == "bend";
   return true;
+}
+
+bool RoutingManager::IsAgainstRoute(location::GpsInfo const & info)
+{
+  ms::LatLon projected;
+  double routeBearingDeg;
+  if (!info.HasBearing() ||
+      !ProjectToRoute(ms::LatLon(info.m_latitude, info.m_longitude), info.m_horizontalAccuracy, projected,
+                      routeBearingDeg))
+  {
+    return false;
+  }
+  double const diffDeg = std::fabs(math::RadToDeg(
+      ang::GetShortestDistance(math::DegToRad(info.m_bearing), math::DegToRad(routeBearingDeg))));
+  return diffDeg > 90.0;
 }
 
 bool RoutingManager::ProjectToRoute(ms::LatLon const & latLon, double radiusM, ms::LatLon & projected,

@@ -254,6 +254,8 @@ public:
   // Moves |latLon| to the closest point of the followed route within |radiusM|, |bearingDeg| is the
   // direction of the route there. Returns false if there is no route so close.
   bool ProjectToRoute(ms::LatLon const & latLon, double radiusM, ms::LatLon & projected, double & bearingDeg);
+  // Returns true if the car is on the route but goes the other way, i.e. it has turned around.
+  bool IsAgainstRoute(location::GpsInfo const & info);
   void CallRouteBuilded(routing::RouterResultCode code, storage::CountriesSet const & absentCountries);
   void OnBuildRouteReady(routing::RoutesResult const & result, routing::RouterResultCode code);
   void OnRebuildRouteReady(routing::RoutesResult const & result, routing::RouterResultCode code);
