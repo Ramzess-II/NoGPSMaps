@@ -1469,10 +1469,13 @@ bool RoutingManager::SnapToRoad(ms::LatLon const & latLon, double bearingDeg, do
   return true;
 }
 
-bool RoutingManager::ShiftAlongRoute(double distanceM, ms::LatLon & shifted, double & bearingDeg, double & appliedM)
+bool RoutingManager::ShiftAlongRoute(ms::LatLon const & latLon, double distanceM, ms::LatLon & shifted,
+                                     double & bearingDeg, double & appliedM)
 {
   // A sharp bend of the route is a turn to another street, the position must not be shifted past it.
   double constexpr kTurnBendDeg = 45.0;
+  // A position farther than this is not on the route, moving it along the route would teleport the car.
+  double constexpr kMaxDistanceToRouteM = 50.0;
 
   appliedM = 0.0;
   if (!IsRoutingActive() || !m_routingSession.IsOnRoute())
@@ -1483,24 +1486,43 @@ bool RoutingManager::ShiftAlongRoute(double distanceM, ms::LatLon & shifted, dou
     return false;
 
   auto const & points = route->GetPoly().GetPoints();
-  auto const iter = route->GetCurrentIter();
-  if (!iter.IsValid() || iter.m_ind + 1 >= points.size())
+  if (points.size() < 2)
+    return false;
+
+  // The position is moved from where the user sees it and not from the route iterator: the iterator
+  // lags behind when the position is off the route, and the car would jump back to it.
+  m2::PointD const point = mercator::FromLatLon(latLon);
+  size_t anchorIdx = 0;
+  m2::PointD anchor;
+  double distanceToRouteM = std::numeric_limits<double>::max();
+  for (size_t i = 0; i + 1 < points.size(); ++i)
+  {
+    m2::PointD const projection = m2::ParametrizedSegment<m2::PointD>(points[i], points[i + 1]).ClosestPointTo(point);
+    double const distanceM = mercator::DistanceOnEarth(projection, point);
+    if (distanceM < distanceToRouteM)
+    {
+      distanceToRouteM = distanceM;
+      anchor = projection;
+      anchorIdx = i;
+    }
+  }
+  if (distanceToRouteM > kMaxDistanceToRouteM)
     return false;
 
   bool const forward = distanceM >= 0.0;
   // Ends of the current segment in the order of the movement.
-  size_t from = forward ? iter.m_ind : iter.m_ind + 1;
-  size_t to = forward ? iter.m_ind + 1 : iter.m_ind;
-  m2::PointD position = iter.m_pt;
+  size_t from = forward ? anchorIdx : anchorIdx + 1;
+  size_t to = forward ? anchorIdx + 1 : anchorIdx;
+  m2::PointD position = anchor;
   double remainingM = std::fabs(distanceM);
 
   // The position must not be moved past the turn ahead: the car would appear on another street.
+  size_t stopIdx = points.size() - 1;
   if (forward)
   {
-    double distanceToTurnM = 0.0;
     turns::TurnItem turn;
-    route->GetNearestTurn(distanceToTurnM, turn);
-    remainingM = std::min(remainingM, distanceToTurnM);
+    route->GetTurnAfterIdx(anchorIdx, turn);
+    stopIdx = std::min(static_cast<size_t>(turn.m_index), stopIdx);
   }
 
   while (remainingM > 0.0)
@@ -1516,8 +1538,8 @@ bool RoutingManager::ShiftAlongRoute(double distanceM, ms::LatLon & shifted, dou
     appliedM += segmentM;
     remainingM -= segmentM;
 
-    if (forward ? to + 1 >= points.size() : to == 0)
-      break;  // The end of the route.
+    if (forward ? to >= stopIdx : to == 0)
+      break;  // The turn ahead or the end of the route.
 
     size_t const following = forward ? to + 1 : to - 1;
     // Moving back is safe at a turn: the car came that way. Moving forward is not.

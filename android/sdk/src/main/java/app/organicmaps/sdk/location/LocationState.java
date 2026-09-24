@@ -71,12 +71,13 @@ public final class LocationState
   static native double[] nativeSnapToRoad(double lat, double lon, double bearing, double radius, boolean matchRoute);
 
   /**
-   * Moves the current position along the followed route, stopping at the closest turn.
+   * Moves a position along the followed route, stopping at the closest turn.
    * @param distance meters to move forward, negative to move back.
-   * @return {latitude, longitude, route bearing, applied distance}, or null if there is no followed route.
+   * @return {latitude, longitude, route bearing, applied distance}, or null if there is no followed route
+   * or the position is too far from it.
    */
   @Nullable
-  static native double[] nativeShiftAlongRoute(double distance);
+  static native double[] nativeShiftAlongRoute(double lat, double lon, double distance);
 
   private LocationState() {}
 

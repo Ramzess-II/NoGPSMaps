@@ -898,7 +898,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
     if (from == null || (distanceM > 0 && isShiftForwardBlocked()))
       return 0;
 
-    double[] shifted = LocationState.nativeShiftAlongRoute(distanceM);
+    double[] shifted = LocationState.nativeShiftAlongRoute(from.getLatitude(), from.getLongitude(), distanceM);
     if (shifted == null)
       shifted = shiftWithoutRoute(from, distanceM);
     if (shifted == null)
@@ -916,12 +916,13 @@ public class LocationHelper implements BaseLocationProvider.Listener
     if (mInertial != null)
       mInertial.onPositionCorrected(lat, lon, bearing, applied);
 
+    // The position is set by the user now, so it is as fresh as a manual mark.
+    mManualSetTimeMs = SystemClock.elapsedRealtime();
     if (mManualLocation != null)
     {
       mManualLocation.setLatitude(lat);
       mManualLocation.setLongitude(lon);
       mManualLocation.setBearing((float) bearing);
-      mManualSetTimeMs = SystemClock.elapsedRealtime();
     }
 
     // The position is set by the user now, whatever it came from before.
