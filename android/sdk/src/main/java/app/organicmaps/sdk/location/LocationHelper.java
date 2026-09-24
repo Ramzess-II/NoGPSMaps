@@ -702,6 +702,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
       line.append(" obd=").append(mInertial.getElm327State()).append(" speed=").append(mInertial.getSpeedKmh());
       line.append(String.format(Locale.US, " scale=%.3f", mInertial.getSpeedScale()));
       line.append(" gyro=").append(mInertial.getCalibrationState());
+      line.append(String.format(Locale.US, " tracked=%.0f", mInertial.getTrackedDistanceM()));
       final double heading = mInertial.getHeading();
       line.append(" hdg=").append(Double.isNaN(heading) ? "-" : Math.round(heading));
       line.append('/').append(mInertial.getHeadingSource());
@@ -807,19 +808,23 @@ public class LocationHelper implements BaseLocationProvider.Listener
       throw new IllegalStateException("Manual mode is off");
 
     // The car stands along a road, not between houses: the tap is moved to the axis of the closest road and
-    // the direction of the movement is taken from that road, the way the car goes.
-    // Two marks one after another tell that way, a mark behind the previous one means the car has turned
-    // around. It is known better than the calculated direction, which does not see a turn around without
-    // the gyroscope.
+    // the direction of the movement is taken from that road, the way the car goes. The gyroscope and the
+    // marks tell that way together. The gyroscope has followed every turn since the last mark if the car has
+    // driven with it, a turn around too, and a mark then only corrects the position and the road axis.
+    // Without it, two marks one after another tell the way, a mark behind the previous one means the car
+    // has turned around.
     final double marksBearing = bearingFromLastMark(lat, lon);
-    double bearing = Double.isNaN(marksBearing) ? guessMovementBearing(lat, lon) : marksBearing;
+    final boolean gyroTracked = mInertial != null && isInertialNavigationEnabled() && mInertial.isHeadingTracked();
+    final double directionBearing = gyroTracked ? mInertial.getHeading() : marksBearing;
+    double bearing = Double.isNaN(directionBearing) ? guessMovementBearing(lat, lon) : directionBearing;
     // While navigating, the car is on the route and drives the way the route goes: the guessed direction
     // can be wrong after a turn or an old mark.
     double[] road = RoutingController.get().isNavigating()
                         ? LocationState.nativeProjectToRoute(lat, lon, MANUAL_SNAP_RADIUS_M)
                         : null;
-    // The car goes against the route: it has turned around, the road is taken the way the marks go.
-    if (road != null && !Double.isNaN(marksBearing) && Math.abs(DeadReckoning.angleDiff(road[2], marksBearing)) > 90)
+    // The car goes against the route: it has turned around, the road is taken the way the car goes.
+    if (road != null && !Double.isNaN(directionBearing)
+        && Math.abs(DeadReckoning.angleDiff(road[2], directionBearing)) > 90)
       road = null;
     if (road == null)
       road = snapToRoad(lat, lon, bearing, MANUAL_SNAP_RADIUS_M);
@@ -837,10 +842,13 @@ public class LocationHelper implements BaseLocationProvider.Listener
     if (!Double.isNaN(bearing))
       location.setBearing((float) bearing);
 
-    Logger.i(TAG, "location = " + location + " on a road = " + (road != null) + " marks bearing = " + marksBearing);
+    Logger.i(TAG, "location = " + location + " on a road = " + (road != null) + " marks bearing = " + marksBearing
+                      + " gyro tracked = " + gyroTracked);
     mManualLocation = location;
     mLastMark = new Location(location);
     mLastMarkTimeMs = SystemClock.elapsedRealtime();
+    if (mInertial != null)
+      mInertial.onMark();
     mManualSetTimeMs = SystemClock.elapsedRealtime();
     mLastPositionSource = PositionSource.MANUAL;
     rebuildRouteIfOffRoute(location);

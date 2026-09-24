@@ -30,6 +30,8 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
   // Wait after the car stops before the automatic calibration, the car body still sways.
   private static final long AUTO_CALIBRATION_DELAY_MS = 2000;
   private static final double MOVING_SPEED_MPS = 0.5;
+  // Shorter drives can hide a turn in the noise, the gyroscope has seen a turn only after this distance.
+  private static final double MIN_TRACKED_DISTANCE_M = 20;
   // GPS bearing is noisy at low speeds.
   private static final double MIN_GPS_HEADING_SPEED_MPS = 3;
   private static final double MAX_SENSOR_DT_SEC = 0.1;
@@ -109,6 +111,8 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
   private long mStoppedSinceMs;
 
   private final SpeedScale mSpeedScale = new SpeedScale();
+  // The distance the car has driven with the gyroscope following its turns since the last mark.
+  private double mTrackedDistanceM;
 
   public InertialNavigator(@NonNull Context context, @NonNull Listener listener, @NonNull RoadSnapper roadSnapper)
   {
@@ -309,6 +313,28 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
     return mHeadingSource;
   }
 
+  /**
+   * @return true if the gyroscope has followed the turns of the car, a turn around too, since the last
+   * {@link #onMark()}: the car has driven far enough with the calibrated gyroscope.
+   */
+  public boolean isHeadingTracked()
+  {
+    return mDeadReckoning.hasHeading() && mTrackedDistanceM >= MIN_TRACKED_DISTANCE_M;
+  }
+
+  /**
+   * The user has marked the position: the turns are followed from here.
+   */
+  public void onMark()
+  {
+    mTrackedDistanceM = 0;
+  }
+
+  public double getTrackedDistanceM()
+  {
+    return mTrackedDistanceM;
+  }
+
   public boolean hasPosition()
   {
     return mDeadReckoning.hasPosition();
@@ -363,7 +389,10 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
     mDeadReckoning.setSpeed(speedFresh ? mSpeedKmh / 3.6 * mSpeedScale.get() : 0);
     // A standing car can't turn, so the remaining gyroscope drift doesn't rotate the heading at stops.
     if (mBias != null && mUp != null && speedFresh && mDeadReckoning.getSpeed() > MOVING_SPEED_MPS)
+    {
       mDeadReckoning.rotate(GyroCalibrator.yawRateDeg(gyro, mBias, mUp) * dt);
+      mTrackedDistanceM += mDeadReckoning.getSpeed() * dt;
+    }
     if (speedFresh)
     {
       mDeadReckoning.advance(dt);
