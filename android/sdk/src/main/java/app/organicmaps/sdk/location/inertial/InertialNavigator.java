@@ -79,6 +79,7 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
   private final RoadSnapper mRoadSnapper;
   private long mLastSnapMs;
   private boolean mOnRoad;
+  private double mLastSnapShiftM = Double.NaN;
   @Nullable
   private Elm327Client mElm327;
   @NonNull
@@ -394,11 +395,13 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
     if (snapped == null)
     {
       mOnRoad = false;
+      mLastSnapShiftM = Double.NaN;
       return;
     }
     // Roads are searched in a square, its corners are farther than the radius.
     final float[] shift = new float[1];
     Location.distanceBetween(lat, lon, snapped[0], snapped[1], shift);
+    mLastSnapShiftM = shift[0];
     mOnRoad = shift[0] <= radius && mDeadReckoning.snapToRoad(snapped[0], snapped[1], snapped[2]);
   }
 
@@ -408,6 +411,14 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
   public boolean isOnRoad()
   {
     return mOnRoad;
+  }
+
+  /**
+   * @return how far the closest road was from the calculated position, NaN if there was no road.
+   */
+  public double getLastSnapShiftM()
+  {
+    return mLastSnapShiftM;
   }
 
   private void updateCalibration(@NonNull float[] gyro)

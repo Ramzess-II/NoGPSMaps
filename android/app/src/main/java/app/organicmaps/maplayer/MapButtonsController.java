@@ -20,7 +20,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.OptIn;
 import androidx.core.content.ContextCompat;
-import androidx.core.widget.ImageViewCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
@@ -312,17 +311,11 @@ public class MapButtonsController extends Fragment
       UiUtils.showIf(locationHelper.isManualMode() || locationHelper.isInertialNavigationEnabled(),
                      mShiftPositionContainer);
 
+    // The icon tells where the position comes from now: from satellites or from the user.
     if (mManualPositionButton != null)
     {
-      // Blue in the manual mode, orange hints that GPS is spoofed and the manual mode may be needed.
-      final int tint;
-      if (locationHelper.isManualMode())
-        tint = ContextCompat.getColor(context, R.color.base_accent);
-      else if (locationHelper.isGpsSpoofed())
-        tint = ContextCompat.getColor(context, R.color.nogps_spoofed);
-      else
-        tint = ThemeUtils.getColor(context, R.attr.iconTint);
-      ImageViewCompat.setImageTintList(mManualPositionButton, ColorStateList.valueOf(tint));
+      mManualPositionButton.setImageResource(locationHelper.isManualMode() ? R.drawable.ic_manual_position
+                                                                          : R.drawable.ic_gps_position);
     }
   }
 

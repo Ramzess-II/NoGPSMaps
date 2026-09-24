@@ -30,6 +30,7 @@ import app.organicmaps.sdk.routing.RoutingController;
 import app.organicmaps.sdk.util.Config;
 import app.organicmaps.sdk.util.NetworkPolicy;
 import app.organicmaps.sdk.util.log.Logger;
+import java.util.Locale;
 import org.chromium.base.ObserverList;
 
 public class LocationHelper implements BaseLocationProvider.Listener
@@ -75,6 +76,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
   private static final long INERTIAL_ACTIVE_MS = 1000;
   // Old positions (e.g. the last known one after a provider restart) tell nothing about the car now.
   private static final long GPS_MAX_AGE_MS = 5000;
+  // The state is written to the log every second, so a drive can be analysed afterwards.
+  private static final long TRIP_LOG_INTERVAL_MS = 1000;
 
   public enum PositionSource
   {
@@ -127,6 +130,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
   @Nullable
   private Location mManualLocation;
   private final Runnable mManualRepeatRunnable = this::applyManualLocation;
+  private final Runnable mTripLogRunnable = this::logTrip;
   // Elapsed realtime of the last position set by the user.
   private long mManualSetTimeMs;
   // After the manual mode the next real position must replace the manual one, even if it is less accurate.
@@ -642,6 +646,60 @@ public class LocationHelper implements BaseLocationProvider.Listener
     notifyLocationUpdated();
   }
 
+  /**
+   * Writes the whole state of the navigation to the log once a second. Turn the logging on in the
+   * settings to keep it in a file and analyse a drive afterwards.
+   */
+  private void logTrip()
+  {
+    mHandler.removeCallbacks(mTripLogRunnable);
+    if (!isActive())
+      return;
+
+    final StringBuilder line = new StringBuilder("TRIP src=").append(getPositionSource());
+    if (mSavedLocation != null)
+    {
+      line.append(String.format(Locale.US, " pos=%.6f,%.6f acc=%.0f", mSavedLocation.getLatitude(),
+                                mSavedLocation.getLongitude(), mSavedLocation.getAccuracy()));
+      if (mSavedLocation.hasBearing())
+        line.append(" bear=").append(Math.round(mSavedLocation.getBearing()));
+      line.append(" age=").append(ageSec(mSavedLocation.getElapsedRealtimeNanos() / 1_000_000));
+    }
+    line.append(" gpsAge=").append(mLastTrustedGpsMs == 0 ? "-" : ageSec(mLastTrustedGpsMs));
+    line.append(" spoofed=").append(mSpoofingDetector.isSpoofed() ? 1 : 0);
+    line.append(" nav=").append(RoutingController.get().isNavigating() ? 1 : 0);
+    if (mNetworkLocation != null)
+    {
+      line.append(String.format(Locale.US, " net=%.5f,%.5f acc=%.0f age=%s", mNetworkLocation.getLatitude(),
+                                mNetworkLocation.getLongitude(), mNetworkLocation.getAccuracy(),
+                                ageSec(mNetworkLocation.getElapsedRealtimeNanos() / 1_000_000)));
+    }
+    if (mManualLocation != null)
+      line.append(" markAge=").append(ageSec(mManualSetTimeMs));
+    if (mInertial != null && isInertialNavigationEnabled())
+    {
+      line.append(" obd=").append(mInertial.getElm327State()).append(" speed=").append(mInertial.getSpeedKmh());
+      line.append(String.format(Locale.US, " scale=%.3f", mInertial.getSpeedScale()));
+      line.append(" gyro=").append(mInertial.getCalibrationState());
+      final double heading = mInertial.getHeading();
+      line.append(" hdg=").append(Double.isNaN(heading) ? "-" : Math.round(heading));
+      line.append('/').append(mInertial.getHeadingSource());
+      line.append(" road=").append(mInertial.isOnRoad() ? 1 : 0);
+      line.append(String.format(Locale.US, " snap=%.1f", mInertial.getLastSnapShiftM()));
+      line.append(String.format(Locale.US, " fix=%.0f ready=%d", mInertial.getDistanceSinceFix(),
+                                mInertial.isReady() ? 1 : 0));
+    }
+    Logger.i(TAG, line.toString());
+
+    mHandler.postDelayed(mTripLogRunnable, TRIP_LOG_INTERVAL_MS);
+  }
+
+  @NonNull
+  private static String ageSec(long elapsedRealtimeMs)
+  {
+    return String.format(Locale.US, "%.1f", (SystemClock.elapsedRealtime() - elapsedRealtimeMs) / 1000.0);
+  }
+
   private void startInertialNavigation()
   {
     if (!isInertialNavigationEnabled())
@@ -1047,6 +1105,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
     subscribeToGnssStatusUpdates();
     startNetworkUpdates();
     startInertialNavigation();
+    mHandler.post(mTripLogRunnable);
     if (mManualLocation != null)
       mHandler.post(mManualRepeatRunnable);
   }
@@ -1071,6 +1130,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
     mSensorHelper.stop();
     mHandler.removeCallbacks(mLocationTimeoutRunnable);
     mHandler.removeCallbacks(mManualRepeatRunnable);
+    mHandler.removeCallbacks(mTripLogRunnable);
     mActive = false;
   }
 
