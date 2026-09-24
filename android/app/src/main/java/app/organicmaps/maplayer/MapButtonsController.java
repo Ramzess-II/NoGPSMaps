@@ -6,10 +6,14 @@ import android.content.Context;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.graphics.drawable.Drawable;
+import android.location.Location;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.SpannableString;
+import android.text.Spanned;
 import android.text.TextUtils;
+import android.text.style.RelativeSizeSpan;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -308,7 +312,17 @@ public class MapButtonsController extends Fragment
         color = R.color.nogps_status_none;
       }
       }
-      mPositionStatus.setText(text);
+      // The position is not taken from GPS or towers now, but the user has to see whether they work: in the
+      // manual mode GPS is not used even when it is back.
+      if (locationHelper.isManualMode() || source == LocationHelper.PositionSource.INERTIAL)
+      {
+        final SpannableString status = new SpannableString(text + "\n" + getOtherSourcesStatus(locationHelper));
+        status.setSpan(new RelativeSizeSpan(0.8f), text.length() + 1, status.length(),
+                       Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        mPositionStatus.setText(status);
+      }
+      else
+        mPositionStatus.setText(text);
       mPositionStatus.setBackgroundTintList(ColorStateList.valueOf(ContextCompat.getColor(context, color)));
     }
 
@@ -338,6 +352,21 @@ public class MapButtonsController extends Fragment
       return;
     button.setEnabled(enabled);
     button.setAlpha(enabled ? 1f : 0.4f);
+  }
+
+  @NonNull
+  private String getOtherSourcesStatus(@NonNull LocationHelper locationHelper)
+  {
+    final Location gps = locationHelper.getWorkingGps();
+    if (gps != null)
+      return getString(R.string.nogps_status_gps_back, formatAccuracy(gps.getAccuracy()));
+
+    final String gpsStatus =
+        getString(locationHelper.isGpsSpoofed() ? R.string.nogps_status_gps_spoofed : R.string.nogps_status_no_gps);
+    final Location network = locationHelper.getWorkingNetwork();
+    if (network == null)
+      return gpsStatus;
+    return gpsStatus + " · " + getString(R.string.nogps_status_towers, formatAccuracy(network.getAccuracy()));
   }
 
   private static int nextShiftStep()

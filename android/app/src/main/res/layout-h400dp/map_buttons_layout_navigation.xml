@@ -59,7 +59,7 @@
   <include
     layout="@layout/map_status_position"
     android:layout_width="wrap_content"
-    android:layout_height="36dp"
+    android:layout_height="wrap_content"
     android:layout_marginTop="@dimen/nav_frame_padding"
     android:layout_marginEnd="@dimen/nav_frame_padding"
     app:layout_constraintEnd_toStartOf="@+id/track_recording_status"

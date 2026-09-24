@@ -57,4 +57,8 @@
   <string name="nogps_heading_road">from the road</string>
   <string name="nogps_sensors_scale">Speed correction: %1$s</string>
   <string name="nogps_shift_at_turn">The position is at a crossing, it can not be moved further</string>
+  <string name="nogps_status_gps_back">GPS is back ±%s</string>
+  <string name="nogps_status_gps_spoofed">GPS spoofed</string>
+  <string name="nogps_status_no_gps">No GPS</string>
+  <string name="nogps_status_towers">towers ±%s</string>
 </resources>

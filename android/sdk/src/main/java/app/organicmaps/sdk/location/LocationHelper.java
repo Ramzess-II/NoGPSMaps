@@ -88,6 +88,10 @@ public class LocationHelper implements BaseLocationProvider.Listener
   private static final long GPS_MAX_AGE_MS = 5000;
   // The state is written to the log every second, so a drive can be analysed afterwards.
   private static final long TRIP_LOG_INTERVAL_MS = 1000;
+  // GPS gives a position every second, a longer pause means it is lost.
+  private static final long GPS_STATUS_MAX_AGE_MS = 10_000;
+  // Cell tower positions come once in several seconds.
+  private static final long NETWORK_STATUS_MAX_AGE_MS = 60_000;
 
   public enum PositionSource
   {
@@ -143,6 +147,11 @@ public class LocationHelper implements BaseLocationProvider.Listener
   private final Runnable mTripLogRunnable = this::logTrip;
   // Elapsed realtime of the last position set by the user.
   private long mManualSetTimeMs;
+  // The last GPS position good enough to be used. It is kept in the manual mode too, where GPS is not used,
+  // to tell the user that GPS works again.
+  @Nullable
+  private Location mLastGoodGps;
+
   // The last mark tapped by the user and its elapsed realtime: unlike the manual position, it is not moved
   // by the plus and minus buttons, two marks one after another tell where the car goes.
   @Nullable
@@ -340,8 +349,11 @@ public class LocationHelper implements BaseLocationProvider.Listener
     }
 
     final long ageMs = SystemClock.elapsedRealtime() - location.getElapsedRealtimeNanos() / 1_000_000;
-    if (!mManualMode && sourceOf(location) == PositionSource.GPS && ageMs <= GPS_MAX_AGE_MS
-        && LocationUtils.isAccuracySatisfied(location))
+    final boolean goodGps = sourceOf(location) == PositionSource.GPS && ageMs <= GPS_MAX_AGE_MS
+                         && LocationUtils.isAccuracySatisfied(location);
+    if (goodGps)
+      mLastGoodGps = location;
+    if (!mManualMode && goodGps)
     {
       mLastTrustedGpsMs = SystemClock.elapsedRealtime();
       if (mInertial != null)
@@ -470,6 +482,33 @@ public class LocationHelper implements BaseLocationProvider.Listener
     mLocationProvider = new AndroidNativeProvider(mContext, this);
     mActive = true;
     mLocationProvider.start(mInterval);
+  }
+
+  /**
+   * @return the last GPS position if GPS works now, also in the manual mode where it is not used, or null.
+   */
+  @Nullable
+  public Location getWorkingGps()
+  {
+    if (mLastGoodGps == null || mSpoofingDetector.isSpoofed())
+      return null;
+    return ageMs(mLastGoodGps) <= GPS_STATUS_MAX_AGE_MS ? mLastGoodGps : null;
+  }
+
+  /**
+   * @return the last cell tower position if it is recent, or null.
+   */
+  @Nullable
+  public Location getWorkingNetwork()
+  {
+    if (mNetworkLocation == null)
+      return null;
+    return ageMs(mNetworkLocation) <= NETWORK_STATUS_MAX_AGE_MS ? mNetworkLocation : null;
+  }
+
+  private static long ageMs(@NonNull Location location)
+  {
+    return SystemClock.elapsedRealtime() - location.getElapsedRealtimeNanos() / 1_000_000;
   }
 
   /**

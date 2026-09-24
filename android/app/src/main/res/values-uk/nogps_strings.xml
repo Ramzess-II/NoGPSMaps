@@ -56,4 +56,8 @@
   <string name="nogps_heading_road">по дорозі</string>
   <string name="nogps_sensors_scale">Поправка швидкості: %1$s</string>
   <string name="nogps_shift_at_turn">Позиція біля перехрестя, далі переносити не можна</string>
+  <string name="nogps_status_gps_back">GPS знову є ±%s</string>
+  <string name="nogps_status_gps_spoofed">GPS підмінено</string>
+  <string name="nogps_status_no_gps">Немає GPS</string>
+  <string name="nogps_status_towers">вежі ±%s</string>
 </resources>
