@@ -312,10 +312,13 @@ public class MapButtonsController extends Fragment
       mPositionStatus.setBackgroundTintList(ColorStateList.valueOf(ContextCompat.getColor(context, color)));
     }
 
-    // The position is corrected by hand only when it is not taken from GPS.
+    // The position is moved by hand only when it does not come from GPS: a GPS one is moved by the car.
     if (mShiftPositionContainer != null)
-      UiUtils.showIf(locationHelper.isManualMode() || locationHelper.isInertialNavigationEnabled(),
+    {
+      UiUtils.showIf(locationHelper.isManualMode() || source == LocationHelper.PositionSource.INERTIAL
+                         || source == LocationHelper.PositionSource.MANUAL,
                      mShiftPositionContainer);
+    }
 
     // The position waits at a turn until the car leaves it, otherwise it would go to another street.
     setShiftEnabled(mShiftPositionForward, !locationHelper.isShiftBlocked(true));
