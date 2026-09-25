@@ -182,7 +182,10 @@ public class MapButtonsController extends Fragment
           view -> mMapButtonClickListener.onMapButtonClick(MapButtons.toggleMapLayer));
       mToggleMapLayerButton.setVisibility(View.VISIBLE);
     }
-    mMapButtonsViewModel.setTopButtonsMarginTop(-1);
+    // The navigation panel keeps its margin: it is set on a position update only, and the buttons are recreated
+    // when the navigation starts, maybe without a position.
+    if (mMapButtonsViewModel.getLayoutMode().getValue() != LayoutMode.navigation)
+      mMapButtonsViewModel.setTopButtonsMarginTop(-1);
     mTrackRecordingStatusButton = mFrame.findViewById(R.id.track_recording_status);
     if (mTrackRecordingStatusButton != null)
       mTrackRecordingStatusButton.setOnClickListener(
