@@ -80,6 +80,14 @@ public:
   /// Collects the points in |rect| where roads cross or branch, i.e. where a car can turn.
   virtual void FindRoadCrossings(m2::RectD const & /* rect */, std::vector<m2::PointD> & /* crossings */) {}
 
+  /// Finds the closest point of a road within |radiusM| of |point|, preferring a main road to a driveway or
+  /// a yard road branching off it nearly as close. |angleRad| is the direction of the road there.
+  virtual bool FindMainRoad(m2::PointD const & /* point */, double /* radiusM */, m2::PointD & /* projected */,
+                            double & /* angleRad */)
+  {
+    return false;
+  }
+
   /// Swap the saved last-route state with the alternative's saved state. Called when the user
   /// picks an alternative variant so subsequent adjustments and full rebuilds (off-route rebuilds)
   /// keep the selected variant rather than the original primary. Default: no-op.

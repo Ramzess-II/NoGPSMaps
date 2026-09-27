@@ -324,7 +324,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
         mSavedLocation.getAccuracy(), altitude != null ? altitude.altitude() : 0,
         altitude != null ? altitude.accuracy() : -1, mSavedLocation.hasSpeed() ? mSavedLocation.getSpeed() : -1,
         mSavedLocation.hasBearing() ? mSavedLocation.getBearing() : -1);
-    showInertialHeading();
+    showCarHeading();
   }
 
   private void notifyLocationUpdateTimeout()
@@ -893,41 +893,23 @@ public class LocationHelper implements BaseLocationProvider.Listener
   }
 
   /**
-   * @return true if the position arrow must show the inertial heading instead of the compass: the compass is
-   * unreliable in a car, and the user sets the car direction by the arrow.
+   * @return true if the position arrow must show the car direction instead of the compass: without GPS the
+   * car looks along its road, and the compass of a phone in a car or in hands looks anywhere.
    */
-  public boolean isInertialHeadingShown()
+  public boolean isCarHeadingShown()
   {
-    if (mInertial == null || !isInertialNavigationEnabled() || Double.isNaN(mInertial.getHeading()))
+    if (Double.isNaN(getCarBearing()))
       return false;
-    return mManualMode || SystemClock.elapsedRealtime() - mLastTrustedGpsMs >= GPS_FRESH_MS;
+    if (mManualMode)
+      return true;
+    return mInertial != null && isInertialNavigationEnabled()
+        && SystemClock.elapsedRealtime() - mLastTrustedGpsMs >= GPS_FRESH_MS;
   }
 
-  private void showInertialHeading()
+  private void showCarHeading()
   {
-    if (isInertialHeadingShown() && Map.isEngineCreated())
-      Map.onCompassUpdated(Math.toRadians(mInertial.getHeading()), true /* forceRedraw */);
-  }
-
-  /**
-   * Sends the car direction to the map together with the position: in the navigation mode the map takes the
-   * direction of the arrow from the position only, the compass is ignored there.
-   */
-  private void applyInertialHeadingToPosition()
-  {
-    if (mSavedLocation == null || !isInertialHeadingShown())
-      return;
-
-    final float heading = (float) mInertial.getHeading();
-    if (mManualLocation != null)
-      mManualLocation.setBearing(heading);
-    final Location location = new Location(mSavedLocation);
-    location.setBearing(heading);
-    location.setTime(System.currentTimeMillis());
-    location.setElapsedRealtimeNanos(SystemClock.elapsedRealtimeNanos());
-    mSavedLocation = location;
-    mMyPosition = null;
-    notifyLocationUpdated();
+    if (isCarHeadingShown() && Map.isEngineCreated())
+      Map.onCompassUpdated(Math.toRadians(getCarBearing()), true /* forceRedraw */);
   }
 
   /**
@@ -1186,8 +1168,11 @@ public class LocationHelper implements BaseLocationProvider.Listener
   }
 
   /**
-   * Moves a position to the axis of the closest road, preferring the one going in the direction of the
-   * movement.
+   * Moves a position to the axis of the closest road, a main one rather than a driveway branching off it
+   * nearly as close, and looks along it the way closest to the direction of the movement.
+   * @param bearingDeg the direction of the movement, NaN if it is unknown. It only tells which way the car
+   * looks: for a mark it is the direction before the mark, and preferring a road going that way would take a
+   * driveway or a crossing street next to the tapped one.
    * @param turnedFrom where the car was before, if it may have turned to another road since, e.g. a new
    * mark. Null if it goes on along the same road.
    * @return {latitude, longitude, road bearing the car looks at}, or null if there is no road within the
@@ -1197,8 +1182,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
   private static double[] snapToRoad(double lat, double lon, double bearingDeg, double radiusM,
                                      @Nullable Location turnedFrom)
   {
-    final double[] road =
-        LocationState.nativeSnapToRoad(lat, lon, toNativeBearing(bearingDeg), radiusM, false /* matchRoute */);
+    final double[] road = LocationState.nativeSnapToMainRoad(lat, lon, radiusM);
     if (road == null)
       return null;
 

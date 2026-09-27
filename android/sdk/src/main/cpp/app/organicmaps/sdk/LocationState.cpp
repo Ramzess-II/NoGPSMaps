@@ -154,6 +154,24 @@ JNIEXPORT jdoubleArray Java_app_organicmaps_sdk_location_LocationState_nativePro
   return result;
 }
 
+// public static native double[] nativeSnapToMainRoad(double lat, double lon, double radius);
+JNIEXPORT jdoubleArray Java_app_organicmaps_sdk_location_LocationState_nativeSnapToMainRoad(JNIEnv * env, jclass clazz,
+                                                                                            jdouble lat, jdouble lon,
+                                                                                            jdouble radius)
+{
+  ms::LatLon snapped;
+  double bearing;
+  if (!g_framework->NativeFramework()->GetRoutingManager().SnapToMainRoad(ms::LatLon(lat, lon), radius, snapped,
+                                                                          bearing))
+  {
+    return nullptr;
+  }
+  jdouble const values[] = {snapped.m_lat, snapped.m_lon, bearing};
+  jdoubleArray result = env->NewDoubleArray(3);
+  env->SetDoubleArrayRegion(result, 0, 3, values);
+  return result;
+}
+
 // public static native double[] nativeFindRoadCrossings(double lat, double lon, double radius);
 JNIEXPORT jdoubleArray Java_app_organicmaps_sdk_location_LocationState_nativeFindRoadCrossings(JNIEnv * env,
                                                                                                jclass clazz,

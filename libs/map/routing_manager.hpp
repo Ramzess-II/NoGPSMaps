@@ -262,6 +262,9 @@ public:
   bool ProjectToRoute(ms::LatLon const & latLon, double radiusM, ms::LatLon & projected, double & bearingDeg);
   // Returns true if the car is on the route but goes the other way, i.e. it has turned around.
   bool IsAgainstRoute(location::GpsInfo const & info);
+  // Snaps a position set by the user to the closest road within |radiusM|, preferring a main road to a
+  // driveway branching off it nearly as close. Returns false if there is no road.
+  bool SnapToMainRoad(ms::LatLon const & latLon, double radiusM, ms::LatLon & snapped, double & bearingDeg);
   // Returns the points where three or more roads meet within |radiusM| of |center|.
   std::vector<ms::LatLon> FindRoadCrossings(ms::LatLon const & center, double radiusM) const;
   void CallRouteBuilded(routing::RouterResultCode code, storage::CountriesSet const & absentCountries);

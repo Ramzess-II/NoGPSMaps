@@ -82,6 +82,14 @@ public final class LocationState
   static native double[] nativeProjectToRoute(double lat, double lon, double radius);
 
   /**
+   * Snaps a position set by the user to the closest road, preferring a main road to a driveway branching
+   * off it nearly as close.
+   * @return {latitude, longitude, road bearing}, or null if there is no road within the radius.
+   */
+  @Nullable
+  static native double[] nativeSnapToMainRoad(double lat, double lon, double radius);
+
+  /**
    * @return {latitude, longitude} pairs of the points where three or more roads meet within the radius.
    */
   @NonNull

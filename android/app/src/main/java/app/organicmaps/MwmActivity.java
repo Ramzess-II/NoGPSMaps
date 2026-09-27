@@ -1249,8 +1249,8 @@ public class MwmActivity extends BaseMwmFragmentActivity
     mMapController.updateCompassOffset(offsetX, offsetY);
 
     final double north = MwmApplication.from(this).getSensorHelper().getSavedNorth();
-    // The inertial heading is shown instead of the compass.
-    if (!Double.isNaN(north) && !MwmApplication.from(this).getLocationHelper().isInertialHeadingShown())
+    // The car direction is shown instead of the compass.
+    if (!Double.isNaN(north) && !MwmApplication.from(this).getLocationHelper().isCarHeadingShown())
       Map.onCompassUpdated(north, true);
   }
 
@@ -1665,8 +1665,8 @@ public class MwmActivity extends BaseMwmFragmentActivity
   @UiThread
   public void onCompassUpdated(double north)
   {
-    // The inertial heading is shown instead.
-    if (MwmApplication.from(this).getLocationHelper().isInertialHeadingShown())
+    // The car direction is shown instead.
+    if (MwmApplication.from(this).getLocationHelper().isCarHeadingShown())
       return;
     Map.onCompassUpdated(north, false);
   }

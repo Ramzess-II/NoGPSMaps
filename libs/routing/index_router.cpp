@@ -32,10 +32,12 @@
 #include "indexer/feature.hpp"
 #include "indexer/feature_covering.hpp"
 #include "indexer/feature_data.hpp"
+#include "indexer/ftypes_matcher.hpp"
 #include "indexer/scales.hpp"
 
 #include "platform/settings.hpp"
 
+#include "geometry/angles.hpp"
 #include "geometry/distance_on_sphere.hpp"
 #include "geometry/mercator.hpp"
 #include "geometry/parametrized_segment.hpp"
@@ -452,6 +454,104 @@ void IndexRouter::FindRoadCrossings(m2::RectD const & rect, std::vector<m2::Poin
   for (auto const & [point, count] : waysOut)
     if (count >= 3 && rect.IsPointInside(point))
       crossings.push_back(point);
+}
+
+namespace
+{
+// Returns the point |distanceM| away from |point| on the segment |segIdx| along |junctions|, backwards if
+// |distanceM| is negative, or the end of the road if it is closer.
+m2::PointD MoveAlongRoad(IRoadGraph::PointWithAltitudeVec const & junctions, size_t segIdx, m2::PointD const & point,
+                         double distanceM)
+{
+  bool const forward = distanceM > 0.0;
+  double remainingM = std::fabs(distanceM);
+  m2::PointD current = point;
+  size_t next = forward ? segIdx + 1 : segIdx;
+  while (true)
+  {
+    m2::PointD const & target = junctions[next].GetPoint();
+    double const stepM = mercator::DistanceOnEarth(current, target);
+    if (stepM >= remainingM && stepM > 0.0)
+      return current + (target - current) * (remainingM / stepM);
+    remainingM -= stepM;
+    current = target;
+    if (forward ? next + 1 >= junctions.size() : next == 0)
+      return current;
+    next = forward ? next + 1 : next - 1;
+  }
+}
+}  // namespace
+
+bool IndexRouter::FindMainRoad(m2::PointD const & point, double radiusM, m2::PointD & projected, double & angleRad)
+{
+  // Roads this much farther than the closest one are the same place for a tap on the map: at a branch of a
+  // driveway the tap is on both of them.
+  double constexpr kSamePlaceM = 3.0;
+  // The direction of a road is taken this far both ways: the map has short jogs of a road, e.g. at a bus
+  // stop, going far aside from the road direction.
+  double constexpr kDirectionM = 15.0;
+
+  struct Candidate
+  {
+    size_t m_roadIdx;
+    size_t m_segIdx;
+    double m_distanceM;
+    m2::PointD m_point;
+  };
+  auto const rect = mercator::RectByCenterXYAndSizeInMeters(point, 2.0 * radiusM);
+  auto const roads = m_roadGraph.FindRoads(rect, nullptr /* isGoodFeature */);
+  std::vector<Candidate> candidates;
+  for (size_t roadIdx = 0; roadIdx < roads.size(); ++roadIdx)
+  {
+    auto const & junctions = roads[roadIdx].m_roadInfo.m_junctions;
+    for (size_t i = 0; i + 1 < junctions.size(); ++i)
+    {
+      auto const & start = junctions[i].GetPoint();
+      auto const & end = junctions[i + 1].GetPoint();
+      if (start == end)
+        continue;
+      auto const closest = m2::ParametrizedSegment<m2::PointD>(start, end).ClosestPointTo(point);
+      double const distanceM = mercator::DistanceOnEarth(point, closest);
+      if (distanceM <= radiusM)
+        candidates.push_back({roadIdx, i, distanceM, closest});
+    }
+  }
+  if (candidates.empty())
+    return false;
+
+  double const closestM =
+      std::min_element(candidates.cbegin(), candidates.cend(), [](Candidate const & a, Candidate const & b)
+  { return a.m_distanceM < b.m_distanceM; })->m_distanceM;
+
+  // A lower class is a more important road: a street rather than a driveway or a parking aisle.
+  auto const getClass = [this, &roads](size_t roadIdx)
+  {
+    feature::TypesHolder types;
+    m_roadGraph.GetFeatureTypes(roads[roadIdx].m_featureId, types);
+    auto const cls = ftypes::GetHighwayClass(types);
+    return cls == ftypes::HighwayClass::Undefined ? ftypes::HighwayClass::Count : cls;
+  };
+  Candidate const * best = nullptr;
+  auto bestClass = ftypes::HighwayClass::Count;
+  for (auto const & candidate : candidates)
+  {
+    if (candidate.m_distanceM > closestM + kSamePlaceM)
+      continue;
+    auto const cls = getClass(candidate.m_roadIdx);
+    if (best == nullptr || cls < bestClass || (cls == bestClass && candidate.m_distanceM < best->m_distanceM))
+    {
+      best = &candidate;
+      bestClass = cls;
+    }
+  }
+
+  auto const & junctions = roads[best->m_roadIdx].m_roadInfo.m_junctions;
+  m2::PointD const back = MoveAlongRoad(junctions, best->m_segIdx, best->m_point, -kDirectionM);
+  m2::PointD const ahead = MoveAlongRoad(junctions, best->m_segIdx, best->m_point, kDirectionM);
+  projected = best->m_point;
+  angleRad = back != ahead ? ang::AngleTo(back, ahead)
+                           : ang::AngleTo(junctions[best->m_segIdx].GetPoint(), junctions[best->m_segIdx + 1].GetPoint());
+  return true;
 }
 
 void IndexRouter::SetGuides(GuidesTracks && guides)

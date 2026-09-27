@@ -84,6 +84,11 @@ void AsyncRouter::FindRoadCrossings(m2::RectD const & rect, std::vector<m2::Poin
   m_router->FindRoadCrossings(rect, crossings);
 }
 
+bool AsyncRouter::FindMainRoad(m2::PointD const & point, double radiusM, m2::PointD & projected, double & angleRad)
+{
+  return m_router->FindMainRoad(point, radiusM, projected, angleRad);
+}
+
 void AsyncRouter::RouterDelegateProxy::OnProgress(float progress)
 {
   ProgressCallback onProgress = nullptr;
