@@ -995,7 +995,8 @@ bool RoutingManager::SwapToAlternativeUnderCar(location::GpsInfo const & info)
 bool RoutingManager::IsLeavingRoute(SessionState state) const
 {
   return state == SessionState::RouteNeedRebuild ||
-         (state == SessionState::OnRoute && m_routingSession.IsMovingAwayFromRoute());
+         ((state == SessionState::OnRoute || state == SessionState::RouteNotStarted) &&
+          m_routingSession.IsMovingAwayFromRoute());
 }
 
 bool RoutingManager::TryTapOnAlternativeRoute(m2::PointD const & mercator, double mercatorPerPixel)
@@ -1472,8 +1473,12 @@ void RoutingManager::RebuildRouteIfOffRoute(location::GpsInfo const & info)
   // The car is on an alternative route: it is followed instead of a rebuild.
   if ((IsLeavingRoute(state) || IsAgainstRoute(info)) && SwapToAlternativeUnderCar(info))
     state = m_routingSession.OnLocationPositionChanged(info);
-  if (state != SessionState::OnRoute && state != SessionState::RouteNeedRebuild)
+  // A route just built is not started until the car is matched to it: the car set off it is off the route.
+  if (state != SessionState::OnRoute && state != SessionState::RouteNotStarted &&
+      state != SessionState::RouteNeedRebuild)
+  {
     return;
+  }
 
   m2::PointD const position = mercator::FromLatLon(info.m_latitude, info.m_longitude);
   // How far the car is shown from the position on the route, for the log of a drive.
