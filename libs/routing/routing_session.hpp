@@ -159,6 +159,8 @@ public:
   /// Used when the user taps an alternative ETA balloon. Returns false if the index is out of range
   /// or already active. The follow state (m_route) is rebuilt from the newly-promoted RouteBase.
   bool SwapActiveAlternative(size_t idx);
+  // Returns true if the last positions were off the route, before it is rebuilt.
+  bool IsMovingAwayFromRoute() const { return m_moveAwayCounter > 0; }
 
   bool IsSpeedCamLimitExceeded() const { return m_speedCameraManager.IsSpeedLimitExceeded(); }
   SpeedCameraManager & GetSpeedCamManager() { return m_speedCameraManager; }

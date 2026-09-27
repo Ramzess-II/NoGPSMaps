@@ -67,7 +67,7 @@ public final class LocationState
 
   /**
    * Snaps a position to the closest road, preferring the one going in the bearing direction.
-   * @param bearing the direction of the movement, NaN if it is unknown.
+   * @param bearing the direction of the movement, negative if it is unknown.
    * @param matchRoute prefer the followed route to the roads around.
    * @return {latitude, longitude, road bearing}, or null if there is no route or road within the radius.
    */
@@ -89,7 +89,7 @@ public final class LocationState
 
   /**
    * Moves a position along the followed route, stopping at the closest turn or crossing in both directions.
-   * @param bearing where the car looks, NaN if it is unknown. Parts of the route going another way are
+   * @param bearing where the car looks, negative if it is unknown. Parts of the route going another way are
    * skipped: they are streets the car has already left or has not reached yet.
    * @param distance meters to move forward, negative to move back.
    * @return {latitude, longitude, route bearing, applied distance (negative when moved back), 1 if stopped

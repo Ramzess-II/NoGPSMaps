@@ -605,16 +605,6 @@ void RoutingManager::RemoveRoute(bool deactivateFollowing)
   }
 }
 
-void RoutingManager::ClearAlternativeRoutes()
-{
-  // Synchronously clear ETA balloons. RemoveRoute uses RunTask(Gui) which only fires after
-  // the current GUI flow returns, leaving stale marks briefly visible; we call the same path
-  // directly since RoutingManager is GUI-thread-only.
-  m_bmManager->GetEditSession().ClearGroup(UserMark::Type::ROUTE_ALT);
-
-  m_drapeEngine.SafeCall(&df::DrapeEngine::RemoveAlternativeSubroutes);
-}
-
 void RoutingManager::CollectRoadWarnings(std::vector<routing::RouteSegment> const & segments,
                                          m2::PointD const & startPt, double baseDistance,
                                          RoadWarningsCollection & roadWarnings)
@@ -789,22 +779,20 @@ bool RoutingManager::InsertRoute(RoutesResult const & result)
   if (isTransitRoute)
     transitRouteDisplay = makeTransitRouteDisplay();
 
-  // In follow (navigation) mode only the active route is drawn — alternatives and ETA balloons
-  // would clutter the moving map and the ETA is shown in the navigation UI instead.
+  // Alternatives are drawn in follow (navigation) mode too: the car may turn to one of them, and it is
+  // followed then without a rebuild. ETA balloons would clutter the moving map, the ETA is shown in the
+  // navigation UI instead.
   bool const isFollowing = m_routingSession.IsFollowing();
-  if (!isFollowing)
+  for (size_t i = 0; i < result.m_routes.size(); ++i)
   {
-    for (size_t i = 0; i < result.m_routes.size(); ++i)
-    {
-      if (i == result.m_activeIdx)
-        continue;
-      // A TransitRouteDisplay accumulates steps/distance across all subroutes fed to it, so an
-      // alternative route must use its own throwaway display: it draws just its (muted) polyline,
-      // without corrupting the active route's distance/steps or duplicating its stop marks (the
-      // alt's display is never asked for route info or marks).
-      auto const altDisplay = isTransitRoute ? makeTransitRouteDisplay() : transitRouteDisplay;
-      InsertSingleRoute(result.m_routes[i], false /* isActive */, 0.0 /* depthOffset */, altDisplay, roadWarnings);
-    }
+    if (i == result.m_activeIdx)
+      continue;
+    // A TransitRouteDisplay accumulates steps/distance across all subroutes fed to it, so an
+    // alternative route must use its own throwaway display: it draws just its (muted) polyline,
+    // without corrupting the active route's distance/steps or duplicating its stop marks (the
+    // alt's display is never asked for route info or marks).
+    auto const altDisplay = isTransitRoute ? makeTransitRouteDisplay() : transitRouteDisplay;
+    InsertSingleRoute(result.m_routes[i], false /* isActive */, 0.0 /* depthOffset */, altDisplay, roadWarnings);
   }
   // Lift the active route by 10 so it stays above alternative subroutes even when polylines overlap.
   // The offset must exceed the per-route subroute count (count is typically 1, so 10 is plenty).
@@ -934,7 +922,8 @@ void RoutingManager::FollowRoute()
   HideRoutePoint(RouteMarkType::Start);
   SetPointsFollowingMode(true /* enabled */);
 
-  ClearAlternativeRoutes();
+  // The alternatives stay on the map while navigating, only their ETA balloons are removed.
+  m_bmManager->GetEditSession().ClearGroup(UserMark::Type::ROUTE_ALT);
 
   CancelRecommendation(Recommendation::RebuildAfterPointsLoading);
 }
@@ -952,6 +941,61 @@ bool RoutingManager::SwapActiveAlternative(size_t idx)
   { hasWarnings = InsertRoute(result); });
   CallRouteBuilded(hasWarnings ? RouterResultCode::HasWarnings : RouterResultCode::NoError, storage::CountriesSet());
   return true;
+}
+
+namespace
+{
+// A negative bearing is unknown, NaN can't be used with -ffast-math.
+double constexpr kAnyBearing = -1.0;
+
+double FindRouteAnchor(std::vector<m2::PointD> const & points, m2::PointD const & point, double bearingDeg,
+                       size_t & anchorIdx, m2::PointD & anchor);
+}  // namespace
+
+bool RoutingManager::SwapToAlternativeUnderCar(location::GpsInfo const & info)
+{
+  // The car is on the road of an alternative, not on a road beside it.
+  double constexpr kOnAlternativeM = 20.0;
+  if (!m_routingSession.IsFollowing() || !m_routingSession.IsRouteValid())
+    return false;
+
+  m2::PointD const position = mercator::FromLatLon(info.m_latitude, info.m_longitude);
+  double const bearingDeg = info.HasBearing() ? info.m_bearing : kAnyBearing;
+  int targetIdx = -1;
+  double bestDistanceM = kOnAlternativeM;
+  m_routingSession.RouteCall([&](routing::RoutesResult const & result)
+  {
+    for (size_t i = 0; i < result.m_routes.size(); ++i)
+    {
+      if (i == result.m_activeIdx)
+        continue;
+      std::vector<m2::PointD> points;
+      result.m_routes[i].ForEachPoint([&points](geometry::PointWithAltitude const & p)
+      { points.push_back(p.GetPoint()); });
+      if (points.size() < 2)
+        continue;
+      size_t anchorIdx = 0;
+      m2::PointD anchor;
+      // Only a part going the way the car goes: the alternative may pass the car the other way.
+      double const distanceM = FindRouteAnchor(points, position, bearingDeg, anchorIdx, anchor);
+      if (distanceM < bestDistanceM)
+      {
+        bestDistanceM = distanceM;
+        targetIdx = static_cast<int>(i);
+      }
+    }
+  });
+  if (targetIdx < 0)
+    return false;
+
+  LOG(LINFO, ("The car is on the alternative route", targetIdx, "at", bestDistanceM, "m, following it"));
+  return SwapActiveAlternative(targetIdx);
+}
+
+bool RoutingManager::IsLeavingRoute(SessionState state) const
+{
+  return state == SessionState::RouteNeedRebuild ||
+         (state == SessionState::OnRoute && m_routingSession.IsMovingAwayFromRoute());
 }
 
 bool RoutingManager::TryTapOnAlternativeRoute(m2::PointD const & mercator, double mercatorPerPixel)
@@ -1389,7 +1433,10 @@ void RoutingManager::CheckLocationForRouting(location::GpsInfo const & info)
   if (!IsRoutingActive())
     return;
 
-  SessionState const state = m_routingSession.OnLocationPositionChanged(info);
+  SessionState state = m_routingSession.OnLocationPositionChanged(info);
+  // The car has left the route for an alternative: it is followed at once instead of a rebuild.
+  if (IsLeavingRoute(state) && SwapToAlternativeUnderCar(info))
+    state = m_routingSession.OnLocationPositionChanged(info);
   if (state == SessionState::RouteNeedRebuild)
   {
     m_routingSession.RebuildRoute(mercator::FromLatLon(info.m_latitude, info.m_longitude),
@@ -1421,7 +1468,10 @@ void RoutingManager::RebuildRouteIfOffRoute(location::GpsInfo const & info)
   }
 
   // Moves the route iterator to the closest point ahead, so the passed part of the route is cut off.
-  SessionState const state = m_routingSession.OnLocationPositionChanged(info);
+  SessionState state = m_routingSession.OnLocationPositionChanged(info);
+  // The car is on an alternative route: it is followed instead of a rebuild.
+  if ((IsLeavingRoute(state) || IsAgainstRoute(info)) && SwapToAlternativeUnderCar(info))
+    state = m_routingSession.OnLocationPositionChanged(info);
   if (state != SessionState::OnRoute && state != SessionState::RouteNeedRebuild)
     return;
 
@@ -1465,9 +1515,6 @@ bool IsOnCrossingRoad(m2::PointD const & point, routing::EdgeProj const & proj, 
   // Roads going the opposite ways are parallel too.
   return std::min(diffDeg, 180.0 - diffDeg) > kMaxParallelDeg;
 }
-
-double FindRouteAnchor(std::vector<m2::PointD> const & points, m2::PointD const & point, double bearingDeg,
-                       size_t & anchorIdx, m2::PointD & anchor);
 }  // namespace
 
 bool RoutingManager::SnapToRoad(ms::LatLon const & latLon, double bearingDeg, double radiusM, bool matchRoute,
@@ -1500,7 +1547,7 @@ bool RoutingManager::SnapToRoad(ms::LatLon const & latLon, double bearingDeg, do
   if (!m_routingSession.FindClosestProjectionToRoad(point, m2::PointD::Zero(), radiusM, proj))
     return false;
 
-  if (!std::isnan(bearingDeg))
+  if (bearingDeg >= 0.0)
   {
     double const angle = math::DegToRad(location::BearingToAngle(bearingDeg));
     routing::EdgeProj codirectional;
@@ -1531,14 +1578,14 @@ bool IsSamePoint(m2::PointD const & a, m2::PointD const & b)
 }
 
 // Returns the distance in meters from |point| to the closest part of the route going the |bearingDeg| way
-// (any way if it is NaN), |anchorIdx| is the index of its segment and |anchor| is the closest point on it.
+// (any way if it is negative), |anchorIdx| is the index of its segment and |anchor| is the closest point on it.
 double FindRouteAnchor(std::vector<m2::PointD> const & points, m2::PointD const & point, double bearingDeg,
                        size_t & anchorIdx, m2::PointD & anchor)
 {
   // A part of the route going another way is a street the car has already left or has not reached yet.
   double constexpr kMaxBearingDiffDeg = 60.0;
 
-  double const carAngle = std::isnan(bearingDeg) ? 0.0 : math::DegToRad(location::BearingToAngle(bearingDeg));
+  double const carAngle = bearingDeg < 0.0 ? 0.0 : math::DegToRad(location::BearingToAngle(bearingDeg));
   double distanceToRouteM = std::numeric_limits<double>::max();
   for (size_t i = 0; i + 1 < points.size(); ++i)
   {
@@ -1547,7 +1594,7 @@ double FindRouteAnchor(std::vector<m2::PointD> const & points, m2::PointD const 
 
     // The route passes the car several times, e.g. the street it has just turned from is still a part of
     // the route. Only a part going the way the car looks is the one the car drives along now.
-    if (!std::isnan(bearingDeg))
+    if (bearingDeg >= 0.0)
     {
       double const diffDeg = std::fabs(
           math::RadToDeg(ang::GetShortestDistance(ang::AngleTo(points[i], points[i + 1]), carAngle)));
@@ -1630,8 +1677,8 @@ bool RoutingManager::ShiftAlongRoute(ms::LatLon const & latLon, double bearingDe
   double distanceToRouteM = FindRouteAnchor(points, point, bearingDeg, anchorIdx, anchor);
   // No part of the route close by goes the way the car looks: the direction is a stale guess, e.g. from
   // old marks, and the car is on the route anyway, it drives the way the route goes.
-  if (distanceToRouteM > kMaxDistanceToRouteM && !std::isnan(bearingDeg))
-    distanceToRouteM = FindRouteAnchor(points, point, NAN, anchorIdx, anchor);
+  if (distanceToRouteM > kMaxDistanceToRouteM && bearingDeg >= 0.0)
+    distanceToRouteM = FindRouteAnchor(points, point, kAnyBearing, anchorIdx, anchor);
   if (distanceToRouteM > kMaxDistanceToRouteM)
   {
     LOG(LINFO, ("The position is", distanceToRouteM, "m from the route, not moving it along the route"));
@@ -1759,7 +1806,6 @@ bool RoutingManager::ProjectToRoute(ms::LatLon const & latLon, double radiusM, m
   auto const & points = route->GetPoly().GetPoints();
   size_t anchorIdx = 0;
   m2::PointD anchor;
-  double constexpr kAnyBearing = std::numeric_limits<double>::quiet_NaN();
   m2::PointD const point = mercator::FromLatLon(latLon);
   double const distanceToRouteM =
       points.size() < 2 ? radiusM + 1 : FindRouteAnchor(points, point, kAnyBearing, anchorIdx, anchor);

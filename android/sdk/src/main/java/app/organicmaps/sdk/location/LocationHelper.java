@@ -919,6 +919,15 @@ public class LocationHelper implements BaseLocationProvider.Listener
   }
 
   /**
+   * @return the bearing for the core, where an unknown one is negative: the core is built with fast math,
+   * which does not support NaN.
+   */
+  private static double toNativeBearing(double bearing)
+  {
+    return Double.isNaN(bearing) ? -1 : bearing;
+  }
+
+  /**
    * @param matchRoute prefer the followed route to the roads around, it is where the car really is.
    */
   @NonNull
@@ -929,7 +938,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
       @Override
       public double[] snap(double lat, double lon, double bearing, double radius)
       {
-        return LocationState.nativeSnapToRoad(lat, lon, bearing, radius, matchRoute);
+        return LocationState.nativeSnapToRoad(lat, lon, toNativeBearing(bearing), radius, matchRoute);
       }
 
       @NonNull
@@ -1089,7 +1098,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
   private static double[] snapToRoad(double lat, double lon, double bearingDeg, double radiusM,
                                      @Nullable Location turnedFrom)
   {
-    final double[] road = LocationState.nativeSnapToRoad(lat, lon, bearingDeg, radiusM, false /* matchRoute */);
+    final double[] road =
+        LocationState.nativeSnapToRoad(lat, lon, toNativeBearing(bearingDeg), radiusM, false /* matchRoute */);
     if (road == null)
       return null;
 
@@ -1135,7 +1145,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
     // the car several times, e.g. the street it has just turned from is still a part of the route.
     final double movementBearing = getCarBearing();
     double[] shifted =
-        LocationState.nativeShiftAlongRoute(from.getLatitude(), from.getLongitude(), movementBearing, distanceM);
+        LocationState.nativeShiftAlongRoute(from.getLatitude(), from.getLongitude(), toNativeBearing(movementBearing),
+                                            distanceM);
     if (shifted == null && !Double.isNaN(movementBearing))
       shifted = RoadWalker.walk(roads(false /* matchRoute */), from.getLatitude(), from.getLongitude(),
                                 movementBearing, distanceM);

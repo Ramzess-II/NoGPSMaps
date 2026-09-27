@@ -170,6 +170,12 @@ public:
   /// Returns false if the index is out of range or already active. Re-renders the drape so
   /// the newly-active variant is highlighted and the previously-active becomes the alternative.
   bool SwapActiveAlternative(size_t idx);
+  // Makes the alternative route the car is on the active one, e.g. the car has turned to it while
+  // navigating. Returns false if the car is not on any alternative.
+  bool SwapToAlternativeUnderCar(location::GpsInfo const & info);
+  // Returns true if the car has left the followed route or is leaving it now, by the |state| after the last
+  // position.
+  bool IsLeavingRoute(routing::SessionState state) const;
 
   /// \brief Hit-tests |mercator| against the alternative-route polylines. If one is closer than
   /// a tap-area threshold (kTapPixels * |mercatorPerPixel|), swaps it to active and returns true.
@@ -239,12 +245,12 @@ public:
   // The route goes the |info| bearing way if it is known.
   void RebuildRouteIfOffRoute(location::GpsInfo const & info);
   // Snaps a dead reckoning position (not from GPS) to the closest road within |radiusM|, preferring the
-  // one going in the |bearingDeg| direction (NaN if the direction is unknown). With |matchRoute| the
+  // one going in the |bearingDeg| direction (negative if the direction is unknown). With |matchRoute| the
   // followed route is preferred, it is where the car really is. Returns false if there is no road.
   bool SnapToRoad(ms::LatLon const & latLon, double bearingDeg, double radiusM, bool matchRoute, ms::LatLon & snapped,
                   double & snappedBearingDeg);
   // Moves |latLon| along the followed route by |distanceM| (negative moves back), e.g. when a dead
-  // reckoning position lags behind the car. |bearingDeg| is where the car looks, NaN if it is unknown.
+  // reckoning position lags behind the car. |bearingDeg| is where the car looks, negative if it is unknown.
   // The movement stops at the closest turn or crossing in both directions, so the position never jumps
   // to another street. |appliedM| is the distance the position was really moved by, negative when moved back.
   // |atCrossing| is true if the position has stopped at a turn or crossing. Returns false if there is no
@@ -352,7 +358,6 @@ private:
   // Synchronously remove the alternative-route subroutes from drape and clear the alt ETA
   // balloons. Used when entering navigation mode (FollowRoute) so the alts drawn at build
   // time disappear immediately. The active route is left untouched.
-  void ClearAlternativeRoutes();
 
   /// \returns false if the location could not be matched to the route and should be matched to the
   /// road graph. Otherwise returns true.
