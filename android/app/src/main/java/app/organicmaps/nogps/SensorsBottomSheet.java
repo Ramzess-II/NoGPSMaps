@@ -80,6 +80,9 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
 
     mSwitch.setChecked(getLocationHelper().isInertialNavigationEnabled());
     mSwitch.setOnCheckedChangeListener((v, isChecked) -> onSwitch(isChecked));
+    final SwitchCompat disableGps = view.findViewById(R.id.nogps_disable_gps_switch);
+    disableGps.setChecked(getLocationHelper().isGpsDisabled());
+    disableGps.setOnCheckedChangeListener((v, isChecked) -> getLocationHelper().setGpsDisabled(isChecked));
     view.findViewById(R.id.nogps_choose_adapter).setOnClickListener(v -> withBluetoothPermission(this::chooseAdapter));
     view.findViewById(R.id.nogps_calibrate).setOnClickListener(v -> {
       final InertialNavigator inertial = getLocationHelper().getInertialNavigator();

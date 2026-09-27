@@ -40,7 +40,7 @@
   <string name="nogps_missing_speed">немає швидкості</string>
   <string name="nogps_missing_gyro">обнуліть гіроскоп</string>
   <string name="nogps_missing_position">немає стартової точки</string>
-  <string name="nogps_missing_heading">задайте напрямок</string>
+  <string name="nogps_missing_heading">поставте мітку на дорогу</string>
   <string name="nogps_choose_adapter">Виберіть OBD-адаптер</string>
   <string name="nogps_no_paired">Немає спарених Bluetooth-пристроїв. Спарте ELM327 у налаштуваннях Bluetooth (PIN зазвичай 1234).</string>
   <string name="nogps_bt_permission_denied">Без доступу до Bluetooth адаптер не підключити</string>
@@ -60,4 +60,6 @@
   <string name="nogps_reverse_direction">Розвернути машину на дорозі</string>
   <string name="nogps_mark_no_road">Тут немає дороги, поставте мітку на дорогу</string>
   <string name="nogps_gps_lost_auto">GPS зник або збився, увімкнено ручний режим</string>
+  <string name="nogps_disable_gps">Вимкнути GPS</string>
+  <string name="nogps_disable_gps_hint">Для перевірки: застосунок не бачить GPS, як під час глушіння, решта геолокації працює. Вимикається під час перезапуску застосунку.</string>
 </resources>

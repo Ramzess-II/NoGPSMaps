@@ -1465,6 +1465,9 @@ bool IsOnCrossingRoad(m2::PointD const & point, routing::EdgeProj const & proj, 
   // Roads going the opposite ways are parallel too.
   return std::min(diffDeg, 180.0 - diffDeg) > kMaxParallelDeg;
 }
+
+double FindRouteAnchor(std::vector<m2::PointD> const & points, m2::PointD const & point, double bearingDeg,
+                       size_t & anchorIdx, m2::PointD & anchor);
 }  // namespace
 
 bool RoutingManager::SnapToRoad(ms::LatLon const & latLon, double bearingDeg, double radiusM, bool matchRoute,
@@ -1472,17 +1475,21 @@ bool RoutingManager::SnapToRoad(ms::LatLon const & latLon, double bearingDeg, do
 {
   if (matchRoute && IsRoutingActive() && m_routingSession.IsOnRoute())
   {
-    location::GpsInfo info;
-    info.m_latitude = latLon.m_lat;
-    info.m_longitude = latLon.m_lon;
-    info.m_bearing = bearingDeg;
-    location::RouteMatchingInfo routeMatchingInfo;
-    // The route iterator follows the regular location updates, so it is the closest point ahead on the route.
-    if (m_routingSession.MatchLocationToRoute(info, routeMatchingInfo))
+    // The position is projected to the route itself. The route iterator is where the previous position was
+    // matched, snapping to it would move the car back by the distance driven since on every snap.
+    Route const * route = m_routingSession.GetRoute();
+    if (route != nullptr && route->IsValid() && route->GetPoly().GetPoints().size() >= 2)
     {
-      snapped = ms::LatLon(info.m_latitude, info.m_longitude);
-      snappedBearingDeg = info.m_bearing;
-      return true;
+      auto const & points = route->GetPoly().GetPoints();
+      size_t anchorIdx = 0;
+      m2::PointD anchor;
+      if (FindRouteAnchor(points, mercator::FromLatLon(latLon), bearingDeg, anchorIdx, anchor) <= radiusM)
+      {
+        snapped = mercator::ToLatLon(anchor);
+        snappedBearingDeg =
+            location::AngleToBearing(math::RadToDeg(ang::AngleTo(points[anchorIdx], points[anchorIdx + 1])));
+        return true;
+      }
     }
   }
 

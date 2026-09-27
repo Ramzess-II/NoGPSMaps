@@ -158,6 +158,9 @@ public class LocationHelper implements BaseLocationProvider.Listener
 
   // In the manual mode GPS is ignored (it is jammed or spoofed) and the position is set by the user.
   private boolean mManualMode;
+  // GPS is ignored as if it were jammed, to test the navigation without GPS where GPS works. It is not
+  // kept after a restart, so it is not left on by mistake.
+  private boolean mGpsDisabled;
   @Nullable
   private Location mManualLocation;
   private final Runnable mManualRepeatRunnable = this::applyManualLocation;
@@ -336,8 +339,14 @@ public class LocationHelper implements BaseLocationProvider.Listener
       return;
     }
 
-    final boolean wasSpoofed = mSpoofingDetector.isSpoofed();
     final boolean isNetwork = LocationManager.NETWORK_PROVIDER.equals(location.getProvider());
+    if (mGpsDisabled && !isNetwork && sourceOf(location) == PositionSource.GPS)
+    {
+      Logger.d(TAG, "GPS is disabled, ignoring location = " + location);
+      return;
+    }
+
+    final boolean wasSpoofed = mSpoofingDetector.isSpoofed();
     final long timeMs = location.getElapsedRealtimeNanos() / 1_000_000;
     boolean trusted = true;
     if (isNetwork)
@@ -945,6 +954,22 @@ public class LocationHelper implements BaseLocationProvider.Listener
       rebuildRouteIfOffRoute(location);
     mLastPositionSource = PositionSource.INERTIAL;
     notifyLocationUpdated();
+  }
+
+  public boolean isGpsDisabled()
+  {
+    return mGpsDisabled;
+  }
+
+  /**
+   * Ignores GPS as if it were jammed, e.g. to test the navigation without GPS where GPS works.
+   */
+  @UiThread
+  public void setGpsDisabled(boolean disabled)
+  {
+    Logger.i(TAG, "disabled = " + disabled);
+    mGpsDisabled = disabled;
+    mLastGoodGps = null;
   }
 
   public boolean isManualMode()
