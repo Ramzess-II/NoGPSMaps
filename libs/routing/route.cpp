@@ -11,6 +11,7 @@
 #include "geometry/point2d.hpp"
 
 #include <algorithm>
+#include <optional>
 #include <set>
 #include <tuple>
 #include <utility>
@@ -598,12 +599,25 @@ void Route::GetCurrentDirectionPoint(m2::PointD & pt) const
   m_poly.GetCurrentDirectionPoint(pt, kOnEndToleranceM);
 }
 
+namespace
+{
+// Returns the direction the car goes in, if it is known well enough to tell the street the car is on.
+std::optional<double> GetCarDirectionRad(location::GpsInfo const & info)
+{
+  // The GPS bearing of a slow car is noise. Positions without a speed (set by the user) have an exact one.
+  double constexpr kMinSpeedMpS = 3.0;
+  if (!info.HasBearing() || (info.HasSpeed() && info.m_speed < kMinSpeedMpS))
+    return std::nullopt;
+  return math::DegToRad(location::BearingToAngle(info.m_bearing));
+}
+}  // namespace
+
 bool Route::MoveIterator(location::GpsInfo const & info)
 {
   m2::RectD const rect = mercator::MetersToXY(
       info.m_longitude, info.m_latitude, std::max(m_routingSettings.m_matchingThresholdM, info.m_horizontalAccuracy));
 
-  return m_poly.UpdateMatchingProjection(rect);
+  return m_poly.UpdateMatchingProjection(rect, GetCarDirectionRad(info));
 }
 
 double Route::GetPolySegAngle(size_t ind) const
@@ -638,6 +652,16 @@ bool Route::MatchLocationToRoute(location::GpsInfo & location, location::RouteMa
 
   auto const locationMerc = mercator::FromLatLon(location.m_latitude, location.m_longitude);
   auto const distFromRouteM = mercator::DistanceOnEarth(iter.m_pt, locationMerc);
+
+  // The car going another way has left the route, e.g. it has gone straight where the route turns. It is
+  // shown where it is and the way it goes, not turned to the route.
+  auto const carDirectionRad = GetCarDirectionRad(location);
+  double constexpr kMaxDirectionDiffRad = math::pi / 3.0;
+  if (carDirectionRad && std::fabs(ang::GetShortestDistance(
+                             *carDirectionRad, math::DegToRad(GetPolySegAngle(iter.m_ind)))) > kMaxDirectionDiffRad)
+  {
+    return false;
+  }
 
   if (distFromRouteM < m_routingSettings.m_matchingThresholdM)
   {

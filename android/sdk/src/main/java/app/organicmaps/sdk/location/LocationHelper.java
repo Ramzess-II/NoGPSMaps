@@ -94,6 +94,11 @@ public class LocationHelper implements BaseLocationProvider.Listener
   private static final double MAX_GPS_INERTIAL_DIFF_M = 30;
   // A less accurate GPS position is jammed, the inertial navigation is better.
   private static final float GPS_MAX_ACCURACY_M = 30;
+  // GPS farther from the roads than this plus its accuracy is led away by a spoofer, after several positions
+  // in a row: a single one can be noise.
+  private static final double MAX_GPS_OFF_ROAD_M = 20;
+  private static final int OFF_ROAD_GPS_COUNT = 3;
+  private static final float OFF_ROAD_MIN_SPEED_MPS = 5;
   // The inertial navigation is considered active while its positions are used this recently.
   private static final long INERTIAL_ACTIVE_MS = 1000;
   // Old positions (e.g. the last known one after a provider restart) tell nothing about the car now.
@@ -192,6 +197,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
   @Nullable
   private InertialNavigator mInertial;
   private long mLastTrustedGpsMs;
+  // GPS positions off the roads in a row.
+  private int mOffRoadGpsCount;
   // Elapsed realtime of the start of the location updates.
   private long mStartTimeMs;
   private long mLastInertialUsedMs;
@@ -391,6 +398,16 @@ public class LocationHelper implements BaseLocationProvider.Listener
       for (ManualModeListener listener : mManualModeListeners)
         listener.onGpsBack();
     }
+    if (!mManualMode && goodGps && isOffRoadWhileDriving(location))
+    {
+      // The last position on the road is kept, the inertial navigation continues from it.
+      if (++mOffRoadGpsCount >= OFF_ROAD_GPS_COUNT)
+        enterManualModeByItself("GPS has left the roads, location = " + location);
+      else
+        Logger.w(TAG, "GPS is off the roads, location = " + location);
+      return;
+    }
+    mOffRoadGpsCount = 0;
     if (!mManualMode && goodGps && contradictsInertial(location))
     {
       enterManualModeByItself("GPS contradicts the inertial position, location = " + location);
@@ -495,6 +512,27 @@ public class LocationHelper implements BaseLocationProvider.Listener
       return false;
     final Location inertial = mInertial.getLocation();
     return inertial != null && inertial.distanceTo(gps) > MAX_GPS_INERTIAL_DIFF_M + gps.getAccuracy();
+  }
+
+  /**
+   * @return true if GPS is away from the roads while the car drives: a car is always on a road, GPS is led
+   * away by a spoofer.
+   */
+  private boolean isOffRoadWhileDriving(@NonNull Location gps)
+  {
+    if (!RoutingController.get().isNavigating() && (mInertial == null || !mInertial.isReady()))
+      return false;
+    // A slow car may be in a yard or a parking lot that is not on the map.
+    if (!gps.hasSpeed() || gps.getSpeed() < OFF_ROAD_MIN_SPEED_MPS)
+      return false;
+    final double radius = MAX_GPS_OFF_ROAD_M + gps.getAccuracy();
+    final double[] road = LocationState.nativeSnapToRoad(gps.getLatitude(), gps.getLongitude(),
+                                                         gps.hasBearing() ? gps.getBearing() : -1, radius, false);
+    if (road == null)
+      return true;
+    final float[] distance = new float[1];
+    Location.distanceBetween(gps.getLatitude(), gps.getLongitude(), road[0], road[1], distance);
+    return distance[0] > radius;
   }
 
   /**
@@ -1030,6 +1068,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
     mManualLocation = null;
     mAcceptNextLocation = !enabled;
     mGpsReturnDetector.reset();
+    mOffRoadGpsCount = 0;
     mHandler.removeCallbacks(mManualRepeatRunnable);
 
     for (ManualModeListener listener : mManualModeListeners)
