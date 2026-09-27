@@ -20,7 +20,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.content.ContextCompat;
-import app.organicmaps.MwmActivity;
 import app.organicmaps.MwmApplication;
 import app.organicmaps.R;
 import app.organicmaps.sdk.location.LocationHelper;
@@ -64,7 +63,6 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
   private TextView mGyro;
   private TextView mHeading;
   private TextView mReadiness;
-  private View[] mRotateButtons;
 
   @Nullable
   @Override
@@ -87,23 +85,6 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
       final InertialNavigator inertial = getLocationHelper().getInertialNavigator();
       if (inertial != null)
         inertial.calibrate();
-    });
-    mRotateButtons = new View[] {view.findViewById(R.id.nogps_rotate_left_45),
-                                 view.findViewById(R.id.nogps_rotate_left_10),
-                                 view.findViewById(R.id.nogps_rotate_right_10),
-                                 view.findViewById(R.id.nogps_rotate_right_45)};
-    final int[] rotations = {-45, -10, 10, 45};
-    for (int i = 0; i < mRotateButtons.length; i++)
-    {
-      final int rotation = rotations[i];
-      mRotateButtons[i].setOnClickListener(v -> {
-        getLocationHelper().rotateHeading(rotation);
-        update();
-      });
-    }
-    view.findViewById(R.id.nogps_set_heading).setOnClickListener(v -> {
-      ((MwmActivity) requireActivity()).startHeadingSelection();
-      dismiss();
     });
     return view;
   }
@@ -255,17 +236,13 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     {
       case NONE -> R.string.nogps_heading_none;
       case GPS -> R.string.nogps_heading_gps;
-      case MANUAL_MARKS -> R.string.nogps_heading_marks;
       case ROAD -> R.string.nogps_heading_road;
-      case USER -> R.string.nogps_heading_user;
     };
     final double headingDeg = enabled ? inertial.getHeading() : Double.NaN;
     final String headingValue = Double.isNaN(headingDeg)
                                   ? getString(headingText)
                                   : Math.round(headingDeg) + "° · " + getString(headingText);
     mHeading.setText(getString(R.string.nogps_sensors_heading, headingValue));
-    for (View button : mRotateButtons)
-      button.setEnabled(!Double.isNaN(headingDeg));
 
     if (!enabled)
     {

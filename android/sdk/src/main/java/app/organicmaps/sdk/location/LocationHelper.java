@@ -25,6 +25,8 @@ import app.organicmaps.sdk.Map;
 import app.organicmaps.sdk.bookmarks.data.MapObject;
 import app.organicmaps.sdk.location.inertial.DeadReckoning;
 import app.organicmaps.sdk.location.inertial.InertialNavigator;
+import app.organicmaps.sdk.location.inertial.RoadWalker;
+import app.organicmaps.sdk.location.inertial.Roads;
 import app.organicmaps.sdk.routing.JunctionInfo;
 import app.organicmaps.sdk.routing.RoutingController;
 import app.organicmaps.sdk.util.Config;
@@ -52,10 +54,6 @@ public class LocationHelper implements BaseLocationProvider.Listener
   private static final long MANUAL_REPEAT_INTERVAL_MS = 5000;
   // Taps on the map are not precise, so the core matches a manual position to the route within this radius.
   private static final float MANUAL_ACCURACY_M = 50;
-  // Taps closer than this are too noisy to calculate a movement direction.
-  private static final float MANUAL_MIN_BEARING_DISTANCE_M = 30;
-  // Older marks tell nothing about the current direction of movement.
-  private static final long MANUAL_MAX_BEARING_AGE_MS = 3 * 60 * 1000;
   // The car stands on a road, not between houses, but a farther road is not the road the user means.
   private static final double MANUAL_SNAP_RADIUS_M = 30;
   // A road going another way is a crossing road: the car is on it, but it does not drive along it.
@@ -80,8 +78,17 @@ public class LocationHelper implements BaseLocationProvider.Listener
   // car on the route ahead of a farther one: it moves along the route forward only, and the car would be
   // shown ahead of the mark, e.g. after a mark behind the previous one. The route is rebuilt from it then.
   private static final float MANUAL_OFF_ROUTE_DISTANCE_M = 10;
-  // Trusted GPS positions are preferred over the inertial ones while they are this fresh.
-  private static final long GPS_FRESH_MS = 3000;
+  // Trusted GPS positions are preferred over the inertial ones while they are this fresh. GPS gives a
+  // position every second, so it is lost after a missed one.
+  private static final long GPS_FRESH_MS = 2000;
+  // Without the inertial navigation a longer pause of GPS is waited for while navigating: the manual mode
+  // needs a mark from the user.
+  private static final long GPS_LOST_MS = 5000;
+  // GPS farther than this from the inertial position following it is spoofed or broken: the inertial
+  // position is calculated for a second only since the previous GPS position.
+  private static final double MAX_GPS_INERTIAL_DIFF_M = 30;
+  // A less accurate GPS position is jammed, the inertial navigation is better.
+  private static final float GPS_MAX_ACCURACY_M = 30;
   // The inertial navigation is considered active while its positions are used this recently.
   private static final long INERTIAL_ACTIVE_MS = 1000;
   // Old positions (e.g. the last known one after a provider restart) tell nothing about the car now.
@@ -112,6 +119,11 @@ public class LocationHelper implements BaseLocationProvider.Listener
      * The manual mode has been left by itself: GPS is trusted again.
      */
     default void onGpsBack() {}
+
+    /**
+     * The manual mode has been turned on by itself: GPS is lost or wrong while driving.
+     */
+    default void onGpsLost() {}
   }
 
   public interface GpsSpoofingListener
@@ -157,11 +169,6 @@ public class LocationHelper implements BaseLocationProvider.Listener
   @Nullable
   private Location mLastGoodGps;
 
-  // The last mark tapped by the user and its elapsed realtime: unlike the manual position, it is not moved
-  // by the plus and minus buttons, two marks one after another tell where the car goes.
-  @Nullable
-  private Location mLastMark;
-  private long mLastMarkTimeMs;
   // After the manual mode the next real position must replace the manual one, even if it is less accurate.
   private boolean mAcceptNextLocation;
   // The source of the last position passed to the core, used to check the route when the source changes.
@@ -357,7 +364,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
 
     final long ageMs = SystemClock.elapsedRealtime() - location.getElapsedRealtimeNanos() / 1_000_000;
     final boolean goodGps = sourceOf(location) == PositionSource.GPS && ageMs <= GPS_MAX_AGE_MS
-                         && LocationUtils.isAccuracySatisfied(location);
+                         && LocationUtils.isAccuracySatisfied(location)
+                         && location.getAccuracy() <= GPS_MAX_ACCURACY_M;
     if (goodGps)
       mLastGoodGps = location;
     if (mManualMode && goodGps && isGpsBack(location))
@@ -367,11 +375,16 @@ public class LocationHelper implements BaseLocationProvider.Listener
       for (ManualModeListener listener : mManualModeListeners)
         listener.onGpsBack();
     }
+    if (!mManualMode && goodGps && contradictsInertial(location))
+    {
+      enterManualModeByItself("GPS contradicts the inertial position, location = " + location);
+      return;
+    }
     if (!mManualMode && goodGps)
     {
       mLastTrustedGpsMs = SystemClock.elapsedRealtime();
       if (mInertial != null)
-        mInertial.onReferencePosition(location, true /* isGps */);
+        mInertial.onGpsPosition(location);
     }
 
     if (mManualMode)
@@ -453,6 +466,57 @@ public class LocationHelper implements BaseLocationProvider.Listener
                                             gps.getElapsedRealtimeNanos() / 1_000_000,
                                             own != null ? own.getLatitude() : 0, own != null ? own.getLongitude() : 0,
                                             ownErrorM);
+  }
+
+  /**
+   * @return true if GPS jumps away from the inertial position that has followed it: a car can't do that,
+   * GPS is spoofed or broken. It is noticed at once, long before the spoofing detector notices it.
+   */
+  private boolean contradictsInertial(@NonNull Location gps)
+  {
+    if (mInertial == null || !mInertial.isReady()
+        || SystemClock.elapsedRealtime() - mLastTrustedGpsMs > GPS_FRESH_MS)
+      return false;
+    final Location inertial = mInertial.getLocation();
+    return inertial != null && inertial.distanceTo(gps) > MAX_GPS_INERTIAL_DIFF_M + gps.getAccuracy();
+  }
+
+  /**
+   * GPS is lost or wrong while driving: the manual mode is turned on at once, the car is followed by the
+   * inertial navigation and the marks of the user. It is left by itself when GPS is trusted again.
+   */
+  private void enterManualModeByItself(@NonNull String reason)
+  {
+    if (mManualMode)
+      return;
+    Logger.w(TAG, "Entering the manual mode: " + reason);
+    final Location last = mSavedLocation;
+    setManualMode(true);
+    // The car is where GPS has left it until the user or the inertial navigation moves it.
+    if (last != null && sourceOf(last) == PositionSource.GPS)
+    {
+      final Location location = new Location(last);
+      location.setProvider(MANUAL_PROVIDER);
+      location.setAccuracy(MANUAL_ACCURACY_M);
+      mManualLocation = location;
+      mManualSetTimeMs = SystemClock.elapsedRealtime();
+      applyManualLocation();
+    }
+    for (ManualModeListener listener : mManualModeListeners)
+      listener.onGpsLost();
+  }
+
+  /**
+   * Turns the manual mode on when GPS has been silent for long while navigating without the inertial
+   * navigation, which turns it on by itself.
+   */
+  private void checkGpsLost()
+  {
+    if (mManualMode || mLastTrustedGpsMs == 0 || mLastPositionSource != PositionSource.GPS
+        || !RoutingController.get().isNavigating())
+      return;
+    if (SystemClock.elapsedRealtime() - mLastTrustedGpsMs > GPS_LOST_MS)
+      enterManualModeByItself("GPS is lost while navigating");
   }
 
   @NonNull
@@ -608,6 +672,12 @@ public class LocationHelper implements BaseLocationProvider.Listener
     for (GpsSpoofingListener listener : mSpoofingListeners)
       listener.onGpsSpoofingChanged(spoofed);
 
+    if (spoofed && (RoutingController.get().isNavigating() || (mInertial != null && mInertial.isReady())))
+    {
+      enterManualModeByItself("GPS is spoofed");
+      return;
+    }
+
     // Replace the spoofed position with the network one right away instead of waiting for the next update.
     if (spoofed && !mManualMode && mNetworkLocation != null)
     {
@@ -681,39 +751,49 @@ public class LocationHelper implements BaseLocationProvider.Listener
   }
 
   /**
-   * Sets the direction the car looks at by a point on the map view in pixels.
+   * Turns the car around on its road: the car looks one of the two ways of the road, the user chooses the
+   * other one.
    */
   @UiThread
-  public void setHeadingFromScreen(float x, float y)
+  public void reverseDirection()
   {
-    if (mInertial == null)
-      return;
-    // The direction is set from the arrow the user sees.
     final Location from = mSavedLocation;
-    if (from == null)
+    final double bearing = getCarBearing();
+    if (from == null || Double.isNaN(bearing))
       return;
-    final double[] latLon = LocationState.nativeScreenToLatLon(x, y);
-    final Location to = new Location(MANUAL_PROVIDER);
-    to.setLatitude(latLon[0]);
-    to.setLongitude(latLon[1]);
-    mInertial.setPosition(from.getLatitude(), from.getLongitude());
-    mInertial.setHeading(from.bearingTo(to), InertialNavigator.HeadingSource.USER);
-    showInertialHeading();
-    applyInertialHeadingToPosition();
+
+    final float reversed = (float) DeadReckoning.normalize(bearing + 180);
+    Logger.i(TAG, "Reversed the car to " + Math.round(reversed));
+    if (mInertial != null)
+      mInertial.setHeading(reversed, InertialNavigator.HeadingSource.ROAD);
+    if (mManualLocation != null)
+      mManualLocation.setBearing(reversed);
+    // The crossings the position has stopped at are on the other side now.
+    final Location stopForward = mShiftStopForward;
+    mShiftStopForward = mShiftStopBack;
+    mShiftStopBack = stopForward;
+
+    final Location location = new Location(from);
+    location.setBearing(reversed);
+    location.setTime(System.currentTimeMillis());
+    location.setElapsedRealtimeNanos(SystemClock.elapsedRealtimeNanos());
+    mSavedLocation = location;
+    mMyPosition = null;
+    // The route goes the other way now.
+    rebuildRouteIfOffRoute(location);
+    notifyLocationUpdated();
   }
 
   /**
-   * Turns the car direction for the inertial navigation.
-   * @param deltaDeg clockwise rotation.
+   * @return where the car looks, NaN if it is unknown.
    */
-  @UiThread
-  public void rotateHeading(double deltaDeg)
+  private double getCarBearing()
   {
-    if (mInertial == null)
-      return;
-    mInertial.rotateHeading(deltaDeg);
-    showInertialHeading();
-    applyInertialHeadingToPosition();
+    if (mInertial != null && isInertialNavigationEnabled() && !Double.isNaN(mInertial.getHeading()))
+      return mInertial.getHeading();
+    if (mSavedLocation != null && mSavedLocation.hasBearing())
+      return mSavedLocation.getBearing();
+    return Double.NaN;
   }
 
   /**
@@ -764,6 +844,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
     if (!isActive())
       return;
 
+    checkGpsLost();
+
     final StringBuilder line = new StringBuilder("TRIP src=").append(getPositionSource());
     if (mSavedLocation != null)
     {
@@ -789,7 +871,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
       line.append(" obd=").append(mInertial.getElm327State()).append(" speed=").append(mInertial.getSpeedKmh());
       line.append(String.format(Locale.US, " scale=%.3f", mInertial.getSpeedScale()));
       line.append(" gyro=").append(mInertial.getCalibrationState());
-      line.append(String.format(Locale.US, " tracked=%.0f", mInertial.getTrackedDistanceM()));
+      line.append(String.format(Locale.US, " turn=%.0f", mInertial.getLastTurnShiftM()));
       final double heading = mInertial.getHeading();
       line.append(" hdg=").append(Double.isNaN(heading) ? "-" : Math.round(heading));
       line.append('/').append(mInertial.getHeadingSource());
@@ -814,11 +896,31 @@ public class LocationHelper implements BaseLocationProvider.Listener
     if (!isInertialNavigationEnabled())
       return;
     if (mInertial == null)
-      mInertial = new InertialNavigator(
-          mContext, this::onInertialLocation,
-          (lat, lon, bearing, radius)
-              -> LocationState.nativeSnapToRoad(lat, lon, bearing, radius, true /* matchRoute */));
+      mInertial = new InertialNavigator(mContext, this::onInertialLocation, roads(true /* matchRoute */));
     mInertial.start(Config.getElm327Address());
+  }
+
+  /**
+   * @param matchRoute prefer the followed route to the roads around, it is where the car really is.
+   */
+  @NonNull
+  private static Roads roads(boolean matchRoute)
+  {
+    return new Roads() {
+      @Nullable
+      @Override
+      public double[] snap(double lat, double lon, double bearing, double radius)
+      {
+        return LocationState.nativeSnapToRoad(lat, lon, bearing, radius, matchRoute);
+      }
+
+      @NonNull
+      @Override
+      public double[] findCrossings(double lat, double lon, double radius)
+      {
+        return LocationState.nativeFindRoadCrossings(lat, lon, radius);
+      }
+    };
   }
 
   private boolean isInertialActive()
@@ -834,6 +936,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
     if (!isActive())
       return;
 
+    // The car is not followed by GPS any more, the user sees it by the manual mode and can mark the car.
+    enterManualModeByItself("GPS is lost, the inertial navigation continues");
     mLastInertialUsedMs = SystemClock.elapsedRealtime();
     mSavedLocation = location;
     mMyPosition = null;
@@ -857,7 +961,6 @@ public class LocationHelper implements BaseLocationProvider.Listener
     Logger.i(TAG, "enabled = " + enabled);
     mManualMode = enabled;
     mManualLocation = null;
-    mLastMark = null;
     mAcceptNextLocation = !enabled;
     mGpsReturnDetector.reset();
     mHandler.removeCallbacks(mManualRepeatRunnable);
@@ -879,124 +982,65 @@ public class LocationHelper implements BaseLocationProvider.Listener
   }
 
   /**
-   * Sets the user position to the point on the map view. Works only in the manual mode.
+   * Sets the user position to the point on the map view in pixels. Works only in the manual mode.
    * @param x, y the point on the map view in pixels.
+   * @return false if there is no road at the point: the car is always on a road.
    */
   @UiThread
-  public void setManualLocationFromScreen(float x, float y)
+  public boolean setManualLocationFromScreen(float x, float y)
   {
     final double[] latLon = LocationState.nativeScreenToLatLon(x, y);
-    setManualLocation(latLon[0], latLon[1]);
+    if (!setManualLocation(latLon[0], latLon[1]))
+      return false;
     // The map moved away by the user comes back to the car by itself in a while, and the car seems to drive
     // along the road then. It comes back at once instead, the user has just shown where the car is.
     if (LocationState.getMode() == LocationState.NOT_FOLLOW)
       LocationState.nativeSwitchToNextMode();
+    return true;
   }
 
+  /**
+   * @return false if there is no road at the point: the car is always on a road.
+   */
   @UiThread
-  public void setManualLocation(double lat, double lon)
+  public boolean setManualLocation(double lat, double lon)
   {
     if (!mManualMode)
       throw new IllegalStateException("Manual mode is off");
 
-    // The car stands along a road, not between houses: the tap is moved to the axis of the closest road and
-    // the direction of the movement is taken from that road, the way the car goes. The gyroscope and the
-    // marks tell that way together. The gyroscope has followed every turn since the last mark if the car has
-    // driven with it, a turn around too, and a mark then only corrects the position and the road axis.
-    // Without it, two marks one after another tell the way, a mark behind the previous one means the car
-    // has turned around.
-    final double tapLat = lat;
-    final double tapLon = lon;
-    final double marksBearing = bearingFromLastMark(lat, lon);
-    final boolean gyroTracked = mInertial != null && isInertialNavigationEnabled() && mInertial.isHeadingTracked();
-    final double directionBearing = gyroTracked ? mInertial.getHeading() : marksBearing;
-    double bearing = Double.isNaN(directionBearing) ? guessMovementBearing(lat, lon) : directionBearing;
-    // While navigating, the car is on the route and drives the way the route goes: the guessed direction
-    // can be wrong after a turn or an old mark.
+    // The car stands on the axis of a road and looks one of its two ways: the way it has looked before, the
+    // user turns it around with the reverse button. The gyroscope has followed the turns since.
+    final double heading = getCarBearing();
+    // While navigating, the car is on the route and drives the way the route goes.
     double[] road = RoutingController.get().isNavigating()
                         ? LocationState.nativeProjectToRoute(lat, lon, MANUAL_SNAP_RADIUS_M)
                         : null;
     // The car goes against the route: it has turned around, the road is taken the way the car goes.
-    if (road != null && !Double.isNaN(directionBearing)
-        && Math.abs(DeadReckoning.angleDiff(road[2], directionBearing)) > 90)
+    if (road != null && !Double.isNaN(heading) && Math.abs(DeadReckoning.angleDiff(road[2], heading)) > 90)
       road = null;
     if (road == null)
-      road = snapToRoad(lat, lon, bearing, MANUAL_SNAP_RADIUS_M, mSavedLocation);
-    if (road != null)
+      road = snapToRoad(lat, lon, heading, MANUAL_SNAP_RADIUS_M, mSavedLocation);
+    if (road == null)
     {
-      lat = road[0];
-      lon = road[1];
-      bearing = road[2];
+      Logger.i(TAG, String.format(Locale.US, "No road at the tap = %.6f,%.6f", lat, lon));
+      return false;
     }
 
     final Location location = new Location(MANUAL_PROVIDER);
-    location.setLatitude(lat);
-    location.setLongitude(lon);
+    location.setLatitude(road[0]);
+    location.setLongitude(road[1]);
     location.setAccuracy(MANUAL_ACCURACY_M);
-    if (!Double.isNaN(bearing))
-      location.setBearing((float) bearing);
+    location.setBearing((float) road[2]);
+    Logger.i(TAG, String.format(Locale.US, "tap = %.6f,%.6f ", lat, lon) + "location = " + location);
 
-    Logger.i(TAG, String.format(Locale.US, "tap = %.6f,%.6f ", tapLat, tapLon) + "location = " + location
-                      + " on a road = " + (road != null) + " marks bearing = " + marksBearing
-                      + " gyro tracked = " + gyroTracked);
     mManualLocation = location;
-    mLastMark = new Location(location);
-    mLastMarkTimeMs = SystemClock.elapsedRealtime();
-    if (mInertial != null)
-      mInertial.onMark();
     mManualSetTimeMs = SystemClock.elapsedRealtime();
     mLastPositionSource = PositionSource.MANUAL;
     rebuildRouteIfOffRoute(location);
     if (mInertial != null)
-    {
-      if (road != null && !Double.isNaN(bearing))
-        mInertial.setRoadPosition(lat, lon, bearing);
-      else
-        mInertial.onReferencePosition(location, false /* isGps */);
-    }
+      mInertial.setRoadPosition(road[0], road[1], road[2]);
     applyManualLocation();
-  }
-
-  /**
-   * @return the direction the car moves in, NaN if it is unknown.
-   */
-  /**
-   * @return the direction from the previous mark to a new one, NaN if there is no recent mark or it is so
-   * close that the new mark is a correction of the same place.
-   */
-  private double bearingFromLastMark(double lat, double lon)
-  {
-    if (mLastMark == null || SystemClock.elapsedRealtime() - mLastMarkTimeMs >= MANUAL_MAX_BEARING_AGE_MS)
-      return Double.NaN;
-    final Location to = new Location(MANUAL_PROVIDER);
-    to.setLatitude(lat);
-    to.setLongitude(lon);
-    if (mLastMark.distanceTo(to) < MANUAL_MIN_BEARING_DISTANCE_M)
-      return Double.NaN;
-    return DeadReckoning.normalize(mLastMark.bearingTo(to));
-  }
-
-  private double guessMovementBearing(double lat, double lon)
-  {
-    if (mInertial != null && isInertialNavigationEnabled() && !Double.isNaN(mInertial.getHeading())
-        && mInertial.getHeadingSource() != InertialNavigator.HeadingSource.MANUAL_MARKS)
-      return mInertial.getHeading();
-
-    if (mManualLocation != null && SystemClock.elapsedRealtime() - mManualSetTimeMs < MANUAL_MAX_BEARING_AGE_MS)
-    {
-      final Location to = new Location(MANUAL_PROVIDER);
-      to.setLatitude(lat);
-      to.setLongitude(lon);
-      if (mManualLocation.distanceTo(to) >= MANUAL_MIN_BEARING_DISTANCE_M)
-        return DeadReckoning.normalize(mManualLocation.bearingTo(to));
-      if (mManualLocation.hasBearing())
-        return mManualLocation.getBearing();
-    }
-
-    if (mSavedLocation != null && mSavedLocation.hasBearing())
-      return mSavedLocation.getBearing();
-
-    return Double.NaN;
+    return true;
   }
 
   /**
@@ -1004,8 +1048,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
    * movement.
    * @param turnedFrom where the car was before, if it may have turned to another road since, e.g. a new
    * mark. Null if it goes on along the same road.
-   * @return {latitude, longitude, road bearing}, the bearing is NaN if the direction is unknown, or null
-   * if there is no road within the radius.
+   * @return {latitude, longitude, road bearing the car looks at}, or null if there is no road within the
+   * radius.
    */
   @Nullable
   private static double[] snapToRoad(double lat, double lon, double bearingDeg, double radiusM,
@@ -1021,27 +1065,12 @@ public class LocationHelper implements BaseLocationProvider.Listener
     if (shift[0] > radiusM)
       return null;
 
-    // Without the direction of the movement it is unknown which way along the road the car looks.
-    if (Double.isNaN(bearingDeg))
-    {
-      road[2] = Double.NaN;
-      return road;
-    }
-
-    // The road goes in the direction of the movement, but it can be returned in the opposite one.
-    if (Math.abs(DeadReckoning.angleDiff(road[2], bearingDeg)) > 90)
-      road[2] = DeadReckoning.normalize(road[2] + 180);
-    if (Math.abs(DeadReckoning.angleDiff(road[2], bearingDeg)) <= MAX_ROAD_BEARING_DIFF_DEG)
+    // Without the direction of the movement the car looks any way, the user turns it around if it is wrong.
+    road[2] = RoadWalker.orient(road[2], bearingDeg);
+    if (Double.isNaN(bearingDeg) || Math.abs(DeadReckoning.angleDiff(road[2], bearingDeg)) <= MAX_ROAD_BEARING_DIFF_DEG)
       return road;
 
-    // The road is a crossing one. The car going on along its road is only near it: the road tells where the
-    // car is, not where it looks.
-    if (turnedFrom == null)
-    {
-      road[2] = bearingDeg;
-      return road;
-    }
-    // The car has turned to it, a road going the car's way is preferred and would be returned otherwise.
+    // The road is a crossing one, the car has turned to it, a road going the car's way is preferred and would be returned otherwise.
     // It goes away from where it was, to the left or to the right.
     final Location to = new Location(MANUAL_PROVIDER);
     to.setLatitude(road[0]);
@@ -1055,8 +1084,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
   }
 
   /**
-   * Moves the position along the route, or along the direction of the movement if there is no route, e.g.
-   * when the calculated position lags behind the car. The movement stops at the closest turn.
+   * Moves the position along the route, or along the road if there is no route, e.g. when the calculated
+   * position lags behind the car. The position never leaves the road and stops at the closest crossing.
    * @param distanceM meters to move forward, negative to move back.
    * @return the distance the position was moved by, 0 if it can not be moved.
    */
@@ -1070,11 +1099,12 @@ public class LocationHelper implements BaseLocationProvider.Listener
 
     // The direction of the movement tells which part of the route the car drives along: the route passes
     // the car several times, e.g. the street it has just turned from is still a part of the route.
-    final double movementBearing = guessMovementBearing(from.getLatitude(), from.getLongitude());
+    final double movementBearing = getCarBearing();
     double[] shifted =
         LocationState.nativeShiftAlongRoute(from.getLatitude(), from.getLongitude(), movementBearing, distanceM);
-    if (shifted == null)
-      shifted = shiftWithoutRoute(from, movementBearing, distanceM);
+    if (shifted == null && !Double.isNaN(movementBearing))
+      shifted = RoadWalker.walk(roads(false /* matchRoute */), from.getLatitude(), from.getLongitude(),
+                                movementBearing, distanceM);
     if (shifted == null)
       return 0;
 
@@ -1154,24 +1184,6 @@ public class LocationHelper implements BaseLocationProvider.Listener
       return false;
     }
     return true;
-  }
-
-  /**
-   * Moves a position along the direction of the movement, snapping it to a road.
-   * @return {latitude, longitude, bearing, applied distance}, or null if the direction is unknown.
-   */
-  @Nullable
-  private double[] shiftWithoutRoute(@NonNull Location from, double bearing, double distanceM)
-  {
-    if (Double.isNaN(bearing))
-      return null;
-
-    final double[] moved = DeadReckoning.move(from.getLatitude(), from.getLongitude(),
-                                              distanceM >= 0 ? bearing : bearing + 180, Math.abs(distanceM));
-    final double[] road = snapToRoad(moved[0], moved[1], bearing, MANUAL_SNAP_RADIUS_M, null /* turnedFrom */);
-    if (road == null)
-      return new double[] {moved[0], moved[1], bearing, distanceM};
-    return new double[] {road[0], road[1], road[2], distanceM};
   }
 
   private void applyManualLocation()

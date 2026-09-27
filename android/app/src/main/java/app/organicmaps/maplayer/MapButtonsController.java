@@ -168,6 +168,8 @@ public class MapButtonsController extends Fragment
     mShiftPositionBack = mFrame.findViewById(R.id.shift_position_back);
     mShiftPositionBack.setOnClickListener(
         (v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.shiftPositionBack));
+    mFrame.findViewById(R.id.reverse_direction)
+        .setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.reverseDirection));
     mShiftPositionStep.setOnClickListener((v) -> {
       Config.setPositionShiftStepM(nextShiftStep());
       updateShiftPositionStep();
@@ -720,7 +722,8 @@ public class MapButtonsController extends Fragment
     manualPosition,
     positionStatus,
     shiftPositionForward,
-    shiftPositionBack
+    shiftPositionBack,
+    reverseDirection
   }
 
   public interface MapButtonClickListener

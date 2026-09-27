@@ -31,4 +31,10 @@
     style="@style/MwmWidget.MapButton.Zoom"
     app:srcCompat="@drawable/ic_plus"
     android:contentDescription="@string/nogps_shift_forward" />
+  <com.google.android.material.floatingactionbutton.FloatingActionButton
+    android:id="@+id/reverse_direction"
+    style="@style/MwmWidget.MapButton.Zoom"
+    android:layout_marginStart="@dimen/margin_half"
+    app:srcCompat="@drawable/ic_reverse_direction"
+    android:contentDescription="@string/nogps_reverse_direction" />
 </LinearLayout>

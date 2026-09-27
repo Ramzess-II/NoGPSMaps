@@ -1727,6 +1727,18 @@ bool RoutingManager::IsAgainstRoute(location::GpsInfo const & info)
   return diffDeg > 90.0;
 }
 
+std::vector<ms::LatLon> RoutingManager::FindRoadCrossings(ms::LatLon const & center, double radiusM) const
+{
+  std::vector<m2::PointD> crossings;
+  m_routingSession.FindRoadCrossings(
+      mercator::RectByCenterXYAndSizeInMeters(mercator::FromLatLon(center), 2.0 * radiusM), crossings);
+  std::vector<ms::LatLon> result;
+  result.reserve(crossings.size());
+  for (auto const & crossing : crossings)
+    result.push_back(mercator::ToLatLon(crossing));
+  return result;
+}
+
 bool RoutingManager::ProjectToRoute(ms::LatLon const & latLon, double radiusM, ms::LatLon & projected,
                                     double & bearingDeg)
 {

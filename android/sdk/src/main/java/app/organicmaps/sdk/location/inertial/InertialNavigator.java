@@ -31,8 +31,6 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
   // Wait after the car stops before the automatic calibration, the car body still sways.
   private static final long AUTO_CALIBRATION_DELAY_MS = 2000;
   private static final double MOVING_SPEED_MPS = 0.5;
-  // Shorter drives can hide a turn in the noise, the gyroscope has seen a turn only after this distance.
-  private static final double MIN_TRACKED_DISTANCE_M = 20;
   // GPS bearing is noisy at low speeds.
   private static final double MIN_GPS_HEADING_SPEED_MPS = 3;
   private static final double MAX_SENSOR_DT_SEC = 0.1;
@@ -40,6 +38,15 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
   // Don't look for roads too far: a wrong road is worse than none.
   private static final double MIN_SNAP_RADIUS_M = 20;
   private static final double MAX_SNAP_RADIUS_M = 60;
+  // A turn at a crossing rotates the car faster than a bend of a road.
+  private static final double TURN_START_RATE_DEG = 10;
+  // The turn is over when the car goes straight for a while.
+  private static final double TURN_END_RATE_DEG = 4;
+  private static final long TURN_END_CALM_NS = 1_000_000_000L;
+  // The car starts turning a few meters before the middle of the crossing.
+  private static final double TURN_CORNER_AHEAD_M = 5;
+  // The car is moved to the new road found this close to the moved position.
+  private static final double TURN_SNAP_RADIUS_M = 20;
 
   public enum CalibrationState
   {
@@ -54,10 +61,8 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
   {
     NONE,
     GPS,
-    MANUAL_MARKS,
-    // The direction of the road the user has marked the position on.
+    // The direction of the road the car is on, the user has chosen one of its two ways.
     ROAD,
-    USER,
   }
 
   public interface Listener
@@ -65,21 +70,12 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
     void onInertialLocation(@NonNull Location location);
   }
 
-  public interface RoadSnapper
-  {
-    /**
-     * @return {latitude, longitude, road bearing} of the closest point on the route or a road, or null.
-     */
-    @Nullable
-    double[] snap(double lat, double lon, double bearing, double radius);
-  }
-
   @NonNull
   private final SensorManager mSensorManager;
   @NonNull
   private final Listener mListener;
   @NonNull
-  private final RoadSnapper mRoadSnapper;
+  private final Roads mRoads;
   private long mLastSnapMs;
   private boolean mOnRoad;
   private double mLastSnapShiftM = Double.NaN;
@@ -112,14 +108,24 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
   private long mStoppedSinceMs;
 
   private final SpeedScale mSpeedScale = new SpeedScale();
-  // The distance the car has driven with the gyroscope following its turns since the last mark.
-  private double mTrackedDistanceM;
 
-  public InertialNavigator(@NonNull Context context, @NonNull Listener listener, @NonNull RoadSnapper roadSnapper)
+  // The turn the car is making now: where it has started and where the car looked before it.
+  private boolean mTurning;
+  private double mTurnFromBearing;
+  private double mTurnStartLat;
+  private double mTurnStartLon;
+  private long mTurnCalmSinceNs;
+  // How far the last turn has moved the car to its crossing, for the log of a drive.
+  private double mLastTurnShiftM = Double.NaN;
+
+  /**
+   * @param roads the roads and the followed route, the car is kept on them.
+   */
+  public InertialNavigator(@NonNull Context context, @NonNull Listener listener, @NonNull Roads roads)
   {
     mSensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
     mListener = listener;
-    mRoadSnapper = roadSnapper;
+    mRoads = roads;
   }
 
   /**
@@ -179,16 +185,14 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
   }
 
   /**
-   * A trusted position: GPS or a manual mark. The inertial navigation continues from it.
+   * A trusted GPS position. The inertial navigation continues from it.
    */
-  public void onReferencePosition(@NonNull Location location, boolean isGps)
+  public void onGpsPosition(@NonNull Location location)
   {
     mDeadReckoning.setPosition(location.getLatitude(), location.getLongitude());
-    if (isGps && location.hasBearing() && location.hasSpeed() && location.getSpeed() >= MIN_GPS_HEADING_SPEED_MPS)
+    mTurning = false;
+    if (location.hasBearing() && location.hasSpeed() && location.getSpeed() >= MIN_GPS_HEADING_SPEED_MPS)
       setHeading(location.getBearing(), HeadingSource.GPS);
-    // The direction set by the user or taken from a road is more reliable than the one from rough marks.
-    else if (!isGps && location.hasBearing() && !isHeadingReliable())
-      setHeading(location.getBearing(), HeadingSource.MANUAL_MARKS);
   }
 
   /**
@@ -198,6 +202,7 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
   public void setRoadPosition(double lat, double lon, double bearingDeg)
   {
     mDeadReckoning.setPosition(lat, lon);
+    mTurning = false;
     setHeading(bearingDeg, HeadingSource.ROAD);
   }
 
@@ -211,11 +216,6 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
     Config.setNoGpsSpeedScale((float) mSpeedScale.get());
     Logger.i(TAG, "Corrected by " + Math.round(appliedM) + " m, speed scale = " + mSpeedScale.get());
     setRoadPosition(lat, lon, bearingDeg);
-  }
-
-  private boolean isHeadingReliable()
-  {
-    return mHeadingSource == HeadingSource.USER || mHeadingSource == HeadingSource.ROAD;
   }
 
   /**
@@ -245,13 +245,13 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
   }
 
   /**
-   * Turns the car direction, e.g. when the user adjusts it.
-   * @param deltaDeg clockwise rotation.
+   * Turns the car around on its road: the user has chosen the other way of the road.
    */
-  public void rotateHeading(double deltaDeg)
+  public void reverseHeading()
   {
     if (mDeadReckoning.hasHeading())
-      setHeading(mDeadReckoning.getHeading() + deltaDeg, HeadingSource.USER);
+      setHeading(mDeadReckoning.getHeading() + 180, HeadingSource.ROAD);
+    mTurning = false;
   }
 
   /**
@@ -316,25 +316,11 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
   }
 
   /**
-   * @return true if the gyroscope has followed the turns of the car, a turn around too, since the last
-   * {@link #onMark()}: the car has driven far enough with the calibrated gyroscope.
+   * @return how far the last turn has moved the car to its crossing, NaN if no turn was matched yet.
    */
-  public boolean isHeadingTracked()
+  public double getLastTurnShiftM()
   {
-    return mDeadReckoning.hasHeading() && mTrackedDistanceM >= MIN_TRACKED_DISTANCE_M;
-  }
-
-  /**
-   * The user has marked the position: the turns are followed from here.
-   */
-  public void onMark()
-  {
-    mTrackedDistanceM = 0;
-  }
-
-  public double getTrackedDistanceM()
-  {
-    return mTrackedDistanceM;
+    return mLastTurnShiftM;
   }
 
   public boolean hasPosition()
@@ -392,8 +378,9 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
     // A standing car can't turn, so the remaining gyroscope drift doesn't rotate the heading at stops.
     if (mBias != null && mUp != null && speedFresh && mDeadReckoning.getSpeed() > MOVING_SPEED_MPS)
     {
-      mDeadReckoning.rotate(GyroCalibrator.yawRateDeg(gyro, mBias, mUp) * dt);
-      mTrackedDistanceM += mDeadReckoning.getSpeed() * dt;
+      final double yawRateDeg = GyroCalibrator.yawRateDeg(gyro, mBias, mUp);
+      trackTurn(yawRateDeg, event.timestamp);
+      mDeadReckoning.rotate(yawRateDeg * dt);
     }
     if (speedFresh)
     {
@@ -422,7 +409,7 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
         Math.min(MAX_SNAP_RADIUS_M, Math.max(MIN_SNAP_RADIUS_M, mDeadReckoning.getAccuracy()));
     final double lat = mDeadReckoning.getLat();
     final double lon = mDeadReckoning.getLon();
-    final double[] snapped = mRoadSnapper.snap(lat, lon, mDeadReckoning.getHeading(), radius);
+    final double[] snapped = mRoads.snap(lat, lon, mDeadReckoning.getHeading(), radius);
     if (snapped == null)
     {
       mOnRoad = false;
@@ -434,6 +421,72 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
     Location.distanceBetween(lat, lon, snapped[0], snapped[1], shift);
     mLastSnapShiftM = shift[0];
     mOnRoad = shift[0] <= radius && mDeadReckoning.snapToRoad(snapped[0], snapped[1], snapped[2]);
+  }
+
+  /**
+   * Follows a turn of the car. When the turn is over, the car is moved to the crossing it has turned at.
+   * @param yawRateDeg clockwise rotation speed of the car.
+   */
+  private void trackTurn(double yawRateDeg, long timestampNs)
+  {
+    if (!isReady())
+      return;
+    if (!mTurning)
+    {
+      if (Math.abs(yawRateDeg) < TURN_START_RATE_DEG)
+        return;
+      mTurning = true;
+      mTurnFromBearing = mDeadReckoning.getHeading();
+      mTurnStartLat = mDeadReckoning.getLat();
+      mTurnStartLon = mDeadReckoning.getLon();
+      mTurnCalmSinceNs = 0;
+      return;
+    }
+
+    if (Math.abs(yawRateDeg) >= TURN_END_RATE_DEG)
+    {
+      mTurnCalmSinceNs = 0;
+      return;
+    }
+    if (mTurnCalmSinceNs == 0)
+    {
+      mTurnCalmSinceNs = timestampNs;
+      return;
+    }
+    if (timestampNs - mTurnCalmSinceNs < TURN_END_CALM_NS)
+      return;
+
+    mTurning = false;
+    matchTurn();
+  }
+
+  private void matchTurn()
+  {
+    final double toBearing = mDeadReckoning.getHeading();
+    final double[] corner = DeadReckoning.move(mTurnStartLat, mTurnStartLon, mTurnFromBearing, TURN_CORNER_AHEAD_M);
+    final double[] crossing = TurnMatcher.findCrossing(mRoads, corner[0], corner[1], mTurnFromBearing, toBearing,
+                                                       mDeadReckoning.getAccuracy());
+    if (crossing == null)
+    {
+      Logger.i(TAG, "Turn from " + Math.round(mTurnFromBearing) + " to " + Math.round(toBearing)
+                        + " is not at a crossing");
+      return;
+    }
+
+    // The whole turn is moved to the crossing: the car has driven the same way after it.
+    final double lat = mDeadReckoning.getLat() + crossing[0] - corner[0];
+    final double lon = mDeadReckoning.getLon() + crossing[1] - corner[1];
+    final double[] road = mRoads.snap(lat, lon, toBearing, TURN_SNAP_RADIUS_M);
+    if (road == null)
+    {
+      Logger.i(TAG, "No road after the turn at the crossing " + crossing[0] + "," + crossing[1]);
+      return;
+    }
+    mLastTurnShiftM = RoadWalker.distance(corner[0], corner[1], crossing[0], crossing[1]);
+    Logger.i(TAG, "Turn from " + Math.round(mTurnFromBearing) + " to " + Math.round(toBearing)
+                      + " is moved to the crossing by " + Math.round(mLastTurnShiftM) + " m");
+    // The crossing is a known place, the distance error is gone.
+    setRoadPosition(road[0], road[1], RoadWalker.orient(road[2], toBearing));
   }
 
   /**

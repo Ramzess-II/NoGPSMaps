@@ -213,6 +213,12 @@ public class MwmActivity extends BaseMwmFragmentActivity
     {
       Toast.makeText(MwmActivity.this, R.string.nogps_gps_back_auto, Toast.LENGTH_LONG).show();
     }
+
+    @Override
+    public void onGpsLost()
+    {
+      Toast.makeText(MwmActivity.this, R.string.nogps_gps_lost_auto, Toast.LENGTH_LONG).show();
+    }
   };
   private final LocationHelper.GpsSpoofingListener mGpsSpoofingListener = this::onGpsSpoofingChanged;
 
@@ -788,6 +794,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
     case positionStatus -> new SensorsBottomSheet().show(getSupportFragmentManager(), SensorsBottomSheet.TAG);
     case shiftPositionForward -> shiftPosition(Config.getPositionShiftStepM());
     case shiftPositionBack -> shiftPosition(-Config.getPositionShiftStepM());
+    case reverseDirection -> MwmApplication.from(this).getLocationHelper().reverseDirection();
     }
   }
 
@@ -840,21 +847,16 @@ public class MwmActivity extends BaseMwmFragmentActivity
   private void onManualModeChanged(boolean enabled)
   {
     final LocationHelper locationHelper = MwmApplication.from(this).getLocationHelper();
-    MapView.setTapInterceptor(enabled ? locationHelper::setManualLocationFromScreen : null);
+    MapView.setTapInterceptor(enabled ? this::setManualLocationFromScreen : null);
   }
 
-  /**
-   * The next tap on the map sets the direction the car looks at for the inertial navigation.
-   */
-  public void startHeadingSelection()
+  private void setManualLocationFromScreen(float x, float y)
   {
-    Toast.makeText(this, R.string.nogps_tap_heading, Toast.LENGTH_LONG).show();
-    MapView.setTapInterceptor((x, y) -> {
-      final LocationHelper locationHelper = MwmApplication.from(this).getLocationHelper();
-      locationHelper.setHeadingFromScreen(x, y);
-      onManualModeChanged(locationHelper.isManualMode());
-    });
+    // The car is always on a road.
+    if (!MwmApplication.from(this).getLocationHelper().setManualLocationFromScreen(x, y))
+      Toast.makeText(this, R.string.nogps_mark_no_road, Toast.LENGTH_SHORT).show();
   }
+
 
   private boolean closeBottomSheet(String id)
   {

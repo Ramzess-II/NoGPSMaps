@@ -256,6 +256,8 @@ public:
   bool ProjectToRoute(ms::LatLon const & latLon, double radiusM, ms::LatLon & projected, double & bearingDeg);
   // Returns true if the car is on the route but goes the other way, i.e. it has turned around.
   bool IsAgainstRoute(location::GpsInfo const & info);
+  // Returns the points where three or more roads meet within |radiusM| of |center|.
+  std::vector<ms::LatLon> FindRoadCrossings(ms::LatLon const & center, double radiusM) const;
   void CallRouteBuilded(routing::RouterResultCode code, storage::CountriesSet const & absentCountries);
   void OnBuildRouteReady(routing::RoutesResult const & result, routing::RouterResultCode code);
   void OnRebuildRouteReady(routing::RoutesResult const & result, routing::RouterResultCode code);

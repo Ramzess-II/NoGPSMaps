@@ -82,6 +82,12 @@ public final class LocationState
   static native double[] nativeProjectToRoute(double lat, double lon, double radius);
 
   /**
+   * @return {latitude, longitude} pairs of the points where three or more roads meet within the radius.
+   */
+  @NonNull
+  static native double[] nativeFindRoadCrossings(double lat, double lon, double radius);
+
+  /**
    * Moves a position along the followed route, stopping at the closest turn or crossing in both directions.
    * @param bearing where the car looks, NaN if it is unknown. Parts of the route going another way are
    * skipped: they are streets the car has already left or has not reached yet.

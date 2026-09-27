@@ -7,6 +7,8 @@
 
 #include "geometry/mercator.hpp"
 
+#include <vector>
+
 extern "C"
 {
 static void LocationStateModeChanged(location::EMyPositionMode mode, std::shared_ptr<jobject> const & listener)
@@ -149,6 +151,26 @@ JNIEXPORT jdoubleArray Java_app_organicmaps_sdk_location_LocationState_nativePro
   jdouble const values[] = {projected.m_lat, projected.m_lon, bearing};
   jdoubleArray result = env->NewDoubleArray(3);
   env->SetDoubleArrayRegion(result, 0, 3, values);
+  return result;
+}
+
+// public static native double[] nativeFindRoadCrossings(double lat, double lon, double radius);
+JNIEXPORT jdoubleArray Java_app_organicmaps_sdk_location_LocationState_nativeFindRoadCrossings(JNIEnv * env,
+                                                                                               jclass clazz,
+                                                                                               jdouble lat, jdouble lon,
+                                                                                               jdouble radius)
+{
+  auto const crossings =
+      g_framework->NativeFramework()->GetRoutingManager().FindRoadCrossings(ms::LatLon(lat, lon), radius);
+  std::vector<jdouble> values;
+  values.reserve(crossings.size() * 2);
+  for (auto const & crossing : crossings)
+  {
+    values.push_back(crossing.m_lat);
+    values.push_back(crossing.m_lon);
+  }
+  jdoubleArray result = env->NewDoubleArray(static_cast<jsize>(values.size()));
+  env->SetDoubleArrayRegion(result, 0, static_cast<jsize>(values.size()), values.data());
   return result;
 }
 
