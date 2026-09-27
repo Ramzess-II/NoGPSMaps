@@ -1,10 +1,6 @@
 package app.organicmaps.sdk.location.inertial;
 
 import android.content.Context;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
 import android.location.Location;
 import android.os.SystemClock;
 import androidx.annotation.NonNull;
@@ -13,13 +9,13 @@ import app.organicmaps.sdk.util.Config;
 import app.organicmaps.sdk.util.log.Logger;
 
 /**
- * Inertial navigation with the phone fixed on the dashboard: the car speed comes from an ELM327 OBD-II adapter,
- * turns come from the phone gyroscope.
+ * Inertial navigation: the car speed and turns come from a {@link MotionSource}, the phone fixed on the
+ * dashboard with an ELM327 OBD-II adapter or the ESP32 sensor box.
  * <p>
  * It needs a reference position and heading (from GPS while it was trusted, manual marks or the user) and
- * a calibrated gyroscope. The gyroscope is calibrated by the user and automatically on every stop.
+ * a calibrated gyroscope.
  */
-public class InertialNavigator implements SensorEventListener, Elm327Client.Listener
+public class InertialNavigator implements MotionSource.Listener
 {
   private static final String TAG = InertialNavigator.class.getSimpleName();
 
@@ -28,12 +24,11 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
   // Without fresh speed the position can't be calculated.
   private static final long SPEED_STALE_MS = 2000;
   private static final long OUTPUT_INTERVAL_MS = 200;
-  // Wait after the car stops before the automatic calibration, the car body still sways.
-  private static final long AUTO_CALIBRATION_DELAY_MS = 2000;
   private static final double MOVING_SPEED_MPS = 0.5;
   // GPS bearing is noisy at low speeds.
   private static final double MIN_GPS_HEADING_SPEED_MPS = 3;
-  private static final double MAX_SENSOR_DT_SEC = 0.1;
+  // A longer pause of the source is a lost connection, the car could do anything meanwhile.
+  private static final double MAX_MOTION_DT_SEC = 1;
   private static final long SNAP_INTERVAL_MS = 1000;
   // Don't look for roads too far: a wrong road is worse than none.
   private static final double MIN_SNAP_RADIUS_M = 20;
@@ -58,6 +53,8 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
     DONE,
     // The phone or the car moved during the calibration.
     FAILED_MOVING,
+    // The sensor box has been moved in the car since its calibration.
+    MOUNT_MOVED,
   }
 
   public enum HeadingSource
@@ -74,7 +71,7 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
   }
 
   @NonNull
-  private final SensorManager mSensorManager;
+  private final Context mContext;
   @NonNull
   private final Listener mListener;
   @NonNull
@@ -83,32 +80,17 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
   private boolean mOnRoad;
   private double mLastSnapShiftM = Double.NaN;
   @Nullable
-  private Elm327Client mElm327;
-  @NonNull
-  private Elm327Client.State mElm327State = Elm327Client.State.DISCONNECTED;
+  private MotionSource mSource;
   private boolean mStarted;
 
   private final DeadReckoning mDeadReckoning = new DeadReckoning();
   @NonNull
   private HeadingSource mHeadingSource = HeadingSource.NONE;
 
-  private final GyroCalibrator mCalibrator = new GyroCalibrator();
-  private final GyroCalibrator mAutoCalibrator = new GyroCalibrator();
-  @NonNull
-  private CalibrationState mCalibrationState = CalibrationState.NONE;
-  @Nullable
-  private float[] mBias;
-  @Nullable
-  private float[] mUp;
-
-  private final float[] mAccel = new float[3];
-  private boolean mHasAccel;
-  private long mLastGyroTimestampNs;
   private long mLastOutputMs;
 
   private int mSpeedKmh = -1;
   private long mSpeedTimeMs;
-  private long mStoppedSinceMs;
 
   private final SpeedScale mSpeedScale = new SpeedScale();
 
@@ -133,41 +115,25 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
    */
   public InertialNavigator(@NonNull Context context, @NonNull Listener listener, @NonNull Roads roads)
   {
-    mSensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
+    mContext = context;
     mListener = listener;
     mRoads = roads;
   }
 
   /**
-   * @param elm327Address Bluetooth address of the ELM327 adapter, null if it is not chosen yet.
+   * Starts the motion source chosen in the settings.
    */
-  public void start(@Nullable String elm327Address)
+  public void start()
   {
     if (mStarted)
       stop();
     mStarted = true;
     // The speedometer error is the same on every trip.
     mSpeedScale.set(Config.getNoGpsSpeedScale());
-    Logger.i(TAG, "ELM327 = " + elm327Address);
-
-    Sensor gyro = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE_UNCALIBRATED);
-    // Our own bias estimation is used, the calibrated sensor is only a fallback.
-    if (gyro == null)
-      gyro = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
-    final Sensor accel = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-    if (gyro == null || accel == null)
-      Logger.e(TAG, "No gyroscope or accelerometer");
-    else
-    {
-      mSensorManager.registerListener(this, gyro, SensorManager.SENSOR_DELAY_GAME);
-      mSensorManager.registerListener(this, accel, SensorManager.SENSOR_DELAY_GAME);
-    }
-
-    if (elm327Address != null)
-    {
-      mElm327 = new Elm327Client(elm327Address, this);
-      mElm327.start();
-    }
+    mSource = Config.isNoGpsEsp32Source()
+                ? new Esp32MotionSource(mContext, Config.getNoGpsEsp32Address(), this)
+                : new PhoneMotionSource(mContext, Config.getElm327Address(), this);
+    mSource.start();
   }
 
   public void stop()
@@ -175,23 +141,20 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
     if (!mStarted)
       return;
     mStarted = false;
-    mSensorManager.unregisterListener(this);
-    if (mElm327 != null)
-      mElm327.stop();
-    mElm327 = null;
-    mElm327State = Elm327Client.State.DISCONNECTED;
+    if (mSource != null)
+      mSource.stop();
+    mSource = null;
     mSpeedKmh = -1;
-    mLastGyroTimestampNs = 0;
   }
 
   /**
-   * Starts the gyroscope calibration. The phone must be fixed and the car must stand still for ~3 s.
+   * Starts the gyroscope calibration. The gyroscope must be fixed and the car must stand still for ~3 s.
    */
   public void calibrate()
   {
     Logger.i(TAG);
-    mCalibrator.reset();
-    mCalibrationState = CalibrationState.CALIBRATING;
+    if (mSource != null)
+      mSource.calibrate();
   }
 
   /**
@@ -280,7 +243,7 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
 
   public boolean isReady()
   {
-    return mStarted && mBias != null && isSpeedFresh() && mDeadReckoning.isReady();
+    return mStarted && mSource != null && mSource.isCalibrated() && isSpeedFresh() && mDeadReckoning.isReady();
   }
 
   @Nullable
@@ -301,9 +264,18 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
   }
 
   @NonNull
-  public Elm327Client.State getElm327State()
+  public MotionSource.State getSourceState()
   {
-    return mElm327State;
+    return mSource != null ? mSource.getState() : MotionSource.State.DISCONNECTED;
+  }
+
+  /**
+   * @return the name of the sensor device to show, null for the phone.
+   */
+  @Nullable
+  public String getDeviceName()
+  {
+    return mSource != null ? mSource.getDeviceName() : null;
   }
 
   /**
@@ -317,12 +289,12 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
   @NonNull
   public CalibrationState getCalibrationState()
   {
-    return mCalibrationState;
+    return mSource != null ? mSource.getCalibrationState() : CalibrationState.NONE;
   }
 
   public int getCalibrationProgressPercent()
   {
-    return mCalibrator.getProgressPercent();
+    return mSource != null ? mSource.getCalibrationProgressPercent() : 0;
   }
 
   @NonNull
@@ -394,45 +366,22 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
       else if (elapsedRealtimeMs - mFastSinceMs >= AUTO_RESUME_MS)
         setPaused(false);
     }
-    if (speedKmh > 0)
-      mStoppedSinceMs = 0;
-    else if (mStoppedSinceMs == 0)
-      mStoppedSinceMs = elapsedRealtimeMs;
   }
 
   @Override
-  public void onStateChanged(@NonNull Elm327Client.State state)
+  public void onMotion(double yawDeltaDeg, double dt, long timestampNs)
   {
-    mElm327State = state;
-  }
-
-  @Override
-  public void onSensorChanged(SensorEvent event)
-  {
-    if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER)
-    {
-      System.arraycopy(event.values, 0, mAccel, 0, 3);
-      mHasAccel = true;
+    if (dt <= 0 || dt > MAX_MOTION_DT_SEC)
       return;
-    }
-
-    final float[] gyro = {event.values[0], event.values[1], event.values[2]};
-    final double dt = mLastGyroTimestampNs == 0 ? 0 : (event.timestamp - mLastGyroTimestampNs) / 1e9;
-    mLastGyroTimestampNs = event.timestamp;
-    if (dt <= 0 || dt > MAX_SENSOR_DT_SEC || !mHasAccel)
-      return;
-
-    updateCalibration(gyro);
 
     final boolean speedFresh = isSpeedFresh();
     mDeadReckoning.setSpeed(speedFresh ? mSpeedKmh / 3.6 * mSpeedScale.get() : 0);
     // A standing car can't turn, so the remaining gyroscope drift doesn't rotate the heading at stops.
-    if (mBias != null && mUp != null && speedFresh && mDeadReckoning.getSpeed() > MOVING_SPEED_MPS)
+    if (mSource != null && mSource.isCalibrated() && speedFresh && mDeadReckoning.getSpeed() > MOVING_SPEED_MPS)
     {
-      final double yawRateDeg = GyroCalibrator.yawRateDeg(gyro, mBias, mUp);
       if (!mPaused)
-        trackTurn(yawRateDeg, event.timestamp);
-      mDeadReckoning.rotate(yawRateDeg * dt);
+        trackTurn(yawDeltaDeg / dt, timestampNs);
+      mDeadReckoning.rotate(yawDeltaDeg);
     }
     if (speedFresh && !mPaused)
     {
@@ -558,55 +507,4 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
     return mLastSnapShiftM;
   }
 
-  private void updateCalibration(@NonNull float[] gyro)
-  {
-    if (mCalibrationState == CalibrationState.CALIBRATING)
-    {
-      mCalibrator.add(gyro, mAccel);
-      if (mCalibrator.isComplete())
-      {
-        if (mCalibrator.isStill())
-        {
-          applyCalibration(mCalibrator);
-          mCalibrationState = CalibrationState.DONE;
-        }
-        else
-        {
-          mCalibrationState = CalibrationState.FAILED_MOVING;
-        }
-        Logger.i(TAG, "Calibration: " + mCalibrationState);
-      }
-      return;
-    }
-
-    // Refresh the gyroscope bias on every stop, it changes with the temperature.
-    final boolean stopped = isSpeedFresh() && mSpeedKmh == 0 && mStoppedSinceMs != 0
-                         && SystemClock.elapsedRealtime() - mStoppedSinceMs > AUTO_CALIBRATION_DELAY_MS;
-    if (!stopped)
-    {
-      mAutoCalibrator.reset();
-      return;
-    }
-    mAutoCalibrator.add(gyro, mAccel);
-    if (mAutoCalibrator.isComplete())
-    {
-      if (mAutoCalibrator.isStill())
-      {
-        applyCalibration(mAutoCalibrator);
-        if (mCalibrationState != CalibrationState.DONE)
-          mCalibrationState = CalibrationState.DONE;
-        Logger.d(TAG, "Automatic calibration at a stop");
-      }
-      mAutoCalibrator.reset();
-    }
-  }
-
-  private void applyCalibration(@NonNull GyroCalibrator calibrator)
-  {
-    mBias = calibrator.getBias();
-    mUp = calibrator.getUp();
-  }
-
-  @Override
-  public void onAccuracyChanged(Sensor sensor, int accuracy) {}
 }

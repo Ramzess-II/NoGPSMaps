@@ -12,6 +12,7 @@ import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
@@ -23,8 +24,8 @@ import androidx.core.content.ContextCompat;
 import app.organicmaps.MwmApplication;
 import app.organicmaps.R;
 import app.organicmaps.sdk.location.LocationHelper;
-import app.organicmaps.sdk.location.inertial.Elm327Client;
 import app.organicmaps.sdk.location.inertial.InertialNavigator;
+import app.organicmaps.sdk.location.inertial.MotionSource;
 import app.organicmaps.sdk.util.Config;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -62,6 +63,9 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
   private TextView mScale;
   private TextView mGyro;
   private TextView mReadiness;
+  private TextView mHint;
+  private View mChooseAdapter;
+  private TextView mCalibrate;
 
   @Nullable
   @Override
@@ -75,14 +79,21 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     mScale = view.findViewById(R.id.nogps_scale);
     mGyro = view.findViewById(R.id.nogps_gyro);
     mReadiness = view.findViewById(R.id.nogps_readiness);
+    mHint = view.findViewById(R.id.nogps_hint);
+    mChooseAdapter = view.findViewById(R.id.nogps_choose_adapter);
+    mCalibrate = view.findViewById(R.id.nogps_calibrate);
+
+    final RadioGroup source = view.findViewById(R.id.nogps_source);
+    source.check(getLocationHelper().isEsp32Source() ? R.id.nogps_source_esp32 : R.id.nogps_source_phone);
+    source.setOnCheckedChangeListener((group, checkedId) -> onSourceChosen(checkedId == R.id.nogps_source_esp32));
 
     mSwitch.setChecked(getLocationHelper().isInertialNavigationEnabled());
     mSwitch.setOnCheckedChangeListener((v, isChecked) -> onSwitch(isChecked));
     final SwitchCompat disableGps = view.findViewById(R.id.nogps_disable_gps_switch);
     disableGps.setChecked(getLocationHelper().isGpsDisabled());
     disableGps.setOnCheckedChangeListener((v, isChecked) -> getLocationHelper().setGpsDisabled(isChecked));
-    view.findViewById(R.id.nogps_choose_adapter).setOnClickListener(v -> withBluetoothPermission(this::chooseAdapter));
-    view.findViewById(R.id.nogps_calibrate).setOnClickListener(v -> {
+    mChooseAdapter.setOnClickListener(v -> withBluetoothPermission(this::chooseAdapter));
+    mCalibrate.setOnClickListener(v -> {
       final InertialNavigator inertial = getLocationHelper().getInertialNavigator();
       if (inertial != null)
         inertial.calibrate();
@@ -110,11 +121,28 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     return MwmApplication.from(requireContext()).getLocationHelper();
   }
 
+  private void onSourceChosen(boolean esp32)
+  {
+    if (esp32)
+    {
+      getLocationHelper().setEsp32Source(true);
+      update();
+      return;
+    }
+    withBluetoothPermission(() -> {
+      getLocationHelper().setEsp32Source(false);
+      if (Config.getElm327Address() == null && getLocationHelper().isInertialNavigationEnabled())
+        chooseAdapter();
+      update();
+    });
+  }
+
   private void onSwitch(boolean enabled)
   {
-    if (!enabled)
+    // The sensor box is on Wi-Fi, Bluetooth is not needed for it.
+    if (!enabled || getLocationHelper().isEsp32Source())
     {
-      getLocationHelper().setInertialNavigationEnabled(false);
+      getLocationHelper().setInertialNavigationEnabled(enabled);
       update();
       return;
     }
@@ -207,10 +235,23 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     final InertialNavigator inertial = locationHelper.getInertialNavigator();
     final boolean enabled = locationHelper.isInertialNavigationEnabled() && inertial != null;
 
-    String adapter = adapterName();
-    if (enabled)
-      adapter += " · " + getString(elmStateText(inertial.getElm327State()));
-    mAdapter.setText(getString(R.string.nogps_sensors_adapter, adapter));
+    final boolean esp32 = locationHelper.isEsp32Source();
+    mHint.setText(esp32 ? R.string.nogps_sensors_hint_box : R.string.nogps_sensors_hint);
+    mChooseAdapter.setVisibility(esp32 ? View.GONE : View.VISIBLE);
+    mCalibrate.setText(esp32 ? R.string.nogps_sensors_calibrate_box : R.string.nogps_sensors_calibrate);
+    if (esp32)
+    {
+      final String name = enabled && inertial.getDeviceName() != null ? inertial.getDeviceName() : "ESP32";
+      final String box = enabled ? name + " · " + getString(boxStateText(inertial.getSourceState())) : name;
+      mAdapter.setText(getString(R.string.nogps_sensors_box, box));
+    }
+    else
+    {
+      String adapter = adapterName();
+      if (enabled)
+        adapter += " · " + getString(elmStateText(inertial.getSourceState()));
+      mAdapter.setText(getString(R.string.nogps_sensors_adapter, adapter));
+    }
 
     final int speed = enabled ? inertial.getSpeedKmh() : -1;
     mSpeed.setText(getString(R.string.nogps_sensors_speed, speed >= 0 ? getString(R.string.nogps_speed_kmh, speed)
@@ -228,6 +269,7 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
       case CALIBRATING -> getString(R.string.nogps_gyro_calibrating, inertial.getCalibrationProgressPercent());
       case DONE -> getString(R.string.nogps_gyro_done);
       case FAILED_MOVING -> getString(R.string.nogps_gyro_failed);
+      case MOUNT_MOVED -> getString(R.string.nogps_gyro_mount_moved);
     };
     mGyro.setText(getString(R.string.nogps_sensors_gyro, gyro));
 
@@ -256,7 +298,18 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     }
   }
 
-  private static int elmStateText(@NonNull Elm327Client.State state)
+  private static int boxStateText(@NonNull MotionSource.State state)
+  {
+    return switch (state)
+    {
+      case DISCONNECTED -> R.string.nogps_elm_disconnected;
+      case CONNECTING -> R.string.nogps_box_connecting;
+      case NO_CAR_DATA -> R.string.nogps_elm_no_car;
+      case CONNECTED -> R.string.nogps_elm_connected;
+    };
+  }
+
+  private static int elmStateText(@NonNull MotionSource.State state)
   {
     return switch (state)
     {

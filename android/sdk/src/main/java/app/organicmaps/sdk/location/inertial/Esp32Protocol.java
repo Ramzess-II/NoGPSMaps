@@ -1,0 +1,167 @@
+package app.organicmaps.sdk.location.inertial;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import java.nio.charset.StandardCharsets;
+import java.util.Locale;
+
+/**
+ * Lines of the NoGPS ESP32 sensor box protocol, version 1: "$NGD,...*CRC\r\n". The checksum is
+ * CRC-16/CCITT-FALSE of the bytes between '$' and '*'.
+ */
+public final class Esp32Protocol
+{
+  static final int VERSION = 1;
+
+  // Bits of the data flags.
+  static final int FLAG_IMU_OK = 1;
+  static final int FLAG_BIAS_OK = 1 << 1;
+  static final int FLAG_UP_OK = 1 << 2;
+  static final int FLAG_FWD_OK = 1 << 3;
+  static final int FLAG_OBD_OK = 1 << 4;
+  static final int FLAG_STILL = 1 << 5;
+  static final int FLAG_CALIBRATING = 1 << 6;
+  static final int FLAG_MOUNT_MOVED = 1 << 7;
+  static final int FLAG_REVERSE = 1 << 8;
+
+  /**
+   * A data line: the totals since the box has started, so a lost line loses nothing.
+   */
+  public static final class Data
+  {
+    public long seq;
+    public long timeMs;
+    // Clockwise, thousandths of a degree.
+    public long yawMdeg;
+    public long rateMdps;
+    public long distMm;
+    // -1 if the car doesn't tell it.
+    public int speedKmh;
+    public int speedAgeMs;
+    public int flags;
+  }
+
+  /**
+   * A reply to a command.
+   */
+  public static final class Reply
+  {
+    public int id;
+    public boolean ok;
+    // The progress in percent, -1 if it is the final reply.
+    public int progress = -1;
+    @NonNull
+    public String error = "";
+  }
+
+  private Esp32Protocol() {}
+
+  public static int crc16(@NonNull String text)
+  {
+    int crc = 0xFFFF;
+    for (byte b : text.getBytes(StandardCharsets.US_ASCII))
+    {
+      crc ^= (b & 0xFF) << 8;
+      for (int i = 0; i < 8; i++)
+        crc = (crc & 0x8000) != 0 ? ((crc << 1) ^ 0x1021) & 0xFFFF : (crc << 1) & 0xFFFF;
+    }
+    return crc;
+  }
+
+  @NonNull
+  public static String command(int id, @NonNull String command)
+  {
+    final String body = "NGC," + id + "," + command;
+    return "$" + body + "*" + String.format(Locale.US, "%04X", crc16(body)) + "\r\n";
+  }
+
+  /**
+   * @return the fields of a line with a valid checksum, the first one is the line type; null otherwise.
+   */
+  @Nullable
+  public static String[] parse(@NonNull String line)
+  {
+    final String trimmed = line.trim();
+    final int star = trimmed.lastIndexOf('*');
+    if (!trimmed.startsWith("$") || star < 0 || trimmed.length() != star + 5)
+      return null;
+    final String body = trimmed.substring(1, star);
+    try
+    {
+      if (Integer.parseInt(trimmed.substring(star + 1), 16) != crc16(body))
+        return null;
+    }
+    catch (NumberFormatException e)
+    {
+      return null;
+    }
+    return body.split(",", -1);
+  }
+
+  /**
+   * @return the data of an NGD line, null if it is another line or is malformed.
+   */
+  @Nullable
+  public static Data parseData(@NonNull String[] fields)
+  {
+    if (fields.length < 10 || !"NGD".equals(fields[0]))
+      return null;
+    try
+    {
+      if (Integer.parseInt(fields[1]) != VERSION)
+        return null;
+      final Data data = new Data();
+      data.seq = Long.parseLong(fields[2]);
+      data.timeMs = Long.parseLong(fields[3]);
+      data.yawMdeg = Long.parseLong(fields[4]);
+      data.rateMdps = Long.parseLong(fields[5]);
+      data.distMm = Long.parseLong(fields[6]);
+      data.speedKmh = Integer.parseInt(fields[7]);
+      data.speedAgeMs = Integer.parseInt(fields[8]);
+      data.flags = Integer.parseInt(fields[9], 16);
+      return data;
+    }
+    catch (NumberFormatException e)
+    {
+      return null;
+    }
+  }
+
+  /**
+   * @return the reply of an NGA line, null if it is another line or is malformed.
+   */
+  @Nullable
+  public static Reply parseReply(@NonNull String[] fields)
+  {
+    if (fields.length < 3 || !"NGA".equals(fields[0]))
+      return null;
+    try
+    {
+      final Reply reply = new Reply();
+      reply.id = Integer.parseInt(fields[1]);
+      switch (fields[2])
+      {
+      case "OK" -> reply.ok = true;
+      case "PROGRESS" -> reply.progress = fields.length > 3 ? Integer.parseInt(fields[3]) : 0;
+      case "ERR" -> reply.error = fields.length > 3 ? fields[3] : "";
+      default -> { return null; }
+      }
+      return reply;
+    }
+    catch (NumberFormatException e)
+    {
+      return null;
+    }
+  }
+
+  /**
+   * @return the name of the gyroscope from an NGS line, null if it is another line.
+   */
+  @Nullable
+  public static String parseImuName(@NonNull String[] fields)
+  {
+    if (fields.length < 4 || !"NGS".equals(fields[0]))
+      return null;
+    return fields[3];
+  }
+}

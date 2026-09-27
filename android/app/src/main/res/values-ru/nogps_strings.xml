@@ -60,4 +60,11 @@
   <string name="nogps_pause">Пауза: машина маневрирует</string>
   <string name="nogps_resume">Продолжить движение</string>
   <string name="nogps_status_paused">Пауза</string>
+  <string name="nogps_source_phone">Телефон + ELM327 (Bluetooth)</string>
+  <string name="nogps_source_esp32">Блок ESP32 (Wi-Fi)</string>
+  <string name="nogps_sensors_box">Блок: %1$s</string>
+  <string name="nogps_box_connecting">ищу блок, подключитесь к Wi-Fi NoGPS</string>
+  <string name="nogps_sensors_calibrate_box">Калибровать</string>
+  <string name="nogps_gyro_mount_moved">блок сдвинули, откалибруйте</string>
+  <string name="nogps_sensors_hint_box">Закрепите блок неподвижно. Откалибруйте его один раз, когда машина стоит на ровном месте, дальше блок сам обнуляет гироскоп на каждой остановке.</string>
 </resources>

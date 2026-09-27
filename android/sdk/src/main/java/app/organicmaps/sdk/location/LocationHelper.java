@@ -797,7 +797,24 @@ public class LocationHelper implements BaseLocationProvider.Listener
   {
     Config.setElm327Address(address);
     if (isInertialNavigationEnabled() && mInertial != null)
-      mInertial.start(address);
+      mInertial.start();
+  }
+
+  public boolean isEsp32Source()
+  {
+    return Config.isNoGpsEsp32Source();
+  }
+
+  /**
+   * Chooses where the car movement comes from: the ESP32 sensor box or the phone with an ELM327 adapter.
+   */
+  @UiThread
+  public void setEsp32Source(boolean esp32)
+  {
+    Logger.i(TAG, "esp32 = " + esp32);
+    Config.setNoGpsEsp32Source(esp32);
+    if (isInertialNavigationEnabled() && mInertial != null)
+      mInertial.start();
   }
 
   /**
@@ -948,7 +965,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
       line.append(" markAge=").append(ageSec(mManualSetTimeMs));
     if (mInertial != null && isInertialNavigationEnabled())
     {
-      line.append(" obd=").append(mInertial.getElm327State()).append(" speed=").append(mInertial.getSpeedKmh());
+      line.append(" obd=").append(mInertial.getSourceState()).append(" speed=").append(mInertial.getSpeedKmh());
       line.append(String.format(Locale.US, " scale=%.3f", mInertial.getSpeedScale()));
       line.append(" gyro=").append(mInertial.getCalibrationState());
       line.append(String.format(Locale.US, " turn=%.0f", mInertial.getLastTurnShiftM()));
@@ -977,7 +994,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
       return;
     if (mInertial == null)
       mInertial = new InertialNavigator(mContext, this::onInertialLocation, roads(true /* matchRoute */));
-    mInertial.start(Config.getElm327Address());
+    mInertial.start();
   }
 
   /**

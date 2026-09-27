@@ -61,4 +61,11 @@
   <string name="nogps_pause">Pause: the car maneuvers</string>
   <string name="nogps_resume">Resume the movement</string>
   <string name="nogps_status_paused">Pause</string>
+  <string name="nogps_source_phone">Phone + ELM327 (Bluetooth)</string>
+  <string name="nogps_source_esp32">ESP32 sensor box (Wi-Fi)</string>
+  <string name="nogps_sensors_box">Box: %1$s</string>
+  <string name="nogps_box_connecting">searching, connect to the NoGPS Wi-Fi</string>
+  <string name="nogps_sensors_calibrate_box">Calibrate</string>
+  <string name="nogps_gyro_mount_moved">the box has been moved, calibrate it</string>
+  <string name="nogps_sensors_hint_box">Fix the box firmly. Calibrate it once while the car stands on a level place, the box zeroes the gyroscope on every stop by itself.</string>
 </resources>

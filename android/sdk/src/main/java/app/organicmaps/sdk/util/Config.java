@@ -44,6 +44,8 @@ public final class Config
   private static final String KEY_NOGPS_ELM327_ADDRESS = "NoGpsElm327Address";
   private static final String KEY_NOGPS_SHIFT_STEP = "NoGpsShiftStep";
   private static final String KEY_NOGPS_SPEED_SCALE = "NoGpsSpeedScale";
+  private static final String KEY_NOGPS_ESP32_SOURCE = "NoGpsEsp32Source";
+  private static final String KEY_NOGPS_ESP32_ADDRESS = "NoGpsEsp32Address";
 
   private static final String KEY_MISC_SHOW_ON_LOCK_SCREEN = "ShowOnLockScreen";
   private static final String KEY_MISC_AGPS_TIMESTAMP = "AGPSTimestamp";
@@ -259,6 +261,29 @@ public final class Config
   public static void setNoGpsSpeedScale(float scale)
   {
     setFloat(KEY_NOGPS_SPEED_SCALE, scale);
+  }
+
+  /**
+   * @return true if the car movement comes from the ESP32 sensor box, false for the phone with an ELM327.
+   */
+  public static boolean isNoGpsEsp32Source()
+  {
+    return getBool(KEY_NOGPS_ESP32_SOURCE, false);
+  }
+
+  public static void setNoGpsEsp32Source(boolean esp32)
+  {
+    setBool(KEY_NOGPS_ESP32_SOURCE, esp32);
+  }
+
+  /**
+   * @return the address of the ESP32 sensor box: its own access point by default, another one when it joins
+   * the phone hotspot or a simulator is tested.
+   */
+  @NonNull
+  public static String getNoGpsEsp32Address()
+  {
+    return getString(KEY_NOGPS_ESP32_ADDRESS, "192.168.4.1");
   }
 
   public static boolean isShowOnLockScreenEnabled()
