@@ -15,7 +15,7 @@
   <string name="nogps_kilometers">%.1f km</string>
   <string name="nogps_status_inertial">Inertial · ±%s</string>
   <string name="nogps_sensors_title">Inertial navigation</string>
-  <string name="nogps_sensors_enable">Phone gyroscope + ELM327</string>
+  <string name="nogps_sensors_enable">Enabled</string>
   <string name="nogps_sensors_hint">Fix the phone so it doesn\'t move. Zero the gyroscope while the car stands still.</string>
   <string name="nogps_sensors_adapter">Adapter: %1$s</string>
   <string name="nogps_sensors_adapter_none">not chosen</string>

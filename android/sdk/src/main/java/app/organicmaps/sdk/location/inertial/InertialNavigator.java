@@ -42,6 +42,9 @@ public class InertialNavigator implements MotionSource.Listener
   private static final double TURN_CORNER_AHEAD_M = 5;
   // The car is moved to the new road found this close to the moved position.
   private static final double TURN_SNAP_RADIUS_M = 20;
+  // A car turning at a crossing rotates one way. Rotating much more than it has turned, it has driven around
+  // a roundabout or along a winding road, and the turn is not at the crossing where it has started.
+  private static final double MAX_EXTRA_TURN_ROTATION_DEG = 60;
   // The pause is over when the car drives this fast for a while: nobody drives so fast backwards.
   private static final int AUTO_RESUME_SPEED_KMH = 15;
   private static final long AUTO_RESUME_MS = 3000;
@@ -100,6 +103,8 @@ public class InertialNavigator implements MotionSource.Listener
   private double mTurnStartLat;
   private double mTurnStartLon;
   private long mTurnCalmSinceNs;
+  // The rotation of the turn both ways together.
+  private double mTurnRotationDeg;
   // How far the last turn has moved the car to its crossing, for the log of a drive.
   private double mLastTurnShiftM = Double.NaN;
 
@@ -380,7 +385,7 @@ public class InertialNavigator implements MotionSource.Listener
     if (mSource != null && mSource.isCalibrated() && speedFresh && mDeadReckoning.getSpeed() > MOVING_SPEED_MPS)
     {
       if (!mPaused)
-        trackTurn(yawDeltaDeg / dt, timestampNs);
+        trackTurn(yawDeltaDeg, dt, timestampNs);
       mDeadReckoning.rotate(yawDeltaDeg);
     }
     if (speedFresh && !mPaused)
@@ -427,12 +432,14 @@ public class InertialNavigator implements MotionSource.Listener
 
   /**
    * Follows a turn of the car. When the turn is over, the car is moved to the crossing it has turned at.
-   * @param yawRateDeg clockwise rotation speed of the car.
+   * @param yawDeltaDeg clockwise rotation of the car during dt.
    */
-  private void trackTurn(double yawRateDeg, long timestampNs)
+  private void trackTurn(double yawDeltaDeg, double dt, long timestampNs)
   {
     if (!isReady())
       return;
+    final double yawRateDeg = yawDeltaDeg / dt;
+    mTurnRotationDeg += Math.abs(yawDeltaDeg);
     if (!mTurning)
     {
       if (Math.abs(yawRateDeg) < TURN_START_RATE_DEG)
@@ -442,6 +449,7 @@ public class InertialNavigator implements MotionSource.Listener
       mTurnStartLat = mDeadReckoning.getLat();
       mTurnStartLon = mDeadReckoning.getLon();
       mTurnCalmSinceNs = 0;
+      mTurnRotationDeg = 0;
       return;
     }
 
@@ -465,6 +473,13 @@ public class InertialNavigator implements MotionSource.Listener
   private void matchTurn()
   {
     final double toBearing = mDeadReckoning.getHeading();
+    final double turnDeg = Math.abs(DeadReckoning.angleDiff(toBearing, mTurnFromBearing));
+    if (mTurnRotationDeg - turnDeg > MAX_EXTRA_TURN_ROTATION_DEG)
+    {
+      Logger.i(TAG, "Turn from " + Math.round(mTurnFromBearing) + " to " + Math.round(toBearing) + " rotating by "
+                        + Math.round(mTurnRotationDeg) + " is a roundabout or a winding road");
+      return;
+    }
     final double[] corner = DeadReckoning.move(mTurnStartLat, mTurnStartLon, mTurnFromBearing, TURN_CORNER_AHEAD_M);
     final double[] crossing = TurnMatcher.findCrossing(mRoads, corner[0], corner[1], mTurnFromBearing, toBearing,
                                                        mDeadReckoning.getAccuracy());

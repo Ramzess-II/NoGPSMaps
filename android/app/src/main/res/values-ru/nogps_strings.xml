@@ -14,7 +14,7 @@
   <string name="nogps_kilometers">%.1f км</string>
   <string name="nogps_status_inertial">Инерциально · ±%s</string>
   <string name="nogps_sensors_title">Инерциальная навигация</string>
-  <string name="nogps_sensors_enable">Гироскоп телефона + ELM327</string>
+  <string name="nogps_sensors_enable">Включена</string>
   <string name="nogps_sensors_hint">Закрепите телефон неподвижно. Обнуляйте гироскоп, когда машина стоит.</string>
   <string name="nogps_sensors_adapter">Адаптер: %1$s</string>
   <string name="nogps_sensors_adapter_none">не выбран</string>
