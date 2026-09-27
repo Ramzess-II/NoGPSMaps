@@ -58,6 +58,9 @@ public class LocationHelper implements BaseLocationProvider.Listener
   private static final double MANUAL_SNAP_RADIUS_M = 30;
   // A road going another way is a crossing road: the car is on it, but it does not drive along it.
   private static final double MAX_ROAD_BEARING_DIFF_DEG = 45;
+  // A point of the route closer than this to a road is on it, and goes along it within the angle.
+  private static final double ROAD_CHECK_RADIUS_M = 3;
+  private static final double MAX_ALONG_ROAD_DIFF_DEG = 30;
   // Closer to the previous position, the side the car has turned to is not known.
   private static final float MIN_TURN_DISTANCE_M = 5;
   // The position stopped at a turn is not moved further: the car can turn to another street there.
@@ -1061,6 +1064,10 @@ public class LocationHelper implements BaseLocationProvider.Listener
     // The car goes against the route: it has turned around, the road is taken the way the car goes.
     if (road != null && !Double.isNaN(heading) && Math.abs(DeadReckoning.angleDiff(road[2], heading)) > 90)
       road = null;
+    // The route starts from a position off the roads with a piece across to the road, the car stands
+    // along the road and not across it.
+    if (road != null && !isAlongRoad(road[0], road[1], road[2]))
+      road = null;
     if (road == null)
       road = snapToRoad(lat, lon, heading, MANUAL_SNAP_RADIUS_M, mSavedLocation);
     if (road == null)
@@ -1084,6 +1091,21 @@ public class LocationHelper implements BaseLocationProvider.Listener
       mInertial.setRoadPosition(road[0], road[1], road[2]);
     applyManualLocation();
     return true;
+  }
+
+  /**
+   * @return true if there is a road at the position going the bearing way or the opposite one.
+   */
+  private static boolean isAlongRoad(double lat, double lon, double bearingDeg)
+  {
+    final double[] road =
+        LocationState.nativeSnapToRoad(lat, lon, toNativeBearing(bearingDeg), ROAD_CHECK_RADIUS_M, false);
+    if (road == null)
+      return false;
+    final float[] distance = new float[1];
+    Location.distanceBetween(lat, lon, road[0], road[1], distance);
+    final double diff = Math.abs(DeadReckoning.angleDiff(road[2], bearingDeg));
+    return distance[0] <= ROAD_CHECK_RADIUS_M && Math.min(diff, 180 - diff) <= MAX_ALONG_ROAD_DIFF_DEG;
   }
 
   /**
