@@ -2539,7 +2539,8 @@ void FrontendRenderer::Routine::Do()
 
   m_renderer.CreateContext();
 
-#if defined(DEBUG) || defined(DEBUG_DRAPE_XCODE) || defined(SCENARIO_ENABLE)
+// The scale and FPS take the place of the position status, they are shown by the ?debug-info command only.
+#if defined(DEBUG_DRAPE_XCODE) || defined(SCENARIO_ENABLE)
   gui::DrapeGui::Instance().GetScaleFpsHelper().SetVisible(true);
 #endif
 
