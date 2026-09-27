@@ -77,6 +77,8 @@ public class MapButtonsController extends Fragment
   @Nullable
   private TextView mPositionStatus;
   @Nullable
+  private FloatingActionButton mPauseButton;
+  @Nullable
   private View mShiftPositionContainer;
   @Nullable
   private TextView mShiftPositionStep;
@@ -170,6 +172,11 @@ public class MapButtonsController extends Fragment
         (v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.shiftPositionBack));
     mFrame.findViewById(R.id.reverse_direction)
         .setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.reverseDirection));
+    mPauseButton = mFrame.findViewById(R.id.pause_movement);
+    mPauseButton.setOnClickListener((v) -> {
+      mMapButtonClickListener.onMapButtonClick(MapButtons.pauseMovement);
+      updatePositionStatus();
+    });
     mShiftPositionStep.setOnClickListener((v) -> {
       Config.setPositionShiftStepM(nextShiftStep());
       updateShiftPositionStep();
@@ -301,7 +308,9 @@ public class MapButtonsController extends Fragment
       }
       case INERTIAL ->
       {
-        text = getString(R.string.nogps_status_inertial, formatAccuracy(locationHelper.getPositionAccuracy()));
+        text = locationHelper.isPaused()
+                 ? getString(R.string.nogps_status_paused)
+                 : getString(R.string.nogps_status_inertial, formatAccuracy(locationHelper.getPositionAccuracy()));
         color = R.color.nogps_status_inertial;
       }
       case MANUAL ->
@@ -337,6 +346,15 @@ public class MapButtonsController extends Fragment
       UiUtils.showIf(locationHelper.isManualMode() || source == LocationHelper.PositionSource.INERTIAL
                          || source == LocationHelper.PositionSource.MANUAL,
                      mShiftPositionContainer);
+    }
+
+    // The movement is paused only when it is calculated from the car speed.
+    if (mPauseButton != null)
+    {
+      UiUtils.showIf(locationHelper.isInertialNavigationEnabled(), mPauseButton);
+      mPauseButton.setImageResource(locationHelper.isPaused() ? R.drawable.ic_play : R.drawable.ic_pause);
+      mPauseButton.setContentDescription(
+          getString(locationHelper.isPaused() ? R.string.nogps_resume : R.string.nogps_pause));
     }
 
     // The position waits at a turn until the car leaves it, otherwise it would go to another street.
@@ -723,7 +741,8 @@ public class MapButtonsController extends Fragment
     positionStatus,
     shiftPositionForward,
     shiftPositionBack,
-    reverseDirection
+    reverseDirection,
+    pauseMovement
   }
 
   public interface MapButtonClickListener

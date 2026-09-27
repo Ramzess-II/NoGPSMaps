@@ -795,6 +795,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
     case shiftPositionForward -> shiftPosition(Config.getPositionShiftStepM());
     case shiftPositionBack -> shiftPosition(-Config.getPositionShiftStepM());
     case reverseDirection -> MwmApplication.from(this).getLocationHelper().reverseDirection();
+    case pauseMovement -> MwmApplication.from(this).getLocationHelper().togglePause();
     }
   }
 

@@ -57,4 +57,7 @@
   <string name="nogps_gps_lost_auto">GPS пропал или сбился, включён ручной режим</string>
   <string name="nogps_disable_gps">Отключить GPS</string>
   <string name="nogps_disable_gps_hint">Для проверки: приложение не видит GPS, как при глушении, остальная геолокация работает. Выключается при перезапуске приложения.</string>
+  <string name="nogps_pause">Пауза: машина маневрирует</string>
+  <string name="nogps_resume">Продолжить движение</string>
+  <string name="nogps_status_paused">Пауза</string>
 </resources>

@@ -58,4 +58,7 @@
   <string name="nogps_gps_lost_auto">GPS is lost or wrong, the manual mode is on</string>
   <string name="nogps_disable_gps">Disable GPS</string>
   <string name="nogps_disable_gps_hint">For testing: the app ignores GPS as if it were jammed, the rest of the location works. It is turned off when the app restarts.</string>
+  <string name="nogps_pause">Pause: the car maneuvers</string>
+  <string name="nogps_resume">Resume the movement</string>
+  <string name="nogps_status_paused">Pause</string>
 </resources>

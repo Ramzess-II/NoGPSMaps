@@ -806,6 +806,26 @@ public class LocationHelper implements BaseLocationProvider.Listener
   }
 
   /**
+   * @return true if the car movement is paused while the car maneuvers.
+   */
+  public boolean isPaused()
+  {
+    return mInertial != null && mInertial.isPaused();
+  }
+
+  /**
+   * Pauses the movement of the car calculated by the inertial navigation while the car maneuvers, e.g.
+   * parks or turns around in several moves: the speed from the car is always positive. It is resumed by
+   * itself when the car drives on.
+   */
+  @UiThread
+  public void togglePause()
+  {
+    if (mInertial != null)
+      mInertial.setPaused(!mInertial.isPaused());
+  }
+
+  /**
    * @return where the car looks, NaN if it is unknown.
    */
   private double getCarBearing()
@@ -878,6 +898,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
     }
     line.append(" gpsAge=").append(mLastTrustedGpsMs == 0 ? "-" : ageSec(mLastTrustedGpsMs));
     line.append(" spoofed=").append(mSpoofingDetector.isSpoofed() ? 1 : 0);
+    line.append(" paused=").append(isPaused() ? 1 : 0);
     line.append(" nav=").append(RoutingController.get().isNavigating() ? 1 : 0);
     if (mNetworkLocation != null)
     {

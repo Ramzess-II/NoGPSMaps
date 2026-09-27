@@ -47,6 +47,9 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
   private static final double TURN_CORNER_AHEAD_M = 5;
   // The car is moved to the new road found this close to the moved position.
   private static final double TURN_SNAP_RADIUS_M = 20;
+  // The pause is over when the car drives this fast for a while: nobody drives so fast backwards.
+  private static final int AUTO_RESUME_SPEED_KMH = 15;
+  private static final long AUTO_RESUME_MS = 3000;
 
   public enum CalibrationState
   {
@@ -117,6 +120,13 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
   private long mTurnCalmSinceNs;
   // How far the last turn has moved the car to its crossing, for the log of a drive.
   private double mLastTurnShiftM = Double.NaN;
+
+  // While the car maneuvers, e.g. parks or turns around in several moves, the speed from the car is always
+  // positive and would move the car forward. The car stays where it is then, the gyroscope still follows
+  // its rotation.
+  private boolean mPaused;
+  // Elapsed realtime since the car drives fast enough to end the pause, 0 if it doesn't.
+  private long mFastSinceMs;
 
   /**
    * @param roads the roads and the followed route, the car is kept on them.
@@ -344,11 +354,46 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
     return mSpeedKmh >= 0 && SystemClock.elapsedRealtime() - mSpeedTimeMs < SPEED_STALE_MS;
   }
 
+  public boolean isPaused()
+  {
+    return mPaused;
+  }
+
+  /**
+   * Pauses the movement of the car while it maneuvers, or resumes it: the car is put on the road where it
+   * stands, looking the way it has turned to during the pause.
+   */
+  public void setPaused(boolean paused)
+  {
+    if (mPaused == paused)
+      return;
+    Logger.i(TAG, "paused = " + paused);
+    mPaused = paused;
+    mFastSinceMs = 0;
+    mTurning = false;
+    if (paused || !mDeadReckoning.isReady())
+      return;
+
+    final double heading = mDeadReckoning.getHeading();
+    final double[] road = mRoads.snap(mDeadReckoning.getLat(), mDeadReckoning.getLon(), heading, MAX_SNAP_RADIUS_M);
+    if (road != null)
+      setRoadPosition(road[0], road[1], RoadWalker.orient(road[2], heading));
+  }
+
   @Override
   public void onSpeed(int speedKmh, long elapsedRealtimeMs)
   {
     mSpeedKmh = speedKmh;
     mSpeedTimeMs = elapsedRealtimeMs;
+    if (mPaused)
+    {
+      if (speedKmh < AUTO_RESUME_SPEED_KMH)
+        mFastSinceMs = 0;
+      else if (mFastSinceMs == 0)
+        mFastSinceMs = elapsedRealtimeMs;
+      else if (elapsedRealtimeMs - mFastSinceMs >= AUTO_RESUME_MS)
+        setPaused(false);
+    }
     if (speedKmh > 0)
       mStoppedSinceMs = 0;
     else if (mStoppedSinceMs == 0)
@@ -385,17 +430,19 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
     if (mBias != null && mUp != null && speedFresh && mDeadReckoning.getSpeed() > MOVING_SPEED_MPS)
     {
       final double yawRateDeg = GyroCalibrator.yawRateDeg(gyro, mBias, mUp);
-      trackTurn(yawRateDeg, event.timestamp);
+      if (!mPaused)
+        trackTurn(yawRateDeg, event.timestamp);
       mDeadReckoning.rotate(yawRateDeg * dt);
     }
-    if (speedFresh)
+    if (speedFresh && !mPaused)
     {
       mDeadReckoning.advance(dt);
       mSpeedScale.onDistance(mDeadReckoning.getSpeed() * dt);
     }
 
     final long now = SystemClock.elapsedRealtime();
-    if (isReady() && mDeadReckoning.getSpeed() > MOVING_SPEED_MPS && now - mLastSnapMs >= SNAP_INTERVAL_MS)
+    if (isReady() && !mPaused && mDeadReckoning.getSpeed() > MOVING_SPEED_MPS
+        && now - mLastSnapMs >= SNAP_INTERVAL_MS)
     {
       mLastSnapMs = now;
       snapToRoad();
