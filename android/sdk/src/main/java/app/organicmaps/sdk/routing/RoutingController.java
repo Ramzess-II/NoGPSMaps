@@ -377,7 +377,7 @@ public class RoutingController
     cancel();
     setState(State.PREPARE);
 
-    mLastRouterType = routerType;
+    mLastRouterType = Router.Vehicle;
     Router.set(mLastRouterType);
 
     if (startPoint != null || endPoint != null)
@@ -924,11 +924,11 @@ public class RoutingController
     Logger.d(TAG, "setRouterType: " + mLastRouterType + " -> " + router);
 
     // Nothing to rebuild when the already selected router type is tapped again.
-    if (router == mLastRouterType)
+    if (router == mLastRouterType || router != Router.Vehicle)
       return;
 
-    mLastRouterType = router;
-    Router.set(router);
+    mLastRouterType = Router.Vehicle;
+    Router.set(mLastRouterType);
 
     cancelRemovingIntermediatePointsTransaction();
 
