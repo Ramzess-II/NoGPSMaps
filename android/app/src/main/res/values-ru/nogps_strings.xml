@@ -32,15 +32,11 @@
   <string name="nogps_gyro_done">обнулён</string>
   <string name="nogps_gyro_failed">не вышло, телефон или машина двигались</string>
   <string name="nogps_sensors_calibrate">Обнулить</string>
-  <string name="nogps_sensors_heading">Направление машины: %s</string>
-  <string name="nogps_heading_none">неизвестно</string>
-  <string name="nogps_heading_gps">из GPS</string>
   <string name="nogps_sensors_ready">Готово к работе</string>
   <string name="nogps_sensors_not_ready">Не готово: %s</string>
   <string name="nogps_missing_speed">нет скорости</string>
   <string name="nogps_missing_gyro">обнулите гироскоп</string>
   <string name="nogps_missing_position">нет стартовой точки</string>
-  <string name="nogps_missing_heading">поставьте метку на дорогу</string>
   <string name="nogps_choose_adapter">Выберите OBD-адаптер</string>
   <string name="nogps_no_paired">Нет сопряжённых Bluetooth-устройств. Сопрягите ELM327 в настройках Bluetooth (PIN обычно 1234).</string>
   <string name="nogps_bt_permission_denied">Без доступа к Bluetooth адаптер не подключить</string>
@@ -49,7 +45,6 @@
   <string name="nogps_shift_step">На сколько переносить позицию</string>
   <string name="nogps_shift_limited">Перенос на %1$d м, до перекрёстка</string>
   <string name="nogps_shift_failed">Позицию некуда переносить</string>
-  <string name="nogps_heading_road">по дороге</string>
   <string name="nogps_sensors_scale">Поправка скорости: %1$s</string>
   <string name="nogps_shift_at_turn">Позиция у перекрёстка, дальше переносить нельзя</string>
   <string name="nogps_status_gps_back">GPS снова есть ±%s</string>

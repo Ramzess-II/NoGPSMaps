@@ -61,7 +61,6 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
   private TextView mSpeed;
   private TextView mScale;
   private TextView mGyro;
-  private TextView mHeading;
   private TextView mReadiness;
 
   @Nullable
@@ -75,7 +74,6 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     mSpeed = view.findViewById(R.id.nogps_speed);
     mScale = view.findViewById(R.id.nogps_scale);
     mGyro = view.findViewById(R.id.nogps_gyro);
-    mHeading = view.findViewById(R.id.nogps_heading);
     mReadiness = view.findViewById(R.id.nogps_readiness);
 
     mSwitch.setChecked(getLocationHelper().isInertialNavigationEnabled());
@@ -233,19 +231,6 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     };
     mGyro.setText(getString(R.string.nogps_sensors_gyro, gyro));
 
-    final InertialNavigator.HeadingSource heading =
-        enabled ? inertial.getHeadingSource() : InertialNavigator.HeadingSource.NONE;
-    final int headingText = switch (heading)
-    {
-      case NONE -> R.string.nogps_heading_none;
-      case GPS -> R.string.nogps_heading_gps;
-      case ROAD -> R.string.nogps_heading_road;
-    };
-    final double headingDeg = enabled ? inertial.getHeading() : Double.NaN;
-    final String headingValue = Double.isNaN(headingDeg)
-                                  ? getString(headingText)
-                                  : Math.round(headingDeg) + "° · " + getString(headingText);
-    mHeading.setText(getString(R.string.nogps_sensors_heading, headingValue));
 
     if (!enabled)
     {
@@ -259,8 +244,6 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
       missing.add(getString(R.string.nogps_missing_gyro));
     if (!inertial.hasPosition())
       missing.add(getString(R.string.nogps_missing_position));
-    if (heading == InertialNavigator.HeadingSource.NONE)
-      missing.add(getString(R.string.nogps_missing_heading));
     if (missing.isEmpty())
     {
       mReadiness.setText(R.string.nogps_sensors_ready);

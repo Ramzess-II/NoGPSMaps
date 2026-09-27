@@ -233,6 +233,12 @@ public class InertialNavigator implements SensorEventListener, Elm327Client.List
   public void setPosition(double lat, double lon)
   {
     mDeadReckoning.setPosition(lat, lon);
+    if (mDeadReckoning.hasHeading())
+      return;
+    // Without GPS and marks the car looks along its road either way, the user turns it around if it is wrong.
+    final double[] road = mRoads.snap(lat, lon, Double.NaN, MAX_SNAP_RADIUS_M);
+    if (road != null)
+      setHeading(road[2], HeadingSource.ROAD);
   }
 
   /**

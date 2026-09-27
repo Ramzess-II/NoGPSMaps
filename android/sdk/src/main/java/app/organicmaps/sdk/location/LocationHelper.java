@@ -84,6 +84,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
   // Without the inertial navigation a longer pause of GPS is waited for while navigating: the manual mode
   // needs a mark from the user.
   private static final long GPS_LOST_MS = 5000;
+  // The first GPS position after the start takes longer: the satellites are searched.
+  private static final long GPS_FIRST_FIX_MS = 15_000;
   // GPS farther than this from the inertial position following it is spoofed or broken: the inertial
   // position is calculated for a second only since the previous GPS position.
   private static final double MAX_GPS_INERTIAL_DIFF_M = 30;
@@ -187,6 +189,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
   @Nullable
   private InertialNavigator mInertial;
   private long mLastTrustedGpsMs;
+  // Elapsed realtime of the start of the location updates.
+  private long mStartTimeMs;
   private long mLastInertialUsedMs;
   private final ObserverList<ManualModeListener> mManualModeListeners = new ObserverList<>();
 
@@ -501,8 +505,11 @@ public class LocationHelper implements BaseLocationProvider.Listener
     Logger.w(TAG, "Entering the manual mode: " + reason);
     final Location last = mSavedLocation;
     setManualMode(true);
-    // The car is where GPS has left it until the user or the inertial navigation moves it.
-    if (last != null && sourceOf(last) == PositionSource.GPS)
+    // The car is where it was shown until the user moves it: on the road there, or where GPS has left it if
+    // there is no road. The inertial navigation has moved the car on since, it continues from there.
+    final boolean inertialReady = mInertial != null && mInertial.isReady();
+    if (last != null && !inertialReady && !setManualLocation(last.getLatitude(), last.getLongitude())
+        && sourceOf(last) == PositionSource.GPS)
     {
       final Location location = new Location(last);
       location.setProvider(MANUAL_PROVIDER);
@@ -516,16 +523,18 @@ public class LocationHelper implements BaseLocationProvider.Listener
   }
 
   /**
-   * Turns the manual mode on when GPS has been silent for long while navigating without the inertial
-   * navigation, which turns it on by itself.
+   * Turns the manual mode on when there is no GPS while navigating without the inertial navigation, which
+   * turns it on by itself. GPS may have been lost or never found since the start.
    */
   private void checkGpsLost()
   {
-    if (mManualMode || mLastTrustedGpsMs == 0 || mLastPositionSource != PositionSource.GPS
-        || !RoutingController.get().isNavigating())
+    if (mManualMode || !RoutingController.get().isNavigating())
       return;
-    if (SystemClock.elapsedRealtime() - mLastTrustedGpsMs > GPS_LOST_MS)
-      enterManualModeByItself("GPS is lost while navigating");
+    final long now = SystemClock.elapsedRealtime();
+    final boolean lost = mLastTrustedGpsMs == 0 ? now - mStartTimeMs > GPS_FIRST_FIX_MS
+                                                : now - mLastTrustedGpsMs > GPS_LOST_MS;
+    if (lost)
+      enterManualModeByItself("No GPS while navigating");
   }
 
   @NonNull
@@ -1358,6 +1367,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
     Logger.i(TAG, "provider = " + mLocationProvider.getClass().getSimpleName() + " mInFirstRun = " + mInFirstRun
                       + " oldInterval = " + oldInterval + " interval = " + mInterval);
     mActive = true;
+    mStartTimeMs = SystemClock.elapsedRealtime();
     mLocationProvider.start(mInterval);
     mHandler.postDelayed(mLocationTimeoutRunnable, LOCATION_UPDATE_TIMEOUT_MS);
     subscribeToGnssStatusUpdates();
