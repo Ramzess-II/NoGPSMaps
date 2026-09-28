@@ -5,6 +5,7 @@ import android.location.Location;
 import android.os.SystemClock;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.location.LocationCompat;
 import app.organicmaps.sdk.util.Config;
 import app.organicmaps.sdk.util.log.Logger;
 
@@ -25,8 +26,10 @@ public class InertialNavigator implements MotionSource.Listener
   private static final long SPEED_STALE_MS = 2000;
   private static final long OUTPUT_INTERVAL_MS = 200;
   private static final double MOVING_SPEED_MPS = 0.5;
-  // GPS bearing is noisy at low speeds.
+  // GPS bearing is noisy at low speeds, unless GPS tells it is accurate: it is so from a walking speed on.
   private static final double MIN_GPS_HEADING_SPEED_MPS = 3;
+  private static final double MIN_ACCURATE_GPS_HEADING_SPEED_MPS = 1;
+  private static final float MAX_GPS_HEADING_ERROR_DEG = 10;
   // A longer pause of the source is a lost connection, the car could do anything meanwhile.
   private static final double MAX_MOTION_DT_SEC = 1;
   private static final long SNAP_INTERVAL_MS = 1000;
@@ -169,8 +172,18 @@ public class InertialNavigator implements MotionSource.Listener
   {
     mDeadReckoning.setPosition(location.getLatitude(), location.getLongitude());
     mTurning = false;
-    if (location.hasBearing() && location.hasSpeed() && location.getSpeed() >= MIN_GPS_HEADING_SPEED_MPS)
+    if (hasGoodBearing(location))
       setHeading(location.getBearing(), HeadingSource.GPS);
+  }
+
+  private static boolean hasGoodBearing(@NonNull Location location)
+  {
+    if (!location.hasBearing() || !location.hasSpeed())
+      return false;
+    if (location.getSpeed() >= MIN_GPS_HEADING_SPEED_MPS)
+      return true;
+    return location.getSpeed() >= MIN_ACCURATE_GPS_HEADING_SPEED_MPS && LocationCompat.hasBearingAccuracy(location)
+        && LocationCompat.getBearingAccuracyDegrees(location) <= MAX_GPS_HEADING_ERROR_DEG;
   }
 
   /**

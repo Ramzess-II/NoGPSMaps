@@ -197,6 +197,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
   @Nullable
   private InertialNavigator mInertial;
   private long mLastTrustedGpsMs;
+  // Elapsed realtime when the manual mode was left: GPS was ignored in it, so it is waited for anew.
+  private long mManualLeftMs;
   // GPS positions off the roads in a row.
   private int mOffRoadGpsCount;
   // Elapsed realtime of the start of the location updates.
@@ -495,10 +497,21 @@ public class LocationHelper implements BaseLocationProvider.Listener
       ownErrorM = own.getAccuracy()
                 + GpsReturnDetector.MAX_SPEED_MPS * (SystemClock.elapsedRealtime() - mManualSetTimeMs) / 1000.0;
     }
+    final int carSpeedKmh = mInertial != null && isInertialNavigationEnabled() ? mInertial.getSpeedKmh() : -1;
+    final double carSpeedMps = carSpeedKmh >= 0 ? carSpeedKmh / 3.6 * mInertial.getSpeedScale() : Double.NaN;
     return mGpsReturnDetector.onGpsPosition(gps.getLatitude(), gps.getLongitude(), gps.getAccuracy(),
                                             gps.getElapsedRealtimeNanos() / 1_000_000,
                                             own != null ? own.getLatitude() : 0, own != null ? own.getLongitude() : 0,
-                                            ownErrorM);
+                                            ownErrorM, gps.hasSpeed() ? gps.getSpeed() : Double.NaN, carSpeedMps,
+                                            isNearRoad(gps));
+  }
+
+  /**
+   * @return how long GPS has not given a trusted position, counted from leaving the manual mode at most.
+   */
+  private long getGpsSilenceMs()
+  {
+    return SystemClock.elapsedRealtime() - Math.max(mLastTrustedGpsMs, mManualLeftMs);
   }
 
   /**
@@ -525,14 +538,23 @@ public class LocationHelper implements BaseLocationProvider.Listener
     // A slow car may be in a yard or a parking lot that is not on the map.
     if (!gps.hasSpeed() || gps.getSpeed() < OFF_ROAD_MIN_SPEED_MPS)
       return false;
+    return !isNearRoad(gps);
+  }
+
+  /**
+   * @return true if there is a road within the accuracy of GPS plus a margin, going any way: a car turning at
+   * a crossing goes aside from both roads for a moment.
+   */
+  private static boolean isNearRoad(@NonNull Location gps)
+  {
     final double radius = MAX_GPS_OFF_ROAD_M + gps.getAccuracy();
-    final double[] road = LocationState.nativeSnapToRoad(gps.getLatitude(), gps.getLongitude(),
-                                                         gps.hasBearing() ? gps.getBearing() : -1, radius, false);
+    final double[] road = LocationState.nativeSnapToRoad(gps.getLatitude(), gps.getLongitude(), -1 /* bearing */,
+                                                         radius, false /* matchRoute */);
     if (road == null)
-      return true;
+      return false;
     final float[] distance = new float[1];
     Location.distanceBetween(gps.getLatitude(), gps.getLongitude(), road[0], road[1], distance);
-    return distance[0] > radius;
+    return distance[0] <= radius;
   }
 
   /**
@@ -572,8 +594,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
     if (mManualMode || !RoutingController.get().isNavigating())
       return;
     final long now = SystemClock.elapsedRealtime();
-    final boolean lost = mLastTrustedGpsMs == 0 ? now - mStartTimeMs > GPS_FIRST_FIX_MS
-                                                : now - mLastTrustedGpsMs > GPS_LOST_MS;
+    final boolean lost = mLastTrustedGpsMs == 0 && mManualLeftMs == 0 ? now - mStartTimeMs > GPS_FIRST_FIX_MS
+                                                                      : getGpsSilenceMs() > GPS_LOST_MS;
     if (lost)
       enterManualModeByItself("No GPS while navigating");
   }
@@ -1018,15 +1040,28 @@ public class LocationHelper implements BaseLocationProvider.Listener
 
   private void onInertialLocation(@NonNull Location location)
   {
-    // Trusted GPS is better. In the manual mode GPS is ignored, so the inertial navigation is used.
-    if (!mManualMode && SystemClock.elapsedRealtime() - mLastTrustedGpsMs < GPS_FRESH_MS)
+    // Trusted GPS is better. In the manual mode GPS is ignored, so the inertial navigation is used. The manual
+    // mode just left by the user waits for GPS a while, otherwise it would come back before the first GPS position.
+    if (!mManualMode
+        && (SystemClock.elapsedRealtime() - mLastTrustedGpsMs < GPS_FRESH_MS || getGpsSilenceMs() < GPS_LOST_MS))
+    {
       return;
+    }
     if (!isActive())
       return;
 
     // The car is not followed by GPS any more, the user sees it by the manual mode and can mark the car.
     enterManualModeByItself("GPS is lost, the inertial navigation continues");
     mLastInertialUsedMs = SystemClock.elapsedRealtime();
+    // The mark follows the car: when the inertial navigation stops, e.g. the adapter is disconnected, the car
+    // stays where it has been driven to, not at the old mark behind.
+    if (mManualLocation != null)
+    {
+      mManualLocation.setLatitude(location.getLatitude());
+      mManualLocation.setLongitude(location.getLongitude());
+      if (location.hasBearing())
+        mManualLocation.setBearing(location.getBearing());
+    }
     mSavedLocation = location;
     mMyPosition = null;
     if (mLastPositionSource != PositionSource.INERTIAL)
@@ -1064,6 +1099,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
 
     Logger.i(TAG, "enabled = " + enabled);
     mManualMode = enabled;
+    if (!enabled)
+      mManualLeftMs = SystemClock.elapsedRealtime();
     mManualLocation = null;
     mAcceptNextLocation = !enabled;
     mGpsReturnDetector.reset();
