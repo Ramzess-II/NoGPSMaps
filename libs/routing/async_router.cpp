@@ -89,6 +89,12 @@ bool AsyncRouter::FindMainRoad(m2::PointD const & point, double radiusM, m2::Poi
   return m_router->FindMainRoad(point, radiusM, projected, angleRad);
 }
 
+bool AsyncRouter::FindRoadAlong(m2::PointD const & point, m2::PointD const & direction, double radiusM,
+                                m2::PointD & projected, double & angleRad)
+{
+  return m_router->FindRoadAlong(point, direction, radiusM, projected, angleRad);
+}
+
 void AsyncRouter::RouterDelegateProxy::OnProgress(float progress)
 {
   ProgressCallback onProgress = nullptr;

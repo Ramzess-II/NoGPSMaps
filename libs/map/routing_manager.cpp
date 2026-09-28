@@ -1502,29 +1502,25 @@ void RoutingManager::RebuildRouteIfOffRoute(location::GpsInfo const & info)
                                 false /* adjustToPrevRoute */);
 }
 
-namespace
-{
-// Returns true if |closest| crosses the road of |proj| and is clearly closer to |point|: |point| is on the
-// crossing road, and |proj| would pull it to the crossing. A parallel road, e.g. the other carriageway, is
-// not a reason to leave the road of |proj|.
-bool IsOnCrossingRoad(m2::PointD const & point, routing::EdgeProj const & proj, routing::EdgeProj const & closest)
-{
-  double constexpr kSameRoadM = 3.0;
-  double constexpr kMaxParallelDeg = 30.0;
-  if (mercator::DistanceOnEarth(point, proj.m_point) <= mercator::DistanceOnEarth(point, closest.m_point) + kSameRoadM)
-    return false;
-
-  double const diffDeg = std::fabs(math::RadToDeg(
-      ang::GetShortestDistance(ang::AngleTo(proj.m_edge.GetStartPoint(), proj.m_edge.GetEndPoint()),
-                               ang::AngleTo(closest.m_edge.GetStartPoint(), closest.m_edge.GetEndPoint()))));
-  // Roads going the opposite ways are parallel too.
-  return std::min(diffDeg, 180.0 - diffDeg) > kMaxParallelDeg;
-}
-}  // namespace
-
 bool RoutingManager::SnapToRoad(ms::LatLon const & latLon, double bearingDeg, double radiusM, bool matchRoute,
                                 ms::LatLon & snapped, double & snappedBearingDeg)
 {
+  // A part of the route farther than the road by more than this is not where the car is: the car has left the
+  // route, e.g. gone straight where the route turns, and the route would pull it back to the turn.
+  double constexpr kSameRoadM = 3.0;
+
+  m2::PointD const point = mercator::FromLatLon(latLon);
+  m2::PointD direction = m2::PointD::Zero();
+  if (bearingDeg >= 0.0)
+  {
+    double const angle = math::DegToRad(location::BearingToAngle(bearingDeg));
+    direction = m2::PointD(std::cos(angle), std::sin(angle));
+  }
+  m2::PointD projected;
+  double angleRad = 0.0;
+  bool found = m_routingSession.FindRoadAlong(point, direction, radiusM, projected, angleRad);
+  double const roadM = found ? mercator::DistanceOnEarth(point, projected) : std::numeric_limits<double>::max();
+
   if (matchRoute && IsRoutingActive() && m_routingSession.IsOnRoute())
   {
     // The position is projected to the route itself. The route iterator is where the previous position was
@@ -1535,41 +1531,20 @@ bool RoutingManager::SnapToRoad(ms::LatLon const & latLon, double bearingDeg, do
       auto const & points = route->GetPoly().GetPoints();
       size_t anchorIdx = 0;
       m2::PointD anchor;
-      if (FindRouteAnchor(points, mercator::FromLatLon(latLon), bearingDeg, anchorIdx, anchor) <= radiusM)
+      double const routeM = FindRouteAnchor(points, point, bearingDeg, anchorIdx, anchor);
+      if (routeM <= radiusM && routeM <= roadM + kSameRoadM)
       {
-        snapped = mercator::ToLatLon(anchor);
-        snappedBearingDeg =
-            location::AngleToBearing(math::RadToDeg(ang::AngleTo(points[anchorIdx], points[anchorIdx + 1])));
-        return true;
+        found = true;
+        projected = anchor;
+        angleRad = ang::AngleTo(points[anchorIdx], points[anchorIdx + 1]);
       }
     }
   }
-
-  m2::PointD const point = mercator::FromLatLon(latLon);
-  routing::EdgeProj proj;
-  // A codirectional road is searched within 14 degrees only, which is too strict for a rough direction
-  // from the user, so the closest road is taken instead and its direction is checked by the caller.
-  if (!m_routingSession.FindClosestProjectionToRoad(point, m2::PointD::Zero(), radiusM, proj))
+  if (!found)
     return false;
 
-  if (bearingDeg >= 0.0)
-  {
-    double const angle = math::DegToRad(location::BearingToAngle(bearingDeg));
-    routing::EdgeProj codirectional;
-    // The road the car goes along is preferred to the closer roads, e.g. to the other carriageway. But when
-    // the car has turned to a crossing street, the road it went along is the closest to it at the crossing
-    // only, and the position would be pulled back to the crossing.
-    if (m_routingSession.FindClosestProjectionToRoad(point, m2::PointD(std::cos(angle), std::sin(angle)), radiusM,
-                                                     codirectional) &&
-        !IsOnCrossingRoad(point, codirectional, proj))
-    {
-      proj = codirectional;
-    }
-  }
-
-  snapped = mercator::ToLatLon(proj.m_point);
-  snappedBearingDeg = location::AngleToBearing(
-      math::RadToDeg(ang::AngleTo(proj.m_edge.GetStartPoint(), proj.m_edge.GetEndPoint())));
+  snapped = mercator::ToLatLon(projected);
+  snappedBearingDeg = location::AngleToBearing(math::RadToDeg(angleRad));
   return true;
 }
 

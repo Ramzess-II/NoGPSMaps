@@ -75,6 +75,9 @@ public:
   void FindRoadCrossings(m2::RectD const & rect, std::vector<m2::PointD> & crossings) const;
   /// Finds the closest road, preferring a main road to a driveway branching off it.
   bool FindMainRoad(m2::PointD const & point, double radiusM, m2::PointD & projected, double & angleRad) const;
+  /// Finds the road a car going the |direction| way drives along, see IRouter::FindRoadAlong.
+  bool FindRoadAlong(m2::PointD const & point, m2::PointD const & direction, double radiusM, m2::PointD & projected,
+                     double & angleRad) const;
   bool IsFollowing() const;
   void Reset();
 

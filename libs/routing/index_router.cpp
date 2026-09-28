@@ -554,6 +554,62 @@ bool IndexRouter::FindMainRoad(m2::PointD const & point, double radiusM, m2::Poi
   return true;
 }
 
+bool IndexRouter::FindRoadAlong(m2::PointD const & point, m2::PointD const & direction, double radiusM,
+                                m2::PointD & projected, double & angleRad)
+{
+  // A road going farther aside is a crossing street, not the road the car drives along.
+  double constexpr kMaxDiffDeg = 45.0;
+  // A bend of the road is weighed against the distance to it: a road bending aside a bit is still closer than
+  // a parallel street tens of meters away.
+  double constexpr kMetersPerDeg = 0.2;
+  // A one-way road going the opposite way, e.g. the other carriageway, is not where the car is.
+  double constexpr kWrongWayM = 20.0;
+
+  bool const hasDirection = !direction.IsAlmostZero();
+  double const carAngle = hasDirection ? ang::AngleTo(m2::PointD::Zero(), direction) : 0.0;
+  auto const rect = mercator::RectByCenterXYAndSizeInMeters(point, 2.0 * radiusM);
+  double bestCost = std::numeric_limits<double>::max();
+  for (auto const & road : m_roadGraph.FindRoads(rect, nullptr /* isGoodFeature */))
+  {
+    auto const & junctions = road.m_roadInfo.m_junctions;
+    for (size_t i = 0; i + 1 < junctions.size(); ++i)
+    {
+      auto const & start = junctions[i].GetPoint();
+      auto const & end = junctions[i + 1].GetPoint();
+      if (start == end)
+        continue;
+      auto const closest = m2::ParametrizedSegment<m2::PointD>(start, end).ClosestPointTo(point);
+      double const distanceM = mercator::DistanceOnEarth(point, closest);
+      if (distanceM > radiusM)
+        continue;
+
+      double angle = ang::AngleTo(start, end);
+      double cost = distanceM;
+      if (hasDirection)
+      {
+        double diffDeg = std::fabs(math::RadToDeg(ang::GetShortestDistance(carAngle, angle)));
+        if (diffDeg > 90.0)
+        {
+          diffDeg = 180.0 - diffDeg;
+          angle += math::pi;
+          if (!road.m_roadInfo.m_bidirectional)
+            cost += kWrongWayM;
+        }
+        if (diffDeg > kMaxDiffDeg)
+          continue;
+        cost += diffDeg * kMetersPerDeg;
+      }
+      if (cost < bestCost)
+      {
+        bestCost = cost;
+        projected = closest;
+        angleRad = angle;
+      }
+    }
+  }
+  return bestCost != std::numeric_limits<double>::max();
+}
+
 void IndexRouter::SetGuides(GuidesTracks && guides)
 {
   m_guides = GuidesConnections(std::move(guides));
