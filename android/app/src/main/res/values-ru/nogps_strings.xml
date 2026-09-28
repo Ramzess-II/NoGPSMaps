@@ -67,4 +67,5 @@
   <string name="nogps_sensors_calibrate_box">Калибровать</string>
   <string name="nogps_gyro_mount_moved">блок сдвинули, откалибруйте</string>
   <string name="nogps_sensors_hint_box">Закрепите блок неподвижно. Откалибруйте его один раз, когда машина стоит на ровном месте, дальше блок сам обнуляет гироскоп на каждой остановке.</string>
+  <string name="nogps_road_lost">Дорога потеряна, машина остановлена. Отметьте себя на карте</string>
 </resources>

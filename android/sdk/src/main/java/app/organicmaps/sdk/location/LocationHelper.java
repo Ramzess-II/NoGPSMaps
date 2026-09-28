@@ -134,6 +134,11 @@ public class LocationHelper implements BaseLocationProvider.Listener
      * The manual mode has been turned on by itself: GPS is lost or wrong while driving.
      */
     default void onGpsLost() {}
+
+    /**
+     * The inertial navigation has left the roads: the car is stopped on the road, the user should mark it.
+     */
+    default void onRoadLost() {}
   }
 
   public interface GpsSpoofingListener
@@ -977,6 +982,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
       line.append(" hdg=").append(Double.isNaN(heading) ? "-" : Math.round(heading));
       line.append('/').append(mInertial.getHeadingSource());
       line.append(" road=").append(mInertial.isOnRoad() ? 1 : 0);
+      line.append(" lost=").append(mInertial.isRoadLost() ? 1 : 0);
       line.append(String.format(Locale.US, " snap=%.1f", mInertial.getLastSnapShiftM()));
       line.append(String.format(Locale.US, " fix=%.0f ready=%d", mInertial.getDistanceSinceFix(),
                                 mInertial.isReady() ? 1 : 0));
@@ -997,7 +1003,23 @@ public class LocationHelper implements BaseLocationProvider.Listener
     if (!isInertialNavigationEnabled())
       return;
     if (mInertial == null)
-      mInertial = new InertialNavigator(mContext, this::onInertialLocation, roads(true /* matchRoute */));
+    {
+      final InertialNavigator.Listener listener = new InertialNavigator.Listener() {
+        @Override
+        public void onInertialLocation(@NonNull Location location)
+        {
+          LocationHelper.this.onInertialLocation(location);
+        }
+
+        @Override
+        public void onRoadLost()
+        {
+          for (ManualModeListener l : mManualModeListeners)
+            l.onRoadLost();
+        }
+      };
+      mInertial = new InertialNavigator(mContext, listener, roads(true /* matchRoute */));
+    }
     mInertial.start();
   }
 

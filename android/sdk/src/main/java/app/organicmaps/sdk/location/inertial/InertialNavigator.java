@@ -51,6 +51,9 @@ public class InertialNavigator implements MotionSource.Listener
   // The pause is over when the car drives this fast for a while: nobody drives so fast backwards.
   private static final int AUTO_RESUME_SPEED_KMH = 15;
   private static final long AUTO_RESUME_MS = 3000;
+  // A car drives this far off the roads only in a yard or a parking lot missing on the map, or the calculation
+  // has gone wrong, e.g. with a wrong heading. The car is stopped on the road then until the user marks it.
+  private static final double LOST_ROAD_M = 30;
 
   public enum CalibrationState
   {
@@ -74,6 +77,11 @@ public class InertialNavigator implements MotionSource.Listener
   public interface Listener
   {
     void onInertialLocation(@NonNull Location location);
+
+    /**
+     * The car has left the roads, it is stopped where it was on a road the last time.
+     */
+    void onRoadLost();
   }
 
   @NonNull
@@ -85,6 +93,14 @@ public class InertialNavigator implements MotionSource.Listener
   private long mLastSnapMs;
   private boolean mOnRoad;
   private double mLastSnapShiftM = Double.NaN;
+  // Where the car was on a road or at a known position the last time, and the distance driven off the roads
+  // since then.
+  private boolean mHasRoadPoint;
+  private double mRoadLat;
+  private double mRoadLon;
+  private double mOffRoadM;
+  // The car has left the roads and stands at the last road point until it is marked or GPS comes back.
+  private boolean mRoadLost;
   @Nullable
   private MotionSource mSource;
   private boolean mStarted;
@@ -171,6 +187,7 @@ public class InertialNavigator implements MotionSource.Listener
   public void onGpsPosition(@NonNull Location location)
   {
     mDeadReckoning.setPosition(location.getLatitude(), location.getLongitude());
+    setRoadPoint(location.getLatitude(), location.getLongitude());
     mTurning = false;
     if (hasGoodBearing(location))
       setHeading(location.getBearing(), HeadingSource.GPS);
@@ -193,6 +210,7 @@ public class InertialNavigator implements MotionSource.Listener
   public void setRoadPosition(double lat, double lon, double bearingDeg)
   {
     mDeadReckoning.setPosition(lat, lon);
+    setRoadPoint(lat, lon);
     mTurning = false;
     setHeading(bearingDeg, HeadingSource.ROAD);
   }
@@ -224,6 +242,7 @@ public class InertialNavigator implements MotionSource.Listener
   public void setPosition(double lat, double lon)
   {
     mDeadReckoning.setPosition(lat, lon);
+    setRoadPoint(lat, lon);
     if (mDeadReckoning.hasHeading())
       return;
     // Without GPS and marks the car looks along its road either way, the user turns it around if it is wrong.
@@ -350,6 +369,40 @@ public class InertialNavigator implements MotionSource.Listener
   }
 
   /**
+   * @return true if the car has left the roads and stands where it was on a road the last time.
+   */
+  public boolean isRoadLost()
+  {
+    return mRoadLost;
+  }
+
+  private void setRoadPoint(double lat, double lon)
+  {
+    mHasRoadPoint = true;
+    mRoadLat = lat;
+    mRoadLon = lon;
+    mOffRoadM = 0;
+    mRoadLost = false;
+  }
+
+  /**
+   * Counts the distance driven off the roads. A turn is not counted: the car is aside from both roads for a
+   * while, and the turn is matched to its crossing afterwards.
+   */
+  private void trackOffRoad(double distanceM)
+  {
+    if (mOnRoad || mTurning || !mHasRoadPoint || mRoadLost)
+      return;
+    mOffRoadM += distanceM;
+    if (mOffRoadM < LOST_ROAD_M)
+      return;
+    Logger.i(TAG, "The road is lost after " + Math.round(mOffRoadM) + " m, stopping at " + mRoadLat + "," + mRoadLon);
+    mRoadLost = true;
+    mDeadReckoning.moveTo(mRoadLat, mRoadLon);
+    mListener.onRoadLost();
+  }
+
+  /**
    * Pauses the movement of the car while it maneuvers, or resumes it: the car is put on the road where it
    * stands, looking the way it has turned to during the pause.
    */
@@ -394,21 +447,25 @@ public class InertialNavigator implements MotionSource.Listener
 
     final boolean speedFresh = isSpeedFresh();
     mDeadReckoning.setSpeed(speedFresh ? mSpeedKmh / 3.6 * mSpeedScale.get() : 0);
+    // The car stands where it is while it maneuvers or after it has left the roads.
+    final boolean stopped = mPaused || mRoadLost;
     // A standing car can't turn, so the remaining gyroscope drift doesn't rotate the heading at stops.
     if (mSource != null && mSource.isCalibrated() && speedFresh && mDeadReckoning.getSpeed() > MOVING_SPEED_MPS)
     {
-      if (!mPaused)
+      if (!stopped)
         trackTurn(yawDeltaDeg, dt, timestampNs);
       mDeadReckoning.rotate(yawDeltaDeg);
     }
-    if (speedFresh && !mPaused)
+    if (speedFresh && !stopped)
     {
       mDeadReckoning.advance(dt);
       mSpeedScale.onDistance(mDeadReckoning.getSpeed() * dt);
+      if (isReady())
+        trackOffRoad(mDeadReckoning.getSpeed() * dt);
     }
 
     final long now = SystemClock.elapsedRealtime();
-    if (isReady() && !mPaused && mDeadReckoning.getSpeed() > MOVING_SPEED_MPS
+    if (isReady() && !stopped && mDeadReckoning.getSpeed() > MOVING_SPEED_MPS
         && now - mLastSnapMs >= SNAP_INTERVAL_MS)
     {
       mLastSnapMs = now;
@@ -441,6 +498,13 @@ public class InertialNavigator implements MotionSource.Listener
     Location.distanceBetween(lat, lon, snapped[0], snapped[1], shift);
     mLastSnapShiftM = shift[0];
     mOnRoad = shift[0] <= radius && mDeadReckoning.snapToRoad(snapped[0], snapped[1], snapped[2]);
+    if (mOnRoad)
+    {
+      mHasRoadPoint = true;
+      mRoadLat = snapped[0];
+      mRoadLon = snapped[1];
+      mOffRoadM = 0;
+    }
   }
 
   /**

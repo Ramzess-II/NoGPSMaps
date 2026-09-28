@@ -219,6 +219,12 @@ public class MwmActivity extends BaseMwmFragmentActivity
     {
       Toast.makeText(MwmActivity.this, R.string.nogps_gps_lost_auto, Toast.LENGTH_LONG).show();
     }
+
+    @Override
+    public void onRoadLost()
+    {
+      Toast.makeText(MwmActivity.this, R.string.nogps_road_lost, Toast.LENGTH_LONG).show();
+    }
   };
   private final LocationHelper.GpsSpoofingListener mGpsSpoofingListener = this::onGpsSpoofingChanged;
 

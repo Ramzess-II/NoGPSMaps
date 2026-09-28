@@ -34,6 +34,15 @@ public class DeadReckoning
   }
 
   /**
+   * Moves the position without making it a reference one: the accuracy keeps degrading.
+   */
+  public void moveTo(double lat, double lon)
+  {
+    mLat = lat;
+    mLon = lon;
+  }
+
+  /**
    * @param headingDeg clockwise from the north.
    */
   public void setHeading(double headingDeg)
