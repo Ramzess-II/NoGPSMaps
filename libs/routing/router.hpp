@@ -88,6 +88,10 @@ public:
     return false;
   }
 
+  /// How many meters of the distance to a road a degree of the difference between its direction and the
+  /// direction of a car is worth when the road the car is on is chosen.
+  static double constexpr kRoadMetersPerDeg = 0.2;
+
   /// Finds the road a car at |point| going the |direction| way drives along: the closest one, but a road going
   /// the car's way is preferred to a closer one bending aside, and a road crossing the car's way is not taken.
   /// Without the direction it is the closest road. |angleRad| is the direction along the road the car goes.

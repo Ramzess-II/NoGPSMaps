@@ -561,7 +561,7 @@ bool IndexRouter::FindRoadAlong(m2::PointD const & point, m2::PointD const & dir
   double constexpr kMaxDiffDeg = 45.0;
   // A bend of the road is weighed against the distance to it: a road bending aside a bit is still closer than
   // a parallel street tens of meters away.
-  double constexpr kMetersPerDeg = 0.2;
+  double constexpr kMetersPerDeg = kRoadMetersPerDeg;
   // A one-way road going the opposite way, e.g. the other carriageway, is not where the car is.
   double constexpr kWrongWayM = 20.0;
 

@@ -95,14 +95,27 @@ public class InertialTest
     final DeadReckoning dr = new DeadReckoning();
     dr.setPosition(LAT, LON);
     dr.setHeading(10);
-    // The road goes to the north: the position moves to it, the heading turns 30% towards it.
+    // The road goes to the north: the position moves to it, the heading turns a bit towards it.
     assertTrue(dr.snapToRoad(LAT + 0.0001, LON + 0.0002, 0));
     assertEquals(LAT + 0.0001, dr.getLat(), 1e-12);
     assertEquals(LON + 0.0002, dr.getLon(), 1e-12);
-    assertEquals(7, dr.getHeading(), 1e-9);
+    final double heading = 10 - 10 * DeadReckoning.SNAP_HEADING_WEIGHT;
+    assertEquals(heading, dr.getHeading(), 1e-9);
     // The same road in the opposite direction.
     assertTrue(dr.snapToRoad(LAT, LON, 180));
-    assertEquals(7 - 7 * DeadReckoning.SNAP_HEADING_WEIGHT, dr.getHeading(), 1e-9);
+    assertEquals(heading - heading * DeadReckoning.SNAP_HEADING_WEIGHT, dr.getHeading(), 1e-9);
+  }
+
+  @Test
+  public void keepsHeadingOnRoadGoingAway()
+  {
+    // A fork or a slow turn: the car is still on the road, but the gyroscope knows better where it goes.
+    final DeadReckoning dr = new DeadReckoning();
+    dr.setPosition(LAT, LON);
+    dr.setHeading(25);
+    assertTrue(dr.snapToRoad(LAT + 0.0001, LON, 0));
+    assertEquals(LAT + 0.0001, dr.getLat(), 1e-12);
+    assertEquals(25, dr.getHeading(), 0);
   }
 
   @Test

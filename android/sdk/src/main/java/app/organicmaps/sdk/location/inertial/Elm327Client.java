@@ -30,6 +30,8 @@ public class Elm327Client
   private static final long FIRST_RESPONSE_TIMEOUT_MS = 15000;
   // The adapter replies in ~50-200 ms, don't flood the car bus.
   private static final long REQUEST_INTERVAL_MS = 100;
+  // Many adapters don't find the car again after its ignition was off: the adapter is reset then.
+  private static final int MAX_NO_DATA_REQUESTS = 3;
 
   public enum State
   {
@@ -164,6 +166,7 @@ public class Elm327Client
   private void pollSpeed() throws IOException, InterruptedException
   {
     long timeout = FIRST_RESPONSE_TIMEOUT_MS;
+    int noDataRequests = 0;
     while (mRunning)
     {
       final long requestTime = SystemClock.elapsedRealtime();
@@ -173,10 +176,13 @@ public class Elm327Client
       if (speed == Elm327Parser.NO_SPEED)
       {
         setState(State.NO_CAR_DATA);
+        if (++noDataRequests >= MAX_NO_DATA_REQUESTS)
+          throw new IOException("No speed from the car: " + response.trim());
         timeout = FIRST_RESPONSE_TIMEOUT_MS;
         Thread.sleep(RECONNECT_DELAY_MS);
         continue;
       }
+      noDataRequests = 0;
       timeout = RESPONSE_TIMEOUT_MS;
       setState(State.CONNECTED);
       mMainHandler.post(() -> mListener.onSpeed(speed, time));

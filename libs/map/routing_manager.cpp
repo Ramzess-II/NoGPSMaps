@@ -1519,7 +1519,20 @@ bool RoutingManager::SnapToRoad(ms::LatLon const & latLon, double bearingDeg, do
   m2::PointD projected;
   double angleRad = 0.0;
   bool found = m_routingSession.FindRoadAlong(point, direction, radiusM, projected, angleRad);
-  double const roadM = found ? mercator::DistanceOnEarth(point, projected) : std::numeric_limits<double>::max();
+  // The route and the road are compared as the road is chosen: by the distance and the direction. A route
+  // branching away at a fork would pull the car from the road it goes straight along otherwise.
+  auto const cost = [&](m2::PointD const & p, double roadAngle)
+  {
+    double cost = mercator::DistanceOnEarth(point, p);
+    if (bearingDeg >= 0.0)
+    {
+      double const diffDeg = std::fabs(math::RadToDeg(
+          ang::GetShortestDistance(ang::AngleTo(m2::PointD::Zero(), direction), roadAngle)));
+      cost += std::min(diffDeg, 180.0 - diffDeg) * routing::IRouter::kRoadMetersPerDeg;
+    }
+    return cost;
+  };
+  double const roadCost = found ? cost(projected, angleRad) : std::numeric_limits<double>::max();
 
   if (matchRoute && IsRoutingActive() && m_routingSession.IsOnRoute())
   {
@@ -1532,7 +1545,8 @@ bool RoutingManager::SnapToRoad(ms::LatLon const & latLon, double bearingDeg, do
       size_t anchorIdx = 0;
       m2::PointD anchor;
       double const routeM = FindRouteAnchor(points, point, bearingDeg, anchorIdx, anchor);
-      if (routeM <= radiusM && routeM <= roadM + kSameRoadM)
+      if (routeM <= radiusM &&
+          cost(anchor, ang::AngleTo(points[anchorIdx], points[anchorIdx + 1])) <= roadCost + kSameRoadM)
       {
         found = true;
         projected = anchor;

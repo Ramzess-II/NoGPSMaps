@@ -12,8 +12,11 @@ public class DeadReckoning
   static final double ACCURACY_PER_METER = 0.05;
   // A road going in a different direction is not the road the car is on (or the car is turning).
   static final double MAX_SNAP_HEADING_DIFF_DEG = 30;
-  // The heading is pulled to the road gradually, so a single wrong snap doesn't turn the car.
-  static final double SNAP_HEADING_WEIGHT = 0.3;
+  // The heading is pulled to the road slowly and only when they nearly agree: it removes the slow gyroscope
+  // drift only. A larger difference is a real turn or a road going away from the car, e.g. a fork or a part of a
+  // roundabout behind the car, where the gyroscope is right and the road is not.
+  static final double MAX_HEADING_PULL_DIFF_DEG = 10;
+  static final double SNAP_HEADING_WEIGHT = 0.1;
 
   private static final double EARTH_RADIUS_M = 6_371_000;
 
@@ -97,7 +100,8 @@ public class DeadReckoning
       return false;
     mLat = lat;
     mLon = lon;
-    mHeadingDeg = normalize(mHeadingDeg + diff * SNAP_HEADING_WEIGHT);
+    if (Math.abs(diff) <= MAX_HEADING_PULL_DIFF_DEG)
+      mHeadingDeg = normalize(mHeadingDeg + diff * SNAP_HEADING_WEIGHT);
     return true;
   }
 
