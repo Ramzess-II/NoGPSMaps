@@ -98,6 +98,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
   // in a row: a single one can be noise.
   private static final double MAX_GPS_OFF_ROAD_M = 20;
   private static final int OFF_ROAD_GPS_COUNT = 3;
+  // The car speed errors are a few percent, they are measured by accurate GPS only.
+  private static final float SPEED_TABLE_GPS_MAX_ACCURACY_M = 10;
   private static final float OFF_ROAD_MIN_SPEED_MPS = 5;
   // The inertial navigation is considered active while its positions are used this recently.
   private static final long INERTIAL_ACTIVE_MS = 1000;
@@ -213,6 +215,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
 
   private final GpsSpoofingDetector mSpoofingDetector = new GpsSpoofingDetector();
   private final GpsReturnDetector mGpsReturnDetector = new GpsReturnDetector();
+  // Tells when GPS has worked long enough to measure the car speed errors by it.
+  private final GpsReturnDetector mSpeedTableGpsDetector = new GpsReturnDetector();
   @Nullable
   private Location mNetworkLocation;
   private final ObserverList<GpsSpoofingListener> mSpoofingListeners = new ObserverList<>();
@@ -361,12 +365,6 @@ public class LocationHelper implements BaseLocationProvider.Listener
     }
 
     final boolean isNetwork = LocationManager.NETWORK_PROVIDER.equals(location.getProvider());
-    if (mGpsDisabled && !isNetwork && sourceOf(location) == PositionSource.GPS)
-    {
-      Logger.d(TAG, "GPS is disabled, ignoring location = " + location);
-      return;
-    }
-
     final boolean wasSpoofed = mSpoofingDetector.isSpoofed();
     final long timeMs = location.getElapsedRealtimeNanos() / 1_000_000;
     boolean trusted = true;
@@ -384,6 +382,15 @@ public class LocationHelper implements BaseLocationProvider.Listener
     final boolean spoofed = mSpoofingDetector.isSpoofed();
     if (spoofed != wasSpoofed)
       onGpsSpoofingChanged(spoofed);
+
+    if (trusted && !isNetwork && mInertial != null && isInertialNavigationEnabled() && isSpeedTableGps(location))
+      mInertial.onSpeedTableGps(location);
+
+    if (mGpsDisabled && !isNetwork && sourceOf(location) == PositionSource.GPS)
+    {
+      Logger.d(TAG, "GPS is disabled, ignoring location = " + location);
+      return;
+    }
 
     if (!trusted)
     {
@@ -509,6 +516,24 @@ public class LocationHelper implements BaseLocationProvider.Listener
                                             own != null ? own.getLatitude() : 0, own != null ? own.getLongitude() : 0,
                                             ownErrorM, gps.hasSpeed() ? gps.getSpeed() : Double.NaN, carSpeedMps,
                                             isNearRoad(gps));
+  }
+
+  /**
+   * @return true if the GPS position is good to measure the car speed errors by: GPS is not spoofed, accurate,
+   * has worked without breaks and jumps for a while and is on a road. It is used in the manual mode and when
+   * GPS is disabled for tests too.
+   */
+  private boolean isSpeedTableGps(@NonNull Location gps)
+  {
+    if (sourceOf(gps) != PositionSource.GPS || ageMs(gps) > GPS_FRESH_MS
+        || gps.getAccuracy() > SPEED_TABLE_GPS_MAX_ACCURACY_M || mSpoofingDetector.isSpoofed())
+    {
+      return false;
+    }
+    return mSpeedTableGpsDetector.onGpsPosition(gps.getLatitude(), gps.getLongitude(), gps.getAccuracy(),
+                                                gps.getElapsedRealtimeNanos() / 1_000_000, 0, 0,
+                                                Double.NaN /* no own position */, Double.NaN, Double.NaN, false)
+        && isNearRoad(gps);
   }
 
   /**
@@ -976,6 +1001,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
     {
       line.append(" obd=").append(mInertial.getSourceState()).append(" speed=").append(mInertial.getSpeedKmh());
       line.append(String.format(Locale.US, " scale=%.3f", mInertial.getSpeedScale()));
+      line.append(" table=").append(mInertial.getSpeedTableRanges());
       line.append(" gyro=").append(mInertial.getCalibrationState());
       line.append(String.format(Locale.US, " turn=%.0f", mInertial.getLastTurnShiftM()));
       final double heading = mInertial.getHeading();

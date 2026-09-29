@@ -46,7 +46,7 @@
   <string name="nogps_shift_step">Distance to move the position by</string>
   <string name="nogps_shift_limited">Moved by %1$d m, up to the crossing</string>
   <string name="nogps_shift_failed">There is nowhere to move the position</string>
-  <string name="nogps_sensors_scale">Speed correction: %1$s</string>
+  <string name="nogps_sensors_scale">Speed correction: %1$s · measured ranges: %2$d</string>
   <string name="nogps_shift_at_turn">The position is at a crossing, it can not be moved further</string>
   <string name="nogps_status_gps_back">GPS is back ±%s</string>
   <string name="nogps_status_gps_spoofed">GPS spoofed</string>
@@ -73,4 +73,7 @@
   <string name="nogps_shift_buttons_hint">Shows the buttons moving the car along the road by 10 m. Moving it where the car really is corrects the speed of the car.</string>
   <string name="nogps_obd_stopped">No speed from the OBD adapter, the car stands still on the map. Check the adapter or mark yourself</string>
   <string name="nogps_box_stopped">No data from the sensor box, the car stands still on the map. Check the box or mark yourself</string>
+  <string name="nogps_clear_speed">Reset</string>
+  <string name="nogps_clear_speed_title">Reset the speed calibration?</string>
+  <string name="nogps_clear_speed_message">The speed corrections learned from GPS at different speeds and from your corrections will be forgotten. Do it after new tyres or another car. They are learned anew while GPS works.</string>
 </resources>

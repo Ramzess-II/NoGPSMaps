@@ -77,6 +77,7 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     mAdapter = view.findViewById(R.id.nogps_adapter);
     mSpeed = view.findViewById(R.id.nogps_speed);
     mScale = view.findViewById(R.id.nogps_scale);
+    view.findViewById(R.id.nogps_clear_speed).setOnClickListener(v -> confirmClearSpeed());
     mGyro = view.findViewById(R.id.nogps_gyro);
     mReadiness = view.findViewById(R.id.nogps_readiness);
     mHint = view.findViewById(R.id.nogps_hint);
@@ -263,7 +264,8 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
 
     mScale.setText(getString(R.string.nogps_sensors_scale,
                              enabled ? String.format(Locale.US, "\u00D7%.2f", inertial.getSpeedScale())
-                                     : getString(R.string.nogps_unknown)));
+                                     : getString(R.string.nogps_unknown),
+                             enabled ? inertial.getSpeedTableRanges() : 0));
 
     final InertialNavigator.CalibrationState calibration =
         enabled ? inertial.getCalibrationState() : InertialNavigator.CalibrationState.NONE;
@@ -300,6 +302,21 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
       mReadiness.setText(getString(R.string.nogps_sensors_not_ready, String.join(", ", missing)));
       mReadiness.setTextColor(ContextCompat.getColor(requireContext(), R.color.nogps_status_none));
     }
+  }
+
+  private void confirmClearSpeed()
+  {
+    new MaterialAlertDialogBuilder(requireContext())
+        .setTitle(R.string.nogps_clear_speed_title)
+        .setMessage(R.string.nogps_clear_speed_message)
+        .setPositiveButton(R.string.nogps_clear_speed, (dialog, which) -> {
+          final InertialNavigator inertial = getLocationHelper().getInertialNavigator();
+          if (inertial != null)
+            inertial.clearSpeedCalibration();
+          update();
+        })
+        .setNegativeButton(R.string.cancel, null)
+        .show();
   }
 
   private static int boxStateText(@NonNull MotionSource.State state)

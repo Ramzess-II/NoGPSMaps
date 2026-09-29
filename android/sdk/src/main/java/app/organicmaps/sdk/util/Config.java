@@ -45,6 +45,7 @@ public final class Config
   private static final String KEY_NOGPS_SHIFT_STEP = "NoGpsShiftStep";
   private static final String KEY_NOGPS_SHIFT_BUTTONS = "NoGpsShiftButtons";
   private static final String KEY_NOGPS_SPEED_SCALE = "NoGpsSpeedScale";
+  private static final String KEY_NOGPS_SPEED_TABLE = "NoGpsSpeedTable";
   private static final String KEY_NOGPS_ESP32_SOURCE = "NoGpsEsp32Source";
   private static final String KEY_NOGPS_ESP32_ADDRESS = "NoGpsEsp32Address";
 
@@ -262,6 +263,20 @@ public final class Config
   public static void setNoGpsSpeedScale(float scale)
   {
     setFloat(KEY_NOGPS_SPEED_SCALE, scale);
+  }
+
+  /**
+   * @return the table of the car speed errors measured by GPS, see SpeedTable, empty if there is none.
+   */
+  @NonNull
+  public static String getNoGpsSpeedTable()
+  {
+    return getString(KEY_NOGPS_SPEED_TABLE, "");
+  }
+
+  public static void setNoGpsSpeedTable(@NonNull String table)
+  {
+    setString(KEY_NOGPS_SPEED_TABLE, table);
   }
 
   /**

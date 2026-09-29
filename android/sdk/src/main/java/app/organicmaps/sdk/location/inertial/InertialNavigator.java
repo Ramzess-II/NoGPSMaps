@@ -114,7 +114,14 @@ public class InertialNavigator implements MotionSource.Listener
   private int mSpeedKmh = -1;
   private long mSpeedTimeMs;
 
+  // The speed error estimated from the corrections of the user, used until GPS measures it.
   private final SpeedScale mSpeedScale = new SpeedScale();
+  // The speed errors measured by trusted GPS at different speeds.
+  private final SpeedTable mSpeedTable = new SpeedTable();
+  // The last GPS position the speed errors were measured by, 0 if there is none.
+  private long mSpeedTableGpsMs;
+  private double mSpeedTableGpsSpeedMps;
+  private int mUnsavedSpeedSamples;
 
   // The turn the car is making now: where it has started and where the car looked before it.
   private boolean mTurning;
@@ -142,6 +149,7 @@ public class InertialNavigator implements MotionSource.Listener
     mContext = context;
     mListener = listener;
     mRoads = roads;
+    mSpeedTable.deserialize(Config.getNoGpsSpeedTable());
   }
 
   /**
@@ -169,6 +177,7 @@ public class InertialNavigator implements MotionSource.Listener
       mSource.stop();
     mSource = null;
     mSpeedKmh = -1;
+    saveSpeedTable();
   }
 
   /**
@@ -228,11 +237,80 @@ public class InertialNavigator implements MotionSource.Listener
   }
 
   /**
-   * @return the ratio the speed from the car is multiplied by, 1 if it is not corrected yet.
+   * @return the ratio the current speed from the car is multiplied by, 1 if it is not corrected yet.
    */
   public double getSpeedScale()
   {
-    return mSpeedScale.get();
+    return getSpeedScale(Math.max(0, mSpeedKmh));
+  }
+
+  private double getSpeedScale(int speedKmh)
+  {
+    final double measured = mSpeedTable.getScale(speedKmh);
+    return Double.isNaN(measured) ? mSpeedScale.get() : measured;
+  }
+
+  /**
+   * Trusted GPS measures the real speed of the car: the car speed errors at different speeds are learned
+   * from it. It works in the manual mode and when GPS is disabled for tests too.
+   */
+  public void onSpeedTableGps(@NonNull Location gps)
+  {
+    // The table is saved once in a while, not on every position.
+    final int saveSamples = 30;
+    final long timeMs = gps.getElapsedRealtimeNanos() / 1_000_000;
+    if (!gps.hasSpeed() || !isSpeedFresh())
+    {
+      mSpeedTableGpsMs = 0;
+      return;
+    }
+    // Several providers give the same position.
+    if (timeMs <= mSpeedTableGpsMs)
+      return;
+    if (mSpeedTableGpsMs != 0)
+    {
+      final double dt = (timeMs - mSpeedTableGpsMs) / 1000.0;
+      mSpeedTable.onSample(mSpeedKmh, gps.getSpeed(), dt, (gps.getSpeed() - mSpeedTableGpsSpeedMps) / dt);
+      if (++mUnsavedSpeedSamples >= saveSamples)
+        saveSpeedTable();
+    }
+    mSpeedTableGpsMs = timeMs;
+    mSpeedTableGpsSpeedMps = gps.getSpeed();
+  }
+
+  private void saveSpeedTable()
+  {
+    mUnsavedSpeedSamples = 0;
+    Config.setNoGpsSpeedTable(mSpeedTable.serialize());
+  }
+
+  /**
+   * @return how many speed ranges of the table are measured by GPS.
+   */
+  public int getSpeedTableRanges()
+  {
+    return mSpeedTable.getKnownRanges();
+  }
+
+  /**
+   * @return the measured speed ranges and their ratios for the log.
+   */
+  @NonNull
+  public String getSpeedTableDescription()
+  {
+    return mSpeedTable.toString();
+  }
+
+  /**
+   * Forgets the car speed errors measured by GPS and corrected by the user, e.g. after new tyres.
+   */
+  public void clearSpeedCalibration()
+  {
+    Logger.i(TAG, "Speed table was " + mSpeedTable);
+    mSpeedTable.clear();
+    saveSpeedTable();
+    mSpeedScale.reset();
+    Config.setNoGpsSpeedScale(1);
   }
 
   /**
@@ -446,7 +524,7 @@ public class InertialNavigator implements MotionSource.Listener
       return;
 
     final boolean speedFresh = isSpeedFresh();
-    mDeadReckoning.setSpeed(speedFresh ? mSpeedKmh / 3.6 * mSpeedScale.get() : 0);
+    mDeadReckoning.setSpeed(speedFresh ? mSpeedKmh / 3.6 * getSpeedScale(mSpeedKmh) : 0);
     // The car stands where it is while it maneuvers or after it has left the roads.
     final boolean stopped = mPaused || mRoadLost;
     // A standing car can't turn, so the remaining gyroscope drift doesn't rotate the heading at stops.

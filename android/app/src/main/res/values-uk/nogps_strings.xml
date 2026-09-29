@@ -45,7 +45,7 @@
   <string name="nogps_shift_step">На скільки переносити позицію</string>
   <string name="nogps_shift_limited">Перенесення на %1$d м, до перехрестя</string>
   <string name="nogps_shift_failed">Позицію нікуди переносити</string>
-  <string name="nogps_sensors_scale">Поправка швидкості: %1$s</string>
+  <string name="nogps_sensors_scale">Поправка швидкості: %1$s · діапазонів виміряно: %2$d</string>
   <string name="nogps_shift_at_turn">Позиція біля перехрестя, далі переносити не можна</string>
   <string name="nogps_status_gps_back">GPS знову є ±%s</string>
   <string name="nogps_status_gps_spoofed">GPS підмінено</string>
@@ -72,4 +72,7 @@
   <string name="nogps_shift_buttons_hint">Показує кнопки зсуву машини вздовж дороги на 10 м. Зсуваючи її туди, де машина насправді, ви уточнюєте швидкість машини.</string>
   <string name="nogps_obd_stopped">Немає швидкості від OBD-адаптера, машина на мапі стоїть. Перевірте адаптер або позначте себе</string>
   <string name="nogps_box_stopped">Немає даних від блока датчиків, машина на мапі стоїть. Перевірте блок або позначте себе</string>
+  <string name="nogps_clear_speed">Скинути</string>
+  <string name="nogps_clear_speed_title">Скинути калібрування швидкості?</string>
+  <string name="nogps_clear_speed_message">Поправки швидкості, виміряні за GPS на різних швидкостях і за вашими зсувами, буде забуто. Робіть це після заміни шин або машини. Поки працює GPS, вони вимірюються наново.</string>
 </resources>
