@@ -103,7 +103,7 @@
       android:layout_width="wrap_content"
       android:layout_height="wrap_content"
       android:layout_marginEnd="@dimen/margin_half"
-      app:layout_constraintBottom_toBottomOf="@+id/manual_position"
-      app:layout_constraintEnd_toStartOf="@+id/manual_position" />
+      app:layout_constraintBottom_toBottomOf="@+id/car_controls"
+      app:layout_constraintEnd_toStartOf="@+id/car_controls" />
   </androidx.constraintlayout.widget.ConstraintLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

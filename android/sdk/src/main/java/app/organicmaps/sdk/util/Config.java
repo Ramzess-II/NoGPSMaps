@@ -43,6 +43,7 @@ public final class Config
   private static final String KEY_NOGPS_INERTIAL_ENABLED = "NoGpsInertialEnabled";
   private static final String KEY_NOGPS_ELM327_ADDRESS = "NoGpsElm327Address";
   private static final String KEY_NOGPS_SHIFT_STEP = "NoGpsShiftStep";
+  private static final String KEY_NOGPS_SHIFT_BUTTONS = "NoGpsShiftButtons";
   private static final String KEY_NOGPS_SPEED_SCALE = "NoGpsSpeedScale";
   private static final String KEY_NOGPS_ESP32_SOURCE = "NoGpsEsp32Source";
   private static final String KEY_NOGPS_ESP32_ADDRESS = "NoGpsEsp32Address";
@@ -266,6 +267,19 @@ public final class Config
   /**
    * @return true if the car movement comes from the ESP32 sensor box, false for the phone with an ELM327.
    */
+  /**
+   * @return true if the buttons moving the position along the road are shown: they calibrate the speed of the car.
+   */
+  public static boolean isNoGpsShiftButtonsShown()
+  {
+    return getBool(KEY_NOGPS_SHIFT_BUTTONS, false);
+  }
+
+  public static void setNoGpsShiftButtonsShown(boolean shown)
+  {
+    setBool(KEY_NOGPS_SHIFT_BUTTONS, shown);
+  }
+
   public static boolean isNoGpsEsp32Source()
   {
     return getBool(KEY_NOGPS_ESP32_SOURCE, false);

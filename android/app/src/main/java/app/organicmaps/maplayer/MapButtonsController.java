@@ -10,6 +10,7 @@ import android.location.Location;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.TextUtils;
@@ -20,6 +21,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.widget.TextView;
+import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.OptIn;
@@ -39,6 +41,8 @@ import app.organicmaps.sdk.downloader.MapManager;
 import app.organicmaps.sdk.downloader.UpdateInfo;
 import app.organicmaps.sdk.location.LocationHelper;
 import app.organicmaps.sdk.location.TrackRecorder;
+import app.organicmaps.sdk.location.inertial.InertialNavigator;
+import app.organicmaps.sdk.location.inertial.MotionSource;
 import app.organicmaps.sdk.maplayer.isolines.IsolinesManager;
 import app.organicmaps.sdk.maplayer.subway.SubwayManager;
 import app.organicmaps.sdk.maplayer.traffic.TrafficManager;
@@ -73,7 +77,14 @@ public class MapButtonsController extends Fragment
   @Nullable
   private MyPositionButton mNavMyPosition;
   @Nullable
+  private View mCarControls;
+  @Nullable
   private FloatingActionButton mManualPositionButton;
+  @Nullable
+  private View mReverseButton;
+  // The motion source of the inertial navigation gave the car speed, the user is told when it stops.
+  private boolean mMotionSourceWorked;
+  private long mMotionSourceWarnedMs;
   @Nullable
   private TextView mPositionStatus;
   @Nullable
@@ -156,6 +167,7 @@ public class MapButtonsController extends Fragment
     final View myPosition = mFrame.findViewById(R.id.my_position);
     mNavMyPosition =
         new MyPositionButton(myPosition, (v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.myPosition));
+    mCarControls = mFrame.findViewById(R.id.car_controls);
     mManualPositionButton = mFrame.findViewById(R.id.manual_position);
     mPositionStatus = mFrame.findViewById(R.id.position_status);
     mPositionStatus.setOnClickListener(
@@ -170,8 +182,8 @@ public class MapButtonsController extends Fragment
     mShiftPositionBack = mFrame.findViewById(R.id.shift_position_back);
     mShiftPositionBack.setOnClickListener(
         (v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.shiftPositionBack));
-    mFrame.findViewById(R.id.reverse_direction)
-        .setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.reverseDirection));
+    mReverseButton = mFrame.findViewById(R.id.reverse_direction);
+    mReverseButton.setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.reverseDirection));
     mPauseButton = mFrame.findViewById(R.id.pause_movement);
     mPauseButton.setOnClickListener((v) -> {
       mMapButtonClickListener.onMapButtonClick(MapButtons.pauseMovement);
@@ -267,8 +279,8 @@ public class MapButtonsController extends Fragment
     case myPosition:
       if (mNavMyPosition != null)
         mNavMyPosition.showButton(show);
-      if (mManualPositionButton != null)
-        UiUtils.showIf(show, mManualPositionButton);
+      if (mCarControls != null)
+        UiUtils.showIf(show, mCarControls);
       break;
     case search: mSearchWheel.show(show);
     case bookmarks:
@@ -340,18 +352,19 @@ public class MapButtonsController extends Fragment
       mPositionStatus.setBackgroundTintList(ColorStateList.valueOf(ContextCompat.getColor(context, color)));
     }
 
-    // The position is moved by hand only when it does not come from GPS: a GPS one is moved by the car.
+    // The position is moved by hand only when it does not come from GPS: a GPS one is moved by the car. The
+    // buttons moving it along the road calibrate the speed, they are shown while the user calibrates it.
+    final boolean movedByHand = locationHelper.isManualMode() || source == LocationHelper.PositionSource.INERTIAL
+                             || source == LocationHelper.PositionSource.MANUAL;
     if (mShiftPositionContainer != null)
-    {
-      UiUtils.showIf(locationHelper.isManualMode() || source == LocationHelper.PositionSource.INERTIAL
-                         || source == LocationHelper.PositionSource.MANUAL,
-                     mShiftPositionContainer);
-    }
+      UiUtils.showIf(movedByHand && Config.isNoGpsShiftButtonsShown(), mShiftPositionContainer);
+    if (mReverseButton != null)
+      UiUtils.showIf(movedByHand, mReverseButton);
 
     // The movement is paused only when it is calculated from the car speed.
     if (mPauseButton != null)
     {
-      UiUtils.showIf(locationHelper.isInertialNavigationEnabled(), mPauseButton);
+      UiUtils.showIf(movedByHand && locationHelper.isInertialNavigationEnabled(), mPauseButton);
       mPauseButton.setImageResource(locationHelper.isPaused() ? R.drawable.ic_play : R.drawable.ic_pause);
       mPauseButton.setContentDescription(
           getString(locationHelper.isPaused() ? R.string.nogps_resume : R.string.nogps_pause));
@@ -361,12 +374,44 @@ public class MapButtonsController extends Fragment
     setShiftEnabled(mShiftPositionForward, !locationHelper.isShiftBlocked(true));
     setShiftEnabled(mShiftPositionBack, !locationHelper.isShiftBlocked(false));
 
+    warnIfMotionSourceStopped(locationHelper);
+
     // The icon tells where the position comes from now: from satellites or from the user.
     if (mManualPositionButton != null)
     {
       mManualPositionButton.setImageResource(locationHelper.isManualMode() ? R.drawable.ic_manual_position
                                                                           : R.drawable.ic_gps_position);
     }
+  }
+
+  /**
+   * Tells the user when the car speed stops coming while the car is followed without GPS: the position stands
+   * still then, and the user would not know why.
+   */
+  private void warnIfMotionSourceStopped(@NonNull LocationHelper locationHelper)
+  {
+    // Repeated while it lasts: a message is easily missed while driving.
+    final long warningIntervalMs = 30_000;
+    final InertialNavigator inertial = locationHelper.getInertialNavigator();
+    if (inertial == null || !locationHelper.isInertialNavigationEnabled())
+    {
+      mMotionSourceWorked = false;
+      return;
+    }
+    if (inertial.getSourceState() == MotionSource.State.CONNECTED)
+    {
+      mMotionSourceWorked = true;
+      mMotionSourceWarnedMs = 0;
+      return;
+    }
+    final long now = SystemClock.elapsedRealtime();
+    if (!mMotionSourceWorked || !locationHelper.isManualMode() || now - mMotionSourceWarnedMs < warningIntervalMs)
+      return;
+    mMotionSourceWarnedMs = now;
+    Toast.makeText(requireContext(), locationHelper.isEsp32Source() ? R.string.nogps_box_stopped
+                                                                    : R.string.nogps_obd_stopped,
+                   Toast.LENGTH_LONG)
+        .show();
   }
 
   private static void setShiftEnabled(@Nullable View button, boolean enabled)

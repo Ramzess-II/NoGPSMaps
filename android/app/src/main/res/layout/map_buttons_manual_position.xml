@@ -1,8 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.floatingactionbutton.FloatingActionButton
+<LinearLayout
   xmlns:android="http://schemas.android.com/apk/res/android"
   xmlns:app="http://schemas.android.com/apk/res-auto"
-  android:id="@+id/manual_position"
-  style="@style/MwmWidget.MapButton"
-  app:srcCompat="@drawable/ic_manual_position"
-  android:contentDescription="@string/nogps_manual_position" />
+  android:id="@+id/car_controls"
+  android:layout_width="wrap_content"
+  android:layout_height="wrap_content"
+  android:gravity="center_vertical"
+  android:orientation="horizontal">
+  <com.google.android.material.floatingactionbutton.FloatingActionButton
+    android:id="@+id/pause_movement"
+    style="@style/MwmWidget.MapButton.Zoom"
+    android:layout_marginEnd="@dimen/margin_half"
+    app:srcCompat="@drawable/ic_pause"
+    android:contentDescription="@string/nogps_pause" />
+  <com.google.android.material.floatingactionbutton.FloatingActionButton
+    android:id="@+id/reverse_direction"
+    style="@style/MwmWidget.MapButton.Zoom"
+    android:layout_marginEnd="@dimen/margin_half"
+    app:srcCompat="@drawable/ic_reverse_direction"
+    android:contentDescription="@string/nogps_reverse_direction" />
+  <com.google.android.material.floatingactionbutton.FloatingActionButton
+    android:id="@+id/manual_position"
+    style="@style/MwmWidget.MapButton"
+    app:srcCompat="@drawable/ic_manual_position"
+    android:contentDescription="@string/nogps_manual_position" />
+</LinearLayout>

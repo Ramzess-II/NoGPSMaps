@@ -112,6 +112,21 @@
     android:textStyle="bold" />
 
   <androidx.appcompat.widget.SwitchCompat
+    android:id="@+id/nogps_shift_buttons_switch"
+    android:layout_width="match_parent"
+    android:layout_height="56dp"
+    android:layout_marginTop="8dp"
+    android:text="@string/nogps_shift_buttons"
+    android:textSize="17sp" />
+
+  <TextView
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:text="@string/nogps_shift_buttons_hint"
+    android:textColor="?android:textColorSecondary"
+    android:textSize="14sp" />
+
+  <androidx.appcompat.widget.SwitchCompat
     android:id="@+id/nogps_disable_gps_switch"
     android:layout_width="match_parent"
     android:layout_height="56dp"

@@ -89,6 +89,10 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
 
     mSwitch.setChecked(getLocationHelper().isInertialNavigationEnabled());
     mSwitch.setOnCheckedChangeListener((v, isChecked) -> onSwitch(isChecked));
+    final SwitchCompat shiftButtons = view.findViewById(R.id.nogps_shift_buttons_switch);
+    shiftButtons.setChecked(Config.isNoGpsShiftButtonsShown());
+    shiftButtons.setOnCheckedChangeListener((v, isChecked) -> Config.setNoGpsShiftButtonsShown(isChecked));
+
     final SwitchCompat disableGps = view.findViewById(R.id.nogps_disable_gps_switch);
     disableGps.setChecked(getLocationHelper().isGpsDisabled());
     disableGps.setOnCheckedChangeListener((v, isChecked) -> getLocationHelper().setGpsDisabled(isChecked));
