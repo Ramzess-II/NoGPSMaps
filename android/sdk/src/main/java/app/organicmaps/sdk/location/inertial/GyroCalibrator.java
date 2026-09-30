@@ -14,6 +14,11 @@ public class GyroCalibrator
   // Rotation noise of a still phone on a running engine is ~0.01 rad/s.
   static final double MAX_STILL_GYRO_STD_RAD_S = 0.03;
   static final double MAX_STILL_ACCEL_STD_MPS2 = 0.5;
+  // The car creeping in a jam or maneuvering is often reported standing by the car, and its slow steady turn looks
+  // like a still phone. The bias changes slowly with the temperature, so a larger change at a short stop is such a
+  // turn: it would rotate the heading all the way until the next stop.
+  static final double MAX_BIAS_CHANGE_DEG_S = 0.5;
+  static final long LONG_STOP_MS = 15_000;
 
   private final double[] mGyroSum = new double[3];
   private final double[] mGyroSqSum = new double[3];
@@ -86,6 +91,17 @@ public class GyroCalibrator
     final double z = mAccelSum[2] / mCount;
     final double norm = Math.sqrt(x * x + y * y + z * z);
     return new float[] {(float) (x / norm), (float) (y / norm), (float) (z / norm)};
+  }
+
+  /**
+   * @param oldBias the bias in use, null if there is none.
+   * @param stoppedMs how long the car stands.
+   * @return true if the new bias of a calibration at a stop can be trusted.
+   */
+  public static boolean isBiasChangeAllowed(float[] oldBias, float[] newBias, float[] up, long stoppedMs)
+  {
+    return oldBias == null || stoppedMs >= LONG_STOP_MS
+        || Math.abs(yawRateDeg(newBias, oldBias, up)) <= MAX_BIAS_CHANGE_DEG_S;
   }
 
   private double std(double sum, double sqSum)

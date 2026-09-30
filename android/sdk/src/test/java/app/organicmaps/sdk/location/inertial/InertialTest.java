@@ -245,4 +245,20 @@ public class InertialTest
       calibrator.add(new float[] {(i % 2 == 0) ? 0.5f : -0.5f, 0, 0}, new float[] {0, 9.81f, 0});
     assertFalse(calibrator.isStill());
   }
+
+  @Test
+  public void ignoresSlowTurnAtShortStop()
+  {
+    final float[] up = {0, 0, 1};
+    final float[] bias = {0.01f, 0.02f, 0.003f};
+    // The temperature drift of the bias.
+    final float[] drifted = {0.01f, 0.02f, 0.003f + (float) Math.toRadians(0.2)};
+    // The car creeping and turning at 2.7 deg/s while the car tells it stands.
+    final float[] turning = {0.01f, 0.02f, 0.003f + (float) Math.toRadians(2.7)};
+    assertTrue(GyroCalibrator.isBiasChangeAllowed(null, turning, up, 3000));
+    assertTrue(GyroCalibrator.isBiasChangeAllowed(bias, drifted, up, 3000));
+    assertFalse(GyroCalibrator.isBiasChangeAllowed(bias, turning, up, 3000));
+    // Nobody turns for so long at a stop, the bias was wrong.
+    assertTrue(GyroCalibrator.isBiasChangeAllowed(bias, turning, up, GyroCalibrator.LONG_STOP_MS));
+  }
 }

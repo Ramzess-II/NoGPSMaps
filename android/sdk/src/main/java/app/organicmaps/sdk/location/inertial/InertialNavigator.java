@@ -54,6 +54,8 @@ public class InertialNavigator implements MotionSource.Listener
   // A car drives this far off the roads only in a yard or a parking lot missing on the map, or the calculation
   // has gone wrong, e.g. with a wrong heading. The car is stopped on the road then until the user marks it.
   private static final double LOST_ROAD_M = 30;
+  // The user is reminded to mark the car while it drives with the position stopped, e.g. on the next trip.
+  private static final long ROAD_LOST_REMINDER_MS = 30_000;
 
   public enum CalibrationState
   {
@@ -101,6 +103,7 @@ public class InertialNavigator implements MotionSource.Listener
   private double mOffRoadM;
   // The car has left the roads and stands at the last road point until it is marked or GPS comes back.
   private boolean mRoadLost;
+  private long mRoadLostNotifiedMs;
   @Nullable
   private MotionSource mSource;
   private boolean mStarted;
@@ -477,6 +480,12 @@ public class InertialNavigator implements MotionSource.Listener
     Logger.i(TAG, "The road is lost after " + Math.round(mOffRoadM) + " m, stopping at " + mRoadLat + "," + mRoadLon);
     mRoadLost = true;
     mDeadReckoning.moveTo(mRoadLat, mRoadLon);
+    notifyRoadLost();
+  }
+
+  private void notifyRoadLost()
+  {
+    mRoadLostNotifiedMs = SystemClock.elapsedRealtime();
     mListener.onRoadLost();
   }
 
@@ -543,6 +552,11 @@ public class InertialNavigator implements MotionSource.Listener
     }
 
     final long now = SystemClock.elapsedRealtime();
+    if (mRoadLost && mDeadReckoning.getSpeed() > MOVING_SPEED_MPS
+        && now - mRoadLostNotifiedMs >= ROAD_LOST_REMINDER_MS)
+    {
+      notifyRoadLost();
+    }
     if (isReady() && !stopped && mDeadReckoning.getSpeed() > MOVING_SPEED_MPS
         && now - mLastSnapMs >= SNAP_INTERVAL_MS)
     {

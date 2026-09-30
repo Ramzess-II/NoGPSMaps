@@ -39,6 +39,8 @@ public class PhoneMotionSource implements MotionSource, SensorEventListener, Elm
   private final GyroCalibrator mAutoCalibrator = new GyroCalibrator();
   @NonNull
   private InertialNavigator.CalibrationState mCalibrationState = InertialNavigator.CalibrationState.NONE;
+  // The car has driven during the calibration asked by the user.
+  private boolean mCalibrationMoved;
   @Nullable
   private float[] mBias;
   @Nullable
@@ -129,6 +131,7 @@ public class PhoneMotionSource implements MotionSource, SensorEventListener, Elm
   {
     Logger.i(TAG);
     mCalibrator.reset();
+    mCalibrationMoved = false;
     mCalibrationState = InertialNavigator.CalibrationState.CALIBRATING;
   }
 
@@ -187,14 +190,23 @@ public class PhoneMotionSource implements MotionSource, SensorEventListener, Elm
   @Override
   public void onAccuracyChanged(Sensor sensor, int accuracy) {}
 
+  private boolean isCarMoving(long now)
+  {
+    return mSpeedKmh > 0 && now - mSpeedTimeMs < SPEED_STALE_MS;
+  }
+
   private void updateCalibration(@NonNull float[] gyro)
   {
+    final long now = SystemClock.elapsedRealtime();
     if (mCalibrationState == InertialNavigator.CalibrationState.CALIBRATING)
     {
       mCalibrator.add(gyro, mAccel);
+      // A car driving straight is as still for the phone as a standing one.
+      if (isCarMoving(now))
+        mCalibrationMoved = true;
       if (mCalibrator.isComplete())
       {
-        if (mCalibrator.isStill())
+        if (mCalibrator.isStill() && !mCalibrationMoved)
         {
           applyCalibration(mCalibrator);
           mCalibrationState = InertialNavigator.CalibrationState.DONE;
@@ -209,7 +221,6 @@ public class PhoneMotionSource implements MotionSource, SensorEventListener, Elm
     }
 
     // Refresh the gyroscope bias on every stop, it changes with the temperature.
-    final long now = SystemClock.elapsedRealtime();
     final boolean stopped = mSpeedKmh == 0 && now - mSpeedTimeMs < SPEED_STALE_MS && mStoppedSinceMs != 0
                          && now - mStoppedSinceMs > AUTO_CALIBRATION_DELAY_MS;
     if (!stopped)
@@ -221,13 +232,26 @@ public class PhoneMotionSource implements MotionSource, SensorEventListener, Elm
     if (mAutoCalibrator.isComplete())
     {
       if (mAutoCalibrator.isStill())
-      {
-        applyCalibration(mAutoCalibrator);
-        mCalibrationState = InertialNavigator.CalibrationState.DONE;
-        Logger.d(TAG, "Automatic calibration at a stop");
-      }
+        applyAutoCalibration(now - mStoppedSinceMs);
       mAutoCalibrator.reset();
     }
+  }
+
+  private void applyAutoCalibration(long stoppedMs)
+  {
+    final float[] bias = mAutoCalibrator.getBias();
+    final float[] up = mAutoCalibrator.getUp();
+    final double changeDeg = mBias != null ? GyroCalibrator.yawRateDeg(bias, mBias, up) : 0;
+    if (!GyroCalibrator.isBiasChangeAllowed(mBias, bias, up, stoppedMs))
+    {
+      Logger.i(TAG, "Automatic calibration ignored: the car turns slowly at " + changeDeg + " deg/s");
+      return;
+    }
+    if (Math.abs(changeDeg) > 0.1)
+      Logger.i(TAG, "Automatic calibration changes the yaw by " + changeDeg + " deg/s");
+    applyCalibration(mAutoCalibrator);
+    mCalibrationState = InertialNavigator.CalibrationState.DONE;
+    Logger.d(TAG, "Automatic calibration at a stop");
   }
 
   private void applyCalibration(@NonNull GyroCalibrator calibrator)
