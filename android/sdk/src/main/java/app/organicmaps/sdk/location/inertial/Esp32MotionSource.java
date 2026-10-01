@@ -73,6 +73,8 @@ public class Esp32MotionSource implements MotionSource
   // The state of the ELM327 adapter of the box from its status, null until it comes.
   @Nullable
   private String mObdState;
+  // The box hasn't found its ELM327: while it searches it again, the adapter is still missing.
+  private boolean mObdAdapterMissing;
   // The numbers of the events of the box written to the log.
   private final TreeSet<Long> mLoggedEvents = new TreeSet<>();
   private long mEventsRequestMs;
@@ -250,6 +252,10 @@ public class Esp32MotionSource implements MotionSource
     {
       Logger.i(TAG, "OBD state = " + obdState);
       mObdState = obdState;
+      if ("NO_ADAPTER".equals(obdState))
+        mObdAdapterMissing = true;
+      else if (!"INIT".equals(obdState))
+        mObdAdapterMissing = false;
     }
   }
 
@@ -350,9 +356,18 @@ public class Esp32MotionSource implements MotionSource
     if ((mFlags & Esp32Protocol.FLAG_OBD_OK) != 0)
       return State.CONNECTED;
     // OBD_ABSENT is set also when ELM327 is off in the box, only the status tells one from another.
-    if ("DISABLED".equals(mObdState))
-      return State.OBD_DISABLED;
-    return "NO_ADAPTER".equals(mObdState) ? State.NO_ADAPTER : State.NO_CAR_DATA;
+    if (mObdAdapterMissing)
+      return State.NO_ADAPTER;
+    if (mObdState == null)
+      return State.NO_CAR_DATA;
+    return switch (mObdState)
+    {
+      case "DISABLED" -> State.OBD_DISABLED;
+      case "INIT", "SEARCHING" -> State.OBD_CONNECTING;
+      case "ERROR" -> State.OBD_ERROR;
+      // NO_CAR and NO_DATA: the adapter answers, the car doesn't.
+      default -> State.NO_CAR_DATA;
+    };
   }
 
   @Override

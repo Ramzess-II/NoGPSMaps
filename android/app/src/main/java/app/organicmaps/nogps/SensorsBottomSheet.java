@@ -327,6 +327,8 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
       case CONNECTING -> R.string.nogps_box_connecting;
       case NO_ADAPTER -> R.string.nogps_elm_no_adapter;
       case OBD_DISABLED -> R.string.nogps_box_obd_disabled;
+      case OBD_CONNECTING -> R.string.nogps_box_obd_connecting;
+      case OBD_ERROR -> R.string.nogps_elm_error;
       case NO_CAR_DATA -> R.string.nogps_elm_no_car;
       case CONNECTED -> R.string.nogps_elm_connected;
     };
@@ -339,6 +341,8 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
       case DISCONNECTED -> R.string.nogps_elm_disconnected;
       case CONNECTING -> R.string.nogps_elm_connecting;
       case NO_ADAPTER, OBD_DISABLED -> R.string.nogps_elm_no_adapter;
+      case OBD_CONNECTING -> R.string.nogps_elm_connecting;
+      case OBD_ERROR -> R.string.nogps_elm_error;
       case NO_CAR_DATA -> R.string.nogps_elm_no_car;
       case CONNECTED -> R.string.nogps_elm_connected;
     };

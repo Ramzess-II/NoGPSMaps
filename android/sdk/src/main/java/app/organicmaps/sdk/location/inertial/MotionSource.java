@@ -16,6 +16,10 @@ public interface MotionSource
     NO_ADAPTER,
     // The sensor box is set up not to use ELM327.
     OBD_DISABLED,
+    // The sensor box is connected, its ELM327 is being initialized or searches the protocol of the car.
+    OBD_CONNECTING,
+    // ELM327 of the sensor box has a bus error or has stopped answering.
+    OBD_ERROR,
     // Connected, but the car doesn't tell its speed (ignition off, protocol search).
     NO_CAR_DATA,
     CONNECTED,
