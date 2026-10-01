@@ -76,4 +76,11 @@
   <string name="nogps_clear_speed">Reset</string>
   <string name="nogps_clear_speed_title">Reset the speed calibration?</string>
   <string name="nogps_clear_speed_message">The speed corrections learned from GPS at different speeds and from your corrections will be forgotten. Do it after new tyres or another car. They are learned anew while GPS works.</string>
+  <string name="nogps_about_title">About NoGPS Maps</string>
+  <string name="nogps_about_menu">About · Organic Maps</string>
+  <string name="nogps_about_headline">Navigation when GPS is jammed or spoofed</string>
+  <string name="nogps_about_description">Without GPS the car is driven by the inertial navigation: the turns come from the gyroscope, the distance from the car speed via OBD-II. The car is kept on the roads of the offline map.</string>
+  <string name="nogps_based_on">Based on Organic Maps</string>
+  <string name="nogps_map_data">Map data © OpenStreetMap and Organic Maps</string>
+  <string name="nogps_source_code">Source code on GitHub</string>
 </resources>

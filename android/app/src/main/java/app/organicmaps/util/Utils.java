@@ -38,7 +38,6 @@ import app.organicmaps.BuildConfig;
 import app.organicmaps.MwmActivity;
 import app.organicmaps.MwmApplication;
 import app.organicmaps.R;
-import app.organicmaps.sdk.util.Config;
 import app.organicmaps.sdk.util.Constants;
 import app.organicmaps.sdk.util.Distance;
 import app.organicmaps.sdk.util.StringUtils;
@@ -470,13 +469,7 @@ public class Utils
   @NonNull
   public static String getDonateUrl(@NonNull Context context)
   {
-    // The same l11n logic as in Framework::GetDonateUrl()
-
-    final String url = Config.getDonateUrl();
-    // Enable donations by default if not Google or Huawei. Replace organicmaps.app/donate/ with localized page.
-    if ((url.isEmpty() && !BuildConfig.FLAVOR.equals("google") && !BuildConfig.FLAVOR.equals("huawei"))
-        || url.endsWith("organicmaps.app/donate/"))
-      return context.getString(R.string.translated_om_site_url) + "donate/";
-    return url;
+    // NoGPS Maps takes no donations, the donation page of Organic Maps is not shown as its own.
+    return "";
   }
 }

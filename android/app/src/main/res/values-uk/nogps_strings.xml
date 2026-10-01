@@ -75,4 +75,11 @@
   <string name="nogps_clear_speed">Скинути</string>
   <string name="nogps_clear_speed_title">Скинути калібрування швидкості?</string>
   <string name="nogps_clear_speed_message">Поправки швидкості, виміряні за GPS на різних швидкостях і за вашими зсувами, буде забуто. Робіть це після заміни шин або машини. Поки працює GPS, вони вимірюються наново.</string>
+  <string name="nogps_about_title">Про NoGPS Maps</string>
+  <string name="nogps_about_menu">Про застосунок · Organic Maps</string>
+  <string name="nogps_about_headline">Навігація, коли GPS глушать або підміняють</string>
+  <string name="nogps_about_description">Без GPS машину веде інерціальна навігація: повороти — за гіроскопом, відстань — за швидкістю автомобіля з OBD-II. Машина тримається доріг офлайн-карти.</string>
+  <string name="nogps_based_on">На основі Organic Maps</string>
+  <string name="nogps_map_data">Дані карт © OpenStreetMap і Organic Maps</string>
+  <string name="nogps_source_code">Вихідний код на GitHub</string>
 </resources>

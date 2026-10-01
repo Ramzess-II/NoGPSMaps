@@ -466,7 +466,7 @@
 
     <activity
         android:name="app.organicmaps.help.HelpActivity"
-        android:label="@string/about_menu_title"
+        android:label="@string/nogps_about_title"
         android:parentActivityName="app.organicmaps.MwmActivity"
         android:exported="false">
       <intent-filter>

@@ -2141,6 +2141,8 @@ public class MwmActivity extends BaseMwmFragmentActivity
                                         this::onTrackRecordingOptionSelected));
       items.add(new MenuBottomSheetItem(R.string.share_my_location, R.drawable.ic_share,
                                         this::onShareLocationOptionSelected));
+      // The map data and the project it is based on are credited in a place every user sees.
+      items.add(new MenuBottomSheetItem(R.string.nogps_about_menu, R.drawable.ic_question_mark, this::showHelp));
       return items;
     }
     return null;
