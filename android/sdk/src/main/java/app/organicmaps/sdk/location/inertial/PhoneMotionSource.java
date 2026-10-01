@@ -164,6 +164,7 @@ public class PhoneMotionSource implements MotionSource, SensorEventListener, Elm
     {
       case DISCONNECTED -> State.DISCONNECTED;
       case CONNECTING -> State.CONNECTING;
+      case NO_ADAPTER -> State.NO_ADAPTER;
       case NO_CAR_DATA -> State.NO_CAR_DATA;
       case CONNECTED -> State.CONNECTED;
     };

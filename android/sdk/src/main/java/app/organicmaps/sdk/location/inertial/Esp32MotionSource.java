@@ -65,6 +65,9 @@ public class Esp32MotionSource implements MotionSource
   private long mLastYawMdeg;
   @Nullable
   private String mImuName;
+  // The state of the ELM327 adapter of the box from its status, null until it comes.
+  @Nullable
+  private String mObdState;
   private int mNextCommandId = 1;
   // The calibration command waiting for its reply, 0 if none.
   private int mCalibrationId;
@@ -226,7 +229,13 @@ public class Esp32MotionSource implements MotionSource
     }
     final String imuName = Esp32Protocol.parseImuName(fields);
     if (imuName != null)
-      mImuName = imuName;
+      mImuName = imuName.isEmpty() ? null : imuName;
+    final String obdState = Esp32Protocol.parseObdState(fields);
+    if (obdState != null && !obdState.equals(mObdState))
+    {
+      Logger.i(TAG, "OBD state = " + obdState);
+      mObdState = obdState;
+    }
   }
 
   private void onData(@NonNull Esp32Protocol.Data data)
@@ -277,7 +286,12 @@ public class Esp32MotionSource implements MotionSource
       return State.DISCONNECTED;
     if (!isConnected())
       return State.CONNECTING;
-    return (mFlags & Esp32Protocol.FLAG_OBD_OK) != 0 ? State.CONNECTED : State.NO_CAR_DATA;
+    if ((mFlags & Esp32Protocol.FLAG_OBD_OK) != 0)
+      return State.CONNECTED;
+    if ("DISABLED".equals(mObdState))
+      return State.OBD_DISABLED;
+    final boolean noAdapter = (mFlags & Esp32Protocol.FLAG_OBD_ABSENT) != 0 || "NO_ADAPTER".equals(mObdState);
+    return noAdapter ? State.NO_ADAPTER : State.NO_CAR_DATA;
   }
 
   @Override

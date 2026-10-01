@@ -23,6 +23,8 @@ public final class Esp32Protocol
   static final int FLAG_CALIBRATING = 1 << 6;
   static final int FLAG_MOUNT_MOVED = 1 << 7;
   static final int FLAG_REVERSE = 1 << 8;
+  static final int FLAG_OBD_ABSENT = 1 << 9;
+  static final int FLAG_ERROR = 1 << 10;
 
   /**
    * A data line: the totals since the box has started, so a lost line loses nothing.
@@ -152,6 +154,17 @@ public final class Esp32Protocol
     {
       return null;
     }
+  }
+
+  /**
+   * @return the state of the OBD adapter from an NGS line: NO_ADAPTER, NO_CAR, OK etc., null if it is another line.
+   */
+  @Nullable
+  public static String parseObdState(@NonNull String[] fields)
+  {
+    if (fields.length < 6 || !"NGS".equals(fields[0]))
+      return null;
+    return fields[5];
   }
 
   /**

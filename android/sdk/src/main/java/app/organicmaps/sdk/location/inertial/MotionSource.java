@@ -12,6 +12,10 @@ public interface MotionSource
   {
     DISCONNECTED,
     CONNECTING,
+    // The ELM327 adapter doesn't answer: it is not plugged in, switched off or broken.
+    NO_ADAPTER,
+    // The sensor box is set up not to use ELM327.
+    OBD_DISABLED,
     // Connected, but the car doesn't tell its speed (ignition off, protocol search).
     NO_CAR_DATA,
     CONNECTED,

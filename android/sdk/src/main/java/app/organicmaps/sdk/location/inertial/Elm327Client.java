@@ -37,6 +37,8 @@ public class Elm327Client
   {
     DISCONNECTED,
     CONNECTING,
+    // Bluetooth doesn't connect to the adapter or it doesn't answer the commands.
+    NO_ADAPTER,
     // Connected to the adapter, but the car doesn't answer (ignition off, protocol search).
     NO_CAR_DATA,
     CONNECTED,
@@ -94,7 +96,9 @@ public class Elm327Client
     {
       try
       {
-        setState(State.CONNECTING);
+        // While the adapter doesn't answer, the reconnections don't blink with "connecting".
+        if (mLastState != State.NO_ADAPTER)
+          setState(State.CONNECTING);
         connect();
         initAdapter();
         pollSpeed();
@@ -114,7 +118,9 @@ public class Elm327Client
 
       if (!mRunning)
         break;
-      setState(State.DISCONNECTED);
+      // The adapter has never answered the initialization since the connection started.
+      final boolean noAdapter = mLastState == State.CONNECTING || mLastState == State.NO_ADAPTER;
+      setState(noAdapter ? State.NO_ADAPTER : State.DISCONNECTED);
       try
       {
         Thread.sleep(RECONNECT_DELAY_MS);

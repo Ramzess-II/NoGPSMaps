@@ -21,6 +21,8 @@
   <string name="nogps_sensors_choose">Выбрать</string>
   <string name="nogps_elm_disconnected">нет связи</string>
   <string name="nogps_elm_connecting">подключение…</string>
+  <string name="nogps_elm_no_adapter">ELM327 не отвечает</string>
+  <string name="nogps_box_obd_disabled">ELM327 выключен в блоке</string>
   <string name="nogps_elm_no_car">машина не отвечает</string>
   <string name="nogps_elm_connected">подключён</string>
   <string name="nogps_sensors_speed">Скорость: %s</string>

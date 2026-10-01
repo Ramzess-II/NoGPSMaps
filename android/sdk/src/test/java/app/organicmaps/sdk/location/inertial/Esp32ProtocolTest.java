@@ -86,5 +86,19 @@ public class Esp32ProtocolTest
     final String[] fields = Esp32Protocol.parse("$NGS,1,1.0.0,ICM42688,400,OK,ISO 15765-4 CAN 11/500,12,412,0*8BEB");
     assertNotNull(fields);
     assertEquals("ICM42688", Esp32Protocol.parseImuName(fields));
+    assertEquals("OK", Esp32Protocol.parseObdState(fields));
+  }
+
+  @Test
+  public void parsesStatusWithoutElm327()
+  {
+    // The fields added in the second spec follow the first ones.
+    final String[] fields =
+        Esp32Protocol.parse("$NGS,1,2.0.0,ICM42688,400,NO_ADAPTER,,12,412,0,OK,0x47,NO_ADAPTER,0,-15,3*"
+                            + String.format("%04X", Esp32Protocol.crc16(
+                                  "NGS,1,2.0.0,ICM42688,400,NO_ADAPTER,,12,412,0,OK,0x47,NO_ADAPTER,0,-15,3")));
+    assertNotNull(fields);
+    assertEquals("NO_ADAPTER", Esp32Protocol.parseObdState(fields));
+    assertNull(Esp32Protocol.parseObdState(Esp32Protocol.parse("$NGA,18,OK*461D")));
   }
 }
