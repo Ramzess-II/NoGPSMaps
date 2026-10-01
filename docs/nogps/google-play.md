@@ -82,7 +82,7 @@ cd android
 | Название, краткое и полное описание | `listings/<язык>/title.txt`, `short-description.txt`, `full-description.txt` |
 | Значок 512×512 | `listings/en-US/graphics/icon/1.png` |
 | Баннер 1024×500 | `listings/en-US/graphics/feature-graphic/1.png` |
-| Скриншоты телефона (2–8 шт.) | `listings/en-US/graphics/phone-screenshots/` |
+| Скриншоты телефона (2–8 шт.) | `listings/uk/graphics/phone-screenshots/` (украинский интерфейс, центр Днепра) |
 | Что нового | `release-notes/<язык>/default.txt` |
 | Категория | Приложения → **Карты и навигация** |
 | Политика конфиденциальности | ссылка на `docs/nogps/privacy-policy.md` на GitHub |
@@ -148,8 +148,8 @@ cd android
 
 - [ ] Релизная сборка (`googleRelease`) запускается: карта, загрузка карт, маршрут, навигация с голосом,
       ручной режим, ELM327, блок ESP32, экран «О приложении».
-- [ ] Скриншоты сняты заново с новым значком (на нынешних — кнопка с логотипом Organic Maps).
-- [ ] Ссылки «Поделиться» ведут не на omaps.app (сейчас открываются в Organic Maps).
+- [x] Скриншоты сняты заново с новым значком.
+- [x] «Поделиться» отправляет ссылку openstreetmap.org: в браузере у всех, в приложении у его пользователей.
 - [ ] Своё приложение OAuth в OpenStreetMap для правок карты (сейчас при входе будет видно «Organic Maps»).
 - [ ] Пределы Organic Maps: не больше ~1000 пользователей без новой договорённости
       (счётчик — Play Console → Статистика).
