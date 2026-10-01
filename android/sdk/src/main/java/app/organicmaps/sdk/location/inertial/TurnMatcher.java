@@ -25,6 +25,8 @@ public final class TurnMatcher
   static final double ROAD_CHECK_DISTANCE_M = 12;
   static final double ROAD_CHECK_RADIUS_M = 6;
   static final double MAX_ROAD_DIFF_DEG = 35;
+  // The road the car was on going the new way within this difference has bent, the car has followed it.
+  static final double MAX_BEND_END_DIFF_DEG = 25;
 
   private TurnMatcher() {}
 
@@ -44,6 +46,9 @@ public final class TurnMatcher
       return null;
 
     final double radius = Math.max(MIN_SEARCH_M, Math.min(MAX_SEARCH_M, searchM));
+    // A bend of the road with a side street close to it would move the car to the street.
+    if (isBend(roads, cornerLat, cornerLon, fromBearing, toBearing, radius))
+      return null;
     final double[] crossings = roads.findCrossings(cornerLat, cornerLon, radius);
     double[] best = null;
     double bestAlong = Double.MAX_VALUE;
@@ -65,6 +70,38 @@ public final class TurnMatcher
       bestAlong = along;
     }
     return best;
+  }
+
+  /**
+   * Follows the road the car was on from the corner: the road going on the way the car looked before. At a
+   * crossing it goes straight on or ends.
+   * @return true if the road bends to the new direction within the distance.
+   */
+  static boolean isBend(@NonNull Roads roads, double lat, double lon, double fromBearing, double toBearing,
+                        double distanceM)
+  {
+    final double[] start = roads.snap(lat, lon, fromBearing, RoadWalker.SNAP_RADIUS_M);
+    if (start == null)
+      return false;
+    double posLat = start[0];
+    double posLon = start[1];
+    double heading = RoadWalker.orient(start[2], fromBearing);
+    for (double walked = 0; walked < distanceM; walked += RoadWalker.STEP_M)
+    {
+      if (Math.abs(DeadReckoning.angleDiff(toBearing, heading)) <= MAX_BEND_END_DIFF_DEG)
+        return true;
+      final double[] next = DeadReckoning.move(posLat, posLon, heading, RoadWalker.STEP_M);
+      final double[] road = roads.snap(next[0], next[1], heading, RoadWalker.SNAP_RADIUS_M);
+      if (road == null)
+        return false;
+      final double roadHeading = RoadWalker.orient(road[2], heading);
+      if (Math.abs(DeadReckoning.angleDiff(roadHeading, heading)) > RoadWalker.MAX_BEND_DEG)
+        return false;
+      posLat = road[0];
+      posLon = road[1];
+      heading = roadHeading;
+    }
+    return Math.abs(DeadReckoning.angleDiff(toBearing, heading)) <= MAX_BEND_END_DIFF_DEG;
   }
 
   /**

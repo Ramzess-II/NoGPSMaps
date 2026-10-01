@@ -1545,7 +1545,8 @@ bool RoutingManager::SnapToRoad(ms::LatLon const & latLon, double bearingDeg, do
       size_t anchorIdx = 0;
       m2::PointD anchor;
       double const routeM = FindRouteAnchor(points, point, bearingDeg, anchorIdx, anchor);
-      if (routeM <= radiusM && !routing::IRouter::IsRoadBehind(point, anchor, direction) &&
+      bool const atEnd = anchor == points[anchorIdx] || anchor == points[anchorIdx + 1];
+      if (routeM <= radiusM && !(atEnd && routing::IRouter::IsRoadBehind(point, anchor, direction)) &&
           cost(anchor, ang::AngleTo(points[anchorIdx], points[anchorIdx + 1])) <= roadCost + kSameRoadM)
       {
         found = true;

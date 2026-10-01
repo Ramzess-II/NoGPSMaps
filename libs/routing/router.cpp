@@ -6,7 +6,7 @@ namespace routing
 {
 bool IRouter::IsRoadBehind(m2::PointD const & point, m2::PointD const & roadPoint, m2::PointD const & direction)
 {
-  // The closest point of a road going on is aside of the car, a road bending away may be a bit behind.
+  // The end of the piece the car has just passed, the next piece goes on from it.
   double constexpr kBehindM = 0.5;
   m2::PointD const shift = roadPoint - point;
   if (shift.IsAlmostZero() || direction.IsAlmostZero())

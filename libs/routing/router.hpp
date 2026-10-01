@@ -92,8 +92,9 @@ public:
   /// direction of a car is worth when the road the car is on is chosen.
   static double constexpr kRoadMetersPerDeg = 0.2;
 
-  /// Returns true if the closest |roadPoint| of a road is behind a car at |point| going the |direction| way: the
-  /// road ends behind the car, e.g. a driveway, and snapping to it would pull the car back on every snap.
+  /// Returns true if the end |roadPoint| of a road piece, the closest point of it, is behind a car at |point| going
+  /// the |direction| way: the road ends behind the car, e.g. a driveway, and snapping to it would pull the car back on
+  /// every snap. A point inside a piece is on a road going on, even a bit behind the car on a bend.
   static bool IsRoadBehind(m2::PointD const & point, m2::PointD const & roadPoint, m2::PointD const & direction);
 
   /// Finds the road a car at |point| going the |direction| way drives along: the closest one, but a road going

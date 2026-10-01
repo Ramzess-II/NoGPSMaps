@@ -221,4 +221,83 @@ public class RoadsTest
   {
     assertNull(TurnMatcher.findCrossing(GRID, lat(0), lon(700), 90, 0, 20));
   }
+
+  /**
+   * Roads made of pieces {x1, y1, x2, y2} in meters east and north, snapped like the map does it: the closest
+   * one going the car's way, not ending behind the car.
+   */
+  private static Roads pieces(double[][] pieces, double[] crossings)
+  {
+    return new Roads() {
+      @Nullable
+      @Override
+      public double[] snap(double lat, double lon, double bearing, double radius)
+      {
+        final double x = east(lon);
+        final double y = north(lat);
+        double[] best = null;
+        double bestCost = Double.MAX_VALUE;
+        for (double[] p : pieces)
+        {
+          final double dx = p[2] - p[0];
+          final double dy = p[3] - p[1];
+          final double projection = ((x - p[0]) * dx + (y - p[1]) * dy) / (dx * dx + dy * dy);
+          final double t = Math.max(0, Math.min(1, projection));
+          final double px = p[0] + t * dx;
+          final double py = p[1] + t * dy;
+          final double distance = Math.hypot(px - x, py - y);
+          final double roadBearing = Math.toDegrees(Math.atan2(dx, dy));
+          double diff = Math.abs(DeadReckoning.angleDiff(roadBearing, Double.isNaN(bearing) ? roadBearing : bearing));
+          diff = Math.min(diff, 180 - diff);
+          final double along = Double.isNaN(bearing) ? 0
+                             : (px - x) * Math.sin(Math.toRadians(bearing)) + (py - y) * Math.cos(Math.toRadians(bearing));
+          if (distance > radius || diff > 45 || (projection != t && along < -0.5))
+            continue;
+          final double cost = distance + diff * 0.2;
+          if (cost < bestCost)
+          {
+            bestCost = cost;
+            best = new double[] {lat(py), lon(px), DeadReckoning.normalize(roadBearing)};
+          }
+        }
+        return best;
+      }
+
+      @NonNull
+      @Override
+      public double[] findCrossings(double lat, double lon, double radius)
+      {
+        final double[] result = new double[crossings.length];
+        for (int i = 0; i + 1 < crossings.length; i += 2)
+        {
+          result[i] = lat(crossings[i + 1]);
+          result[i + 1] = lon(crossings[i]);
+        }
+        return result;
+      }
+    };
+  }
+
+  @Test
+  public void ignoresBendWithSideStreet()
+  {
+    // The road going east bends to the south-east by 40 degrees, a side street leaves it 30 m before the bend the
+    // same way. The car has followed the road.
+    final double side = Math.toRadians(140);
+    final Roads roads = pieces(new double[][] {
+        {-200, 0, 0, 0},
+        {0, 0, 40 * Math.sin(Math.toRadians(110)), 40 * Math.cos(Math.toRadians(110))},
+        {37.6, -13.7, 37.6 + 100 * Math.sin(Math.toRadians(130)), -13.7 + 100 * Math.cos(Math.toRadians(130))},
+        {-30, 0, -30 + 100 * Math.sin(side), 100 * Math.cos(side)},
+    }, new double[] {-30, 0});
+    assertNull(TurnMatcher.findCrossing(roads, lat(0), lon(0), 90, 130, 20));
+    // The car has turned to the side street: the road it was on goes on east.
+    final Roads straight = pieces(new double[][] {
+        {-200, 0, 200, 0},
+        {-30, 0, -30 + 100 * Math.sin(side), 100 * Math.cos(side)},
+    }, new double[] {-30, 0});
+    final double[] crossing = TurnMatcher.findCrossing(straight, lat(0), lon(0), 90, 135, 20);
+    assertNotNull(crossing);
+    assertAt(-30, 0, crossing);
+  }
 }
