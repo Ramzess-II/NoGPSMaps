@@ -143,8 +143,11 @@ public class Elm327Client
     }
     catch (IOException e)
     {
-      // Many cheap clones work only with an insecure connection.
+      // Many cheap clones work only with an insecure connection. A stopped client doesn't connect again: the
+      // connection would block the adapter for a new client for seconds.
       closeSocket();
+      if (!mRunning)
+        throw e;
       socket = device.createInsecureRfcommSocketToServiceRecord(SPP_UUID);
       mSocket = socket;
       socket.connect();

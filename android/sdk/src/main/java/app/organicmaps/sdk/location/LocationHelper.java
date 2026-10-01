@@ -1287,8 +1287,12 @@ public class LocationHelper implements BaseLocationProvider.Listener
 
     // Without the direction of the movement the car looks any way, the user turns it around if it is wrong.
     road[2] = RoadWalker.orient(road[2], bearingDeg);
-    if (Double.isNaN(bearingDeg) || Math.abs(DeadReckoning.angleDiff(road[2], bearingDeg)) <= MAX_ROAD_BEARING_DIFF_DEG)
+    // Without the previous position, e.g. right after the start, it is unknown where the car has turned from.
+    if (Double.isNaN(bearingDeg) || turnedFrom == null
+        || Math.abs(DeadReckoning.angleDiff(road[2], bearingDeg)) <= MAX_ROAD_BEARING_DIFF_DEG)
+    {
       return road;
+    }
 
     // The road is a crossing one, the car has turned to it, a road going the car's way is preferred and would be returned otherwise.
     // It goes away from where it was, to the left or to the right.

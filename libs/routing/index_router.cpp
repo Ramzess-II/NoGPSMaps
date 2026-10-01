@@ -446,9 +446,13 @@ void IndexRouter::FindRoadCrossings(m2::RectD const & rect, std::vector<m2::Poin
   std::map<m2::PointD, uint32_t> waysOut;
   for (auto const & road : m_roadGraph.FindRoads(rect, nullptr /* isGoodFeature */))
   {
-    auto const & junctions = road.m_roadInfo.m_junctions;
-    for (size_t i = 0; i < junctions.size(); ++i)
-      waysOut[junctions[i].GetPoint()] += (i == 0 || i + 1 == junctions.size()) ? 1 : 2;
+    // A point repeated in a road is one point of it, not a crossing of two pieces.
+    std::vector<m2::PointD> points;
+    for (auto const & junction : road.m_roadInfo.m_junctions)
+      if (points.empty() || points.back() != junction.GetPoint())
+        points.push_back(junction.GetPoint());
+    for (size_t i = 0; i < points.size(); ++i)
+      waysOut[points[i]] += (i == 0 || i + 1 == points.size()) ? 1 : 2;
   }
 
   for (auto const & [point, count] : waysOut)
