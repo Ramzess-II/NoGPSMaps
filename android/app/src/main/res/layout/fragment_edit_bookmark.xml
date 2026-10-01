@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:orientation="vertical">
+  <androidx.appcompat.widget.Toolbar
+    android:id="@+id/toolbar"
+    style="@style/MwmWidget.Toolbar.Card"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:theme="@style/ThemeOverlay.Mwm.Toolbar.Card" />
+  <androidx.core.widget.NestedScrollView
+    android:id="@+id/edit_bookmark_scroll"
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:layout_weight="1"
+    android:background="?cardBackground"
+    android:clipToPadding="false"
+    android:fillViewport="true">
+    <include layout="@layout/edit_bookmark_common" />
+  </androidx.core.widget.NestedScrollView>
+</LinearLayout>

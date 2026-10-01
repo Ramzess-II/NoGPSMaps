@@ -1,0 +1,6 @@
+• Données OSM à jour au 14 juillet
+• Les noms des arrêts de transports en commun, des correspondances et des stations sont désormais entourés d’un contour blanc
+• Amélioration de l’affichage des horaires d’ouverture
+• Correction des indications incorrectes ou manquantes
+• Les favoris et les tracés modifiés sont désormais enregistrés automatiquement
+… plus d’informations sur omaps.org/fr/news

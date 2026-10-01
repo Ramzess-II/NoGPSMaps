@@ -1,0 +1,12 @@
+//
+// Prefix header for all source files of the 'Maps' target in the 'Maps' project
+//
+
+#ifdef __OBJC__
+  #import <UIKit/UIKit.h>
+  #import <CoreLocation/CoreLocation.h>
+
+  #import "MWMMacros.h"
+  #import "UIColor+Colors.h"
+  #import "UIKitCategories.h"
+#endif

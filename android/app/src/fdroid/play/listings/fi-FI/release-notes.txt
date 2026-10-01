@@ -1,0 +1,7 @@
+• OSM-tiedot päivätty 14. heinäkuuta
+• Julkisen liikenteen pysäkkien, vaihtopisteiden ja asemien nimissä on nyt valkoinen ääriviiva
+• Aukioloaikojen näyttöä on parannettu
+• Virheelliset tai puuttuvat reittiohjeet on korjattu
+• Muokatut kirjanmerkit ja reitit tallentuvat nyt automaattisesti
+• Reittivaroitukset (tiemaksut, lautat, päällystämättömät tiet, portaat jne.) näkyvät nyt kaikilla vaihtoehtoisilla reiteillä
+…lisää osoitteessa omaps.org/news

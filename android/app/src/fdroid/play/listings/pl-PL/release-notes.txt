@@ -1,0 +1,7 @@
+• Dane OSM na dzień 14 lipca
+• Nazwy przystanków transportu publicznego, przesiadek i stacji mają teraz białą obwódkę
+• Ulepszone wyświetlanie godzin otwarcia
+• Naprawiono nieprawidłowe lub brakujące wskazówki dojazdu
+• Edytowane zakładki i trasy są teraz zapisywane automatycznie
+• Ostrzeżenia dotyczące tras (opłaty drogowe, promy, drogi nieutwardzone, schody itp.) są teraz wyświetlane dla wszystkich tras alternatywnych
+…więcej na omaps.org/pl/news

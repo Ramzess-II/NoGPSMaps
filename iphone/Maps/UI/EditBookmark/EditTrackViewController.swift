@@ -1,0 +1,340 @@
+import UIKit
+
+final class EditTrackViewController: MWMTableViewController {
+  private enum Sections: Int {
+    case info
+    case description
+    case delete
+    case count
+  }
+
+  private enum InfoSectionRows: Int {
+    case title
+    case visibility
+    case color
+    // case lineWidth // TODO: possible new section & ability - edit track line width
+    case bookmarkGroup
+    case count
+  }
+
+  private var editingCompleted: (Bool) -> Void
+
+  private let trackId: MWMTrackID
+  private var noteCell: MWMNoteCell?
+  private var initialTrackTitle = ""
+  private var trackTitle: String?
+  private var trackDescription: String?
+  private var trackGroupTitle: String?
+  private var trackGroupId = FrameworkHelper.invalidCategoryId()
+  private var trackColor: UIColor
+  private var trackVisibility: Bool
+
+  private let bookmarksManager = BookmarksManager.shared()
+  private var isDeleting = false
+
+  @objc
+  init(trackId: MWMTrackID, editCompletion completion: @escaping (Bool) -> Void) {
+    self.trackId = trackId
+
+    let track = bookmarksManager.track(withId: trackId)
+    initialTrackTitle = track.trackName
+    trackTitle = initialTrackTitle
+    trackColor = track.trackColor
+    trackVisibility = track.isVisible
+    trackDescription = bookmarksManager.description(forTrackId: trackId)
+
+    let category = bookmarksManager.category(forTrackId: trackId)
+    trackGroupId = category.categoryId
+    trackGroupTitle = category.title
+
+    editingCompleted = completion
+    super.init(style: .grouped)
+  }
+
+  override func viewWillAppear(_ animated: Bool) {
+    super.viewWillAppear(animated)
+    updateTrackIfNeeded()
+  }
+
+  override func viewWillDisappear(_ animated: Bool) {
+    super.viewWillDisappear(animated)
+    saveChanges()
+  }
+
+  deinit {
+    removeFromBookmarksManagerObserverList()
+    NotificationCenter.default.removeObserver(self)
+  }
+
+  @available(*, unavailable)
+  required init?(coder _: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+  }
+
+  override func viewDidLoad() {
+    super.viewDidLoad()
+
+    title = L("track_title")
+
+    tableView.register(cell: SettingsTextFieldCell.self)
+    tableView.register(cell: SettingsTableViewSwitchCell.self)
+    tableView.registerNib(cell: MWMButtonCell.self)
+    tableView.registerNib(cell: MWMNoteCell.self)
+
+    addToBookmarksManagerObserverList()
+    NotificationCenter.default.addObserver(self,
+                                           selector: #selector(saveChanges),
+                                           name: UIApplication.willResignActiveNotification,
+                                           object: nil)
+  }
+
+  // MARK: - Table view data source
+
+  override func numberOfSections(in _: UITableView) -> Int {
+    Sections.count.rawValue
+  }
+
+  override func tableView(_: UITableView, numberOfRowsInSection section: Int) -> Int {
+    switch Sections(rawValue: section) {
+    case .info:
+      return InfoSectionRows.count.rawValue
+    case .description, .delete:
+      return 1
+    default:
+      fatalError()
+    }
+  }
+
+  override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    switch Sections(rawValue: indexPath.section) {
+    case .info:
+      switch InfoSectionRows(rawValue: indexPath.row) {
+      case .title:
+        let cell = tableView.dequeueReusableCell(cell: SettingsTextFieldCell.self, indexPath: indexPath)
+        cell.configure(delegate: self,
+                       text: trackTitle ?? "",
+                       placeholder: L("placepage_track_name_hint"),
+                       isEnabled: true,
+                       isValid: isTitleValid(trackTitle),
+                       autocapitalizationType: .sentences,
+                       autocorrectionType: .default)
+        return cell
+      case .color:
+        let cell = tableView.dequeueDefaultCell(for: indexPath)
+        cell.accessoryType = .disclosureIndicator
+        cell.textLabel?.text = L("change_color")
+        cell.imageView?.image = circleImageForColor(trackColor, frameSize: 28, diameter: 22)
+        return cell
+      case .visibility:
+        let cell = tableView.dequeueReusableCell(cell: SettingsTableViewSwitchCell.self, indexPath: indexPath)
+        cell.config(delegate: self, title: L("show_track"), isOn: trackVisibility)
+        return cell
+      case .bookmarkGroup:
+        let cell = tableView.dequeueDefaultCell(for: indexPath)
+        cell.textLabel?.text = trackGroupTitle
+        cell.imageView?.image = UIImage(named: "ic_folder")
+        cell.imageView?.setStyle(.black)
+        cell.accessoryType = .disclosureIndicator
+        return cell
+      default:
+        fatalError()
+      }
+    case .description:
+      if let noteCell {
+        return noteCell
+      } else {
+        let cell = tableView.dequeueReusableCell(cell: MWMNoteCell.self, indexPath: indexPath)
+        cell.config(with: self, noteText: trackDescription ?? "", placeholder: L("placepage_personal_notes_hint"))
+        noteCell = cell
+        return cell
+      }
+    case .delete:
+      let cell = tableView.dequeueReusableCell(cell: MWMButtonCell.self, indexPath: indexPath)
+      cell.configure(with: self, title: L("placepage_delete_track_button"), enabled: true)
+      return cell
+    default:
+      fatalError()
+    }
+  }
+
+  override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+    tableView.deselectRow(at: indexPath, animated: true)
+    switch InfoSectionRows(rawValue: indexPath.row) {
+    case .color:
+      openColorPicker()
+    case .bookmarkGroup:
+      openGroupPicker()
+    default:
+      break
+    }
+  }
+
+  // MARK: - Private
+
+  private func updateTrackIfNeeded() {
+    // TODO: Update the track content on the Edit screen instead of closing it when the track gets updated from cloud.
+    if !bookmarksManager.hasTrack(trackId) {
+      goBack()
+    }
+  }
+
+  private func addToBookmarksManagerObserverList() {
+    bookmarksManager.add(self)
+  }
+
+  private func removeFromBookmarksManagerObserverList() {
+    bookmarksManager.remove(self)
+  }
+
+  private func isTitleValid(_ title: String?) -> Bool {
+    title?.isEmpty == false
+  }
+
+  @objc
+  private func saveChanges() {
+    guard !isDeleting,
+          bookmarksManager.hasTrack(trackId),
+          bookmarksManager.hasCategory(trackGroupId) else {
+      return
+    }
+
+    view.endEditing(true)
+
+    let track = bookmarksManager.track(withId: trackId)
+    let trackGroup = bookmarksManager.category(forTrackId: trackId)
+    let titleToSave: String
+    if let trackTitle, !trackTitle.isEmpty {
+      titleToSave = trackTitle
+    } else {
+      titleToSave = initialTrackTitle
+    }
+    let currentDescription = bookmarksManager.description(forTrackId: trackId)
+    let descriptionToSave = trackDescription ?? currentDescription
+    let metadataChanged = trackGroupId != trackGroup.categoryId ||
+      !trackColor.isEqual(track.trackColor) ||
+      titleToSave != track.trackName ||
+      descriptionToSave != currentDescription
+    let visibilityChanged = trackVisibility != track.isVisible
+
+    if metadataChanged {
+      bookmarksManager.updateTrack(trackId,
+                                   setGroupId: trackGroupId,
+                                   color: trackColor,
+                                   title: titleToSave,
+                                   description: descriptionToSave)
+      initialTrackTitle = titleToSave
+    }
+    if visibilityChanged {
+      bookmarksManager.setTrack(trackId, isVisible: trackVisibility)
+    }
+
+    editingCompleted(metadataChanged || visibilityChanged)
+  }
+
+  private func updateColor(_ color: UIColor) {
+    trackColor = color
+    tableView.reloadRows(at: [IndexPath(row: InfoSectionRows.color.rawValue, section: Sections.info.rawValue)],
+                         with: .none)
+  }
+
+  @objc private func openColorPicker() {
+    let colorRow = IndexPath(row: InfoSectionRows.color.rawValue, section: Sections.info.rawValue)
+    ColorPicker.shared.present(from: self,
+                               anchor: tableView.cellForRow(at: colorRow),
+                               currentColor: trackColor,
+                               completionHandler: { [weak self] color in
+                                 self?.updateColor(color)
+                               })
+  }
+
+  private func openGroupPicker() {
+    let groupViewController = SelectBookmarkGroupViewController(groupId: trackGroupId)
+    groupViewController.delegate = self
+    let navigationController = UINavigationController(rootViewController: groupViewController)
+    present(navigationController, animated: true, completion: nil)
+  }
+}
+
+extension EditTrackViewController: SettingsTextFieldCellDelegate {
+  func textFieldCell(_ cell: SettingsTextFieldCell, didChangeText text: String) {
+    trackTitle = text
+    cell.setValid(isTitleValid(text))
+  }
+
+  func textFieldCell(_: SettingsTextFieldCell, didEndEditingText title: String) {
+    trackTitle = title
+  }
+}
+
+extension EditTrackViewController: SettingsTableViewSwitchCellDelegate {
+  func switchCell(_: SettingsTableViewSwitchCell, didChangeValue value: Bool) {
+    trackVisibility = value
+  }
+}
+
+extension EditTrackViewController: MWMNoteCellDelegate {
+  func cell(_: MWMNoteCell, didChangeSizeAndText _: String) {
+    UIView.setAnimationsEnabled(false)
+    tableView.refresh()
+    UIView.setAnimationsEnabled(true)
+  }
+
+  func cell(_: MWMNoteCell, didFinishEditingWithText text: String) {
+    trackDescription = text
+  }
+}
+
+// MARK: - MWMButtonCellDelegate
+
+extension EditTrackViewController: MWMButtonCellDelegate {
+  func cellDidPressButton(_ cell: UITableViewCell) {
+    guard let indexPath = tableView.indexPath(for: cell) else {
+      fatalError("Invalid cell")
+    }
+    switch Sections(rawValue: indexPath.section) {
+    case .info:
+      break
+    case .delete:
+      cell.isUserInteractionEnabled = false
+      isDeleting = true
+      // goBack() is called by onTracksDeleted observer.
+      bookmarksManager.deleteTrack(trackId)
+    default:
+      fatalError("Invalid section")
+    }
+  }
+}
+
+// MARK: - SelectBookmarkGroupViewControllerDelegate
+
+extension EditTrackViewController: SelectBookmarkGroupViewControllerDelegate {
+  func bookmarkGroupViewController(_ viewController: SelectBookmarkGroupViewController,
+                                   didSelect groupTitle: String,
+                                   groupId: MWMMarkGroupID) {
+    viewController.dismiss(animated: true)
+    trackGroupTitle = groupTitle
+    trackGroupId = groupId
+    tableView.reloadRows(at: [IndexPath(row: InfoSectionRows.bookmarkGroup.rawValue, section: Sections.info.rawValue)],
+                         with: .none)
+  }
+}
+
+// MARK: - BookmarksObserver
+
+extension EditTrackViewController: BookmarksObserver {
+  func onBookmarksLoadFinished() {
+    updateTrackIfNeeded()
+  }
+
+  func onBookmarksCategoryDeleted(_ groupId: MWMMarkGroupID) {
+    if trackGroupId == groupId {
+      goBack()
+    }
+  }
+
+  func onTracksDeleted(_ deletedTrackIds: [NSNumber]) {
+    if deletedTrackIds.contains(NSNumber(value: trackId)) {
+      goBack()
+    }
+  }
+}

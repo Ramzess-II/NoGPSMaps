@@ -1,0 +1,10 @@
+• OSM data as of July 14
+• Public transport stop, transfer and station names now have a white outline
+• Improved display of opening hours
+• Fixed incorrect or missing directions
+• Edited bookmarks and tracks now save automatically
+• Route warnings (tolls, ferries, unpaved roads, stairs, etc.) are now shown for all alternative routes
+• OSM notes are created at the exact location you select
+• Colour picker closes automatically when you pick a preset
+• Fixed crashes
+…more at omaps.org/news

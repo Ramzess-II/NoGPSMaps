@@ -1,0 +1,138 @@
+#import "MWMActivityViewController.h"
+#import <LinkPresentation/LPLinkMetadata.h>
+#import "MWMEditorViralActivityItem.h"
+#import "MWMShareActivityItem.h"
+
+#pragma mark - File Share Activity Item
+
+@interface MWMFileShareActivityItem : NSObject <UIActivityItemSource>
+
+@property(nonatomic) NSURL * fileURL;
+@property(nonatomic, copy) NSString * displayName;
+
+@end
+
+@implementation MWMFileShareActivityItem
+
+- (instancetype)initWithFileURL:(NSURL *)url displayName:(NSString *)displayName
+{
+  self = [super init];
+  if (self)
+  {
+    _fileURL = url;
+    _displayName = [displayName copy];
+  }
+  return self;
+}
+
+- (id)activityViewControllerPlaceholderItem:(UIActivityViewController *)activityViewController
+{
+  return self.fileURL;
+}
+
+- (id)activityViewController:(UIActivityViewController *)activityViewController
+         itemForActivityType:(NSString *)activityType
+{
+  // Share the file URL directly. Its last path component is the already-sanitized, human-readable
+  // file name produced by the core (see GetFileNameForExport). Wrapping it in an NSItemProvider with
+  // a suggestedName built from the raw category/track title crashed macOS "Save to Files": ShareKit
+  // forwards that name to -[NSSavePanel setNameFieldStringValue:], which raises an uncaught exception
+  // on an empty or path-illegal name. See https://github.com/organicmaps/organicmaps/issues/12932
+  return self.fileURL;
+}
+
+- (NSString *)activityViewController:(UIActivityViewController *)activityViewController
+              subjectForActivityType:(NSString *)activityType
+{
+  return self.displayName;
+}
+
+- (LPLinkMetadata *)activityViewControllerLinkMetadata:(UIActivityViewController *)activityViewController
+{
+  LPLinkMetadata * metadata = [[LPLinkMetadata alloc] init];
+  metadata.originalURL = self.fileURL;
+  metadata.title = self.displayName;
+  metadata.iconProvider = [[NSItemProvider alloc] initWithObject:[UIImage imageNamed:@"imgLogo"]];
+  return metadata;
+}
+
+@end
+
+#pragma mark - Activity View Controller
+
+@interface MWMActivityViewController ()
+
+@property(weak, nonatomic) UIViewController * ownerViewController;
+@property(weak, nonatomic) UIView * anchorView;
+
+@end
+
+@implementation MWMActivityViewController
+
+- (instancetype)initWithActivityItems:(NSArray *)activityItems
+{
+  self = [super initWithActivityItems:activityItems applicationActivities:nil];
+  if (self)
+    self.excludedActivityTypes = @[
+      UIActivityTypePrint, UIActivityTypeAssignToContact, UIActivityTypeSaveToCameraRoll,
+      UIActivityTypeAddToReadingList, UIActivityTypePostToFlickr, UIActivityTypePostToVimeo
+    ];
+  return self;
+}
+
++ (instancetype)shareControllerForMyPosition:(CLLocationCoordinate2D)location
+{
+  MWMShareActivityItem * item = [[MWMShareActivityItem alloc] initForMyPositionAtLocation:location];
+  return [[self alloc] initWithActivityItems:item.activityItems];
+}
+
++ (instancetype)shareControllerForCurrentPlacePage
+{
+  MWMShareActivityItem * item = [[MWMShareActivityItem alloc] initForCurrentPlacePage];
+  return [[self alloc] initWithActivityItems:item.activityItems];
+}
+
++ (instancetype)shareControllerForURL:(NSURL *)url
+                              message:(NSString *)message
+                          displayName:(nullable NSString *)displayName
+                    completionHandler:(UIActivityViewControllerCompletionWithItemsHandler)completionHandler
+{
+  MWMActivityViewController * shareVC;
+  if (url.isFileURL)
+  {
+    if (!displayName)
+      displayName = url.lastPathComponent.stringByDeletingPathExtension;
+    MWMFileShareActivityItem * item = [[MWMFileShareActivityItem alloc] initWithFileURL:url displayName:displayName];
+    shareVC = [[self alloc] initWithActivityItems:@[item, message]];
+  }
+  else
+  {
+    NSMutableArray * items = [NSMutableArray arrayWithObject:message];
+    if (url)
+      [items addObject:url];
+    shareVC = [[self alloc] initWithActivityItems:items.copy];
+  }
+  shareVC.excludedActivityTypes = [shareVC.excludedActivityTypes arrayByAddingObject:UIActivityTypePostToFacebook];
+  shareVC.completionWithItemsHandler = completionHandler;
+  return shareVC;
+}
+
++ (instancetype)shareControllerForEditorViral
+{
+  MWMEditorViralActivityItem * item = [[MWMEditorViralActivityItem alloc] init];
+  UIImage * image = [UIImage imageNamed:@"img_sharing_editor"];
+  MWMActivityViewController * vc = [[self alloc] initWithActivityItems:@[item, image]];
+  vc.popoverPresentationController.permittedArrowDirections = UIPopoverArrowDirectionDown;
+  return vc;
+}
+
+- (void)presentInParentViewController:(UIViewController *)parentVC anchorView:(UIView *)anchorView
+{
+  self.ownerViewController = parentVC;
+  self.anchorView = anchorView;
+  self.popoverPresentationController.sourceView = anchorView;
+  self.popoverPresentationController.sourceRect = anchorView.bounds;
+  [parentVC presentViewController:self animated:YES completion:nil];
+}
+
+@end

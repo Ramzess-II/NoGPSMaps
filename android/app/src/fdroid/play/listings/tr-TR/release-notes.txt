@@ -1,0 +1,7 @@
+• 14 Temmuz itibarıyla güncel OSM verileri
+• Toplu taşıma durakları, aktarma noktaları ve istasyon adları artık beyaz bir çerçeveyle gösteriliyor
+• Çalışma saatlerinin gösterimi iyileştirildi
+• Hatalı veya eksik yol tarifleri düzeltildi
+• Düzenlenen yer imleri ve rotalar artık otomatik olarak kaydediliyor
+• Güzergâh uyarıları (ücretli yollar, feribotlar, asfaltsız yollar, merdivenler vb.) artık tüm alternatif güzergâhlar için gösteriliyor
+…daha fazlası için omaps.org/tr/news

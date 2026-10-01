@@ -1,0 +1,2 @@
+@objc(MWMEditorAdditionalNamePlaceholderTableViewCell)
+final class EditorAdditionalNamePlaceholderTableViewCell: MWMTableViewCell {}

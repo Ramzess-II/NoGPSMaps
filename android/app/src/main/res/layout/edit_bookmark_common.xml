@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  xmlns:tools="http://schemas.android.com/tools"
+  android:layout_width="match_parent"
+  android:layout_height="wrap_content"
+  android:orientation="vertical"
+  android:padding="@dimen/margin_base">
+
+  <com.google.android.material.textfield.TextInputLayout
+    android:id="@+id/edit_bookmark_name_input"
+    style="@style/MwmWidget.TextInput.Filled"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:hint="@string/name"
+    app:endIconMode="clear_text"
+    app:endIconTint="?android:textColorSecondary">
+    <com.google.android.material.textfield.TextInputEditText
+      android:id="@+id/et__bookmark_name"
+      style="@style/MwmWidget.TextInput.Filled.EditText"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:inputType="textCapSentences"
+      android:singleLine="true" />
+  </com.google.android.material.textfield.TextInputLayout>
+
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="@dimen/margin_base"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <com.google.android.material.textfield.TextInputLayout
+      android:id="@+id/rl__bookmark_set"
+      style="@style/MwmWidget.TextInput.Filled"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:hint="@string/list"
+      app:endIconMode="custom"
+      app:endIconDrawable="@drawable/ic_arrow_down"
+      app:endIconTint="?android:textColorSecondary">
+      <com.google.android.material.textfield.TextInputEditText
+        android:id="@+id/tv__bookmark_set"
+        style="@style/MwmWidget.TextInput.Filled.EditText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:clickable="true"
+        android:cursorVisible="false"
+        android:focusable="false"
+        android:inputType="none" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <ImageView
+      android:id="@+id/iv__track_visibility"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="@dimen/margin_half"
+      android:background="?selectableItemBackgroundBorderless"
+      android:clickable="true"
+      android:contentDescription="@string/hide_track"
+      android:focusable="true"
+      android:padding="@dimen/margin_half"
+      android:visibility="gone"
+      app:srcCompat="@drawable/ic_show"
+      app:tint="?secondary"
+      tools:visibility="visible" />
+
+    <FrameLayout
+      android:id="@+id/color_row"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="@dimen/margin_half"
+      android:background="?selectableItemBackgroundBorderless"
+      android:clickable="true"
+      android:contentDescription="@string/change_color"
+      android:focusable="true"
+      android:padding="@dimen/margin_half">
+      <ImageView
+        android:id="@+id/iv__bookmark_color"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        tools:src="@drawable/ic_bookmark_none" />
+    </FrameLayout>
+  </LinearLayout>
+
+  <com.google.android.material.textfield.TextInputLayout
+    style="@style/MwmWidget.TextInput.Filled"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="@dimen/margin_base"
+    android:hint="@string/placepage_personal_notes_hint">
+    <com.google.android.material.textfield.TextInputEditText
+      android:id="@+id/et__description"
+      style="@style/MwmWidget.TextInput.Filled.EditText"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:gravity="top"
+      android:inputType="textMultiLine|textCapSentences"
+      android:minLines="3" />
+  </com.google.android.material.textfield.TextInputLayout>
+</LinearLayout>

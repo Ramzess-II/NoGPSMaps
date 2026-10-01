@@ -1,0 +1,325 @@
+import UIKit
+
+@objc(MWMEditBookmarkController)
+final class EditBookmarkViewController: MWMTableViewController {
+  private enum Sections: Int {
+    case info
+    case description
+    case delete
+    case count
+  }
+
+  private enum InfoSectionRows: Int {
+    case title
+    case color
+    case bookmarkGroup
+    case count
+  }
+
+  private var editingCompleted: ((Bool) -> Void)?
+
+  private var placePageData: PlacePageData?
+
+  private var noteCell: MWMNoteCell?
+  private var initialBookmarkTitle = ""
+  private var bookmarkTitle: String?
+  private var bookmarkDescription: String?
+  private var bookmarkGroupTitle: String?
+  private var bookmarkId = FrameworkHelper.invalidBookmarkId()
+  private var bookmarkGroupId = FrameworkHelper.invalidCategoryId()
+  private var bookmarkColor: UIColor!
+  private let bookmarksManager = BookmarksManager.shared()
+  private var isDeleting = false
+
+  override func viewDidLoad() {
+    super.viewDidLoad()
+
+    guard bookmarkId != FrameworkHelper.invalidBookmarkId() || placePageData != nil else {
+      fatalError("controller should be configured with placePageData or bookmarkId first")
+    }
+
+    title = L("bookmark").capitalized
+
+    tableView.register(cell: SettingsTextFieldCell.self)
+    tableView.registerNib(cell: MWMButtonCell.self)
+    tableView.registerNib(cell: MWMNoteCell.self)
+
+    addToBookmarksManagerObserverList()
+    NotificationCenter.default.addObserver(self,
+                                           selector: #selector(saveChanges),
+                                           name: UIApplication.willResignActiveNotification,
+                                           object: nil)
+  }
+
+  override func viewWillAppear(_ animated: Bool) {
+    super.viewWillAppear(animated)
+    updateBookmarkIfNeeded()
+  }
+
+  override func viewWillDisappear(_ animated: Bool) {
+    super.viewWillDisappear(animated)
+    saveChanges()
+  }
+
+  deinit {
+    removeFromBookmarksManagerObserverList()
+    NotificationCenter.default.removeObserver(self)
+  }
+
+  func configure(with bookmarkId: MWMMarkID, editCompletion completion: ((Bool) -> Void)?) {
+    self.bookmarkId = bookmarkId
+
+    let bookmark = bookmarksManager.bookmark(withId: bookmarkId)
+
+    initialBookmarkTitle = bookmark.bookmarkName
+    bookmarkTitle = initialBookmarkTitle
+    bookmarkColor = bookmark.bookmarkColor
+
+    bookmarkDescription = bookmarksManager.description(forBookmarkId: bookmarkId)
+
+    let bookmarkGroup = bookmarksManager.category(forBookmarkId: bookmarkId)
+    bookmarkGroupId = bookmarkGroup.categoryId
+    bookmarkGroupTitle = bookmarkGroup.title
+
+    editingCompleted = completion
+  }
+
+  @objc(configureWithPlacePageData:)
+  func configure(with placePageData: PlacePageData) {
+    guard let bookmarkData = placePageData.bookmarkData else { fatalError("placePageData and bookmarkData can't be nil") }
+    self.placePageData = placePageData
+
+    initialBookmarkTitle = placePageData.previewData.title ?? ""
+    bookmarkTitle = initialBookmarkTitle
+    bookmarkDescription = bookmarkData.bookmarkDescription
+    bookmarkGroupTitle = bookmarkData.bookmarkCategory
+    bookmarkId = bookmarkData.bookmarkId
+    bookmarkGroupId = bookmarkData.bookmarkGroupId
+    bookmarkColor = bookmarkData.color
+
+    editingCompleted = nil
+  }
+
+  // MARK: - Table view data source
+
+  override func numberOfSections(in _: UITableView) -> Int {
+    Sections.count.rawValue
+  }
+
+  override func tableView(_: UITableView, numberOfRowsInSection section: Int) -> Int {
+    switch Sections(rawValue: section) {
+    case .info:
+      return InfoSectionRows.count.rawValue
+    case .description, .delete:
+      return 1
+    default:
+      fatalError()
+    }
+  }
+
+  override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    switch Sections(rawValue: indexPath.section) {
+    case .info:
+      switch InfoSectionRows(rawValue: indexPath.row) {
+      case .title:
+        let cell = tableView.dequeueReusableCell(cell: SettingsTextFieldCell.self, indexPath: indexPath)
+        cell.configure(delegate: self,
+                       text: bookmarkTitle ?? "",
+                       placeholder: L("placepage_bookmark_name_hint"),
+                       isEnabled: true,
+                       isValid: isTitleValid(bookmarkTitle),
+                       autocapitalizationType: .sentences,
+                       autocorrectionType: .default)
+        return cell
+      case .color:
+        let cell = tableView.dequeueDefaultCell(for: indexPath)
+        cell.accessoryType = .disclosureIndicator
+        cell.textLabel?.text = L("change_color")
+        cell.imageView?.image = circleImageForColor(bookmarkColor, frameSize: 28, diameter: 22, iconName: "ic_bm_none")
+        return cell
+      case .bookmarkGroup:
+        let cell = tableView.dequeueDefaultCell(for: indexPath)
+        cell.textLabel?.text = bookmarkGroupTitle
+        cell.imageView?.image = UIImage(named: "ic_folder")
+        cell.imageView?.setStyle(.black)
+        cell.accessoryType = .disclosureIndicator
+        return cell
+      default:
+        fatalError()
+      }
+    case .description:
+      if let noteCell = noteCell {
+        return noteCell
+      } else {
+        let cell = tableView.dequeueReusableCell(cell: MWMNoteCell.self, indexPath: indexPath)
+        cell.config(with: self, noteText: bookmarkDescription ?? "", placeholder: L("placepage_personal_notes_hint"))
+        noteCell = cell
+        return cell
+      }
+    case .delete:
+      let cell = tableView.dequeueReusableCell(cell: MWMButtonCell.self, indexPath: indexPath)
+      cell.configure(with: self, title: L("placepage_delete_bookmark_button"), enabled: true)
+      return cell
+    default:
+      fatalError()
+    }
+  }
+
+  override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+    tableView.deselectRow(at: indexPath, animated: true)
+    switch InfoSectionRows(rawValue: indexPath.row) {
+    case .color:
+      openColorPicker()
+    case .bookmarkGroup:
+      openGroupPicker()
+    default:
+      break
+    }
+  }
+
+  // MARK: - Private
+
+  private func updateBookmarkIfNeeded() {
+    // Skip for the regular place page.
+    guard bookmarkId != FrameworkHelper.invalidBookmarkId() else { return }
+    // TODO: Update the bookmark content on the Edit screen instead of closing it when the bookmark gets updated from cloud.
+    if !bookmarksManager.hasBookmark(bookmarkId) {
+      goBack()
+    }
+  }
+
+  private func addToBookmarksManagerObserverList() {
+    bookmarksManager.add(self)
+  }
+
+  private func removeFromBookmarksManagerObserverList() {
+    bookmarksManager.remove(self)
+  }
+
+  private func isTitleValid(_ title: String?) -> Bool {
+    title?.isEmpty == false
+  }
+
+  @objc
+  private func saveChanges() {
+    guard !isDeleting,
+          bookmarkId != FrameworkHelper.invalidBookmarkId(),
+          bookmarksManager.hasBookmark(bookmarkId),
+          bookmarksManager.hasCategory(bookmarkGroupId) else {
+      return
+    }
+
+    view.endEditing(true)
+
+    let bookmark = bookmarksManager.bookmark(withId: bookmarkId)
+    let bookmarkGroup = bookmarksManager.category(forBookmarkId: bookmarkId)
+    let titleToSave: String
+    if let bookmarkTitle, !bookmarkTitle.isEmpty {
+      titleToSave = bookmarkTitle
+    } else {
+      titleToSave = initialBookmarkTitle
+    }
+    let currentDescription = bookmarksManager.description(forBookmarkId: bookmarkId)
+    let descriptionToSave = bookmarkDescription ?? currentDescription
+    let changesSaved = bookmarkGroupId != bookmarkGroup.categoryId ||
+      !bookmarkColor.isEqual(bookmark.bookmarkColor) ||
+      titleToSave != bookmark.bookmarkName ||
+      descriptionToSave != currentDescription
+
+    if changesSaved {
+      bookmarksManager.updateBookmark(bookmarkId,
+                                      setGroupId: bookmarkGroupId,
+                                      title: titleToSave,
+                                      color: bookmarkColor,
+                                      description: descriptionToSave)
+      initialBookmarkTitle = titleToSave
+    }
+
+    if changesSaved, placePageData != nil {
+      FrameworkHelper.updatePlacePageData()
+    }
+
+    editingCompleted?(changesSaved)
+  }
+
+  @objc private func openColorPicker() {
+    let colorRow = IndexPath(row: InfoSectionRows.color.rawValue, section: Sections.info.rawValue)
+    ColorPicker.shared.present(from: self,
+                               anchor: tableView.cellForRow(at: colorRow),
+                               currentColor: bookmarkColor,
+                               completionHandler: { [weak self] color in
+                                 self?.bookmarkColor = color
+                                 self?.tableView.reloadRows(at: [colorRow], with: .none)
+                               })
+  }
+
+  private func openGroupPicker() {
+    let groupViewController = SelectBookmarkGroupViewController(groupId: bookmarkGroupId)
+    let navigationController = UINavigationController(rootViewController: groupViewController)
+    groupViewController.delegate = self
+    present(navigationController, animated: true, completion: nil)
+  }
+}
+
+extension EditBookmarkViewController: SettingsTextFieldCellDelegate {
+  func textFieldCell(_ cell: SettingsTextFieldCell, didChangeText text: String) {
+    bookmarkTitle = text
+    cell.setValid(isTitleValid(text))
+  }
+
+  func textFieldCell(_: SettingsTextFieldCell, didEndEditingText title: String) {
+    bookmarkTitle = title
+  }
+}
+
+extension EditBookmarkViewController: MWMNoteCellDelegate {
+  func cell(_: MWMNoteCell, didChangeSizeAndText _: String) {
+    UIView.setAnimationsEnabled(false)
+    tableView.refresh()
+    UIView.setAnimationsEnabled(true)
+  }
+
+  func cell(_: MWMNoteCell, didFinishEditingWithText text: String) {
+    bookmarkDescription = text
+  }
+}
+
+extension EditBookmarkViewController: MWMButtonCellDelegate {
+  func cellDidPressButton(_ cell: UITableViewCell) {
+    cell.isUserInteractionEnabled = false
+    isDeleting = true
+    // goBack() and updateAfterDeleteBookmark() are called by onBookmarksDeleted observer.
+    bookmarksManager.deleteBookmark(bookmarkId)
+  }
+}
+
+extension EditBookmarkViewController: SelectBookmarkGroupViewControllerDelegate {
+  func bookmarkGroupViewController(_ viewController: SelectBookmarkGroupViewController,
+                                   didSelect groupTitle: String,
+                                   groupId: MWMMarkGroupID) {
+    viewController.dismiss(animated: true)
+    bookmarkGroupTitle = groupTitle
+    bookmarkGroupId = groupId
+    tableView.reloadRows(at: [IndexPath(row: InfoSectionRows.bookmarkGroup.rawValue, section: Sections.info.rawValue)], with: .none)
+  }
+}
+
+// MARK: - BookmarksObserver
+
+extension EditBookmarkViewController: BookmarksObserver {
+  func onBookmarksLoadFinished() {
+    updateBookmarkIfNeeded()
+  }
+
+  func onBookmarksDeleted(_ deletedBookmarkIds: [NSNumber]) {
+    if deletedBookmarkIds.contains(NSNumber(value: bookmarkId)) {
+      goBack()
+    }
+  }
+
+  func onBookmarksCategoryDeleted(_ groupId: MWMMarkGroupID) {
+    if bookmarkGroupId == groupId {
+      goBack()
+    }
+  }
+}

@@ -1,0 +1,28 @@
+• La nova configuració «Desa l'historial de cerques» us ajuda a mantenir privat l'historial de cerques si cal
+
+## Mapa i llocs
+• Dades d'OpenStreetMap a data de 14 de juliol
+• Les notes d'OpenStreetMap ara es col·loquen a la ubicació exacta que seleccioneu, en lloc del mig del bosc
+• Millorada la selecció de mapes per a regions que creuen l'antimeridià 180°
+• Els perfils d'elevació de les rutes ja no mostren gràfics obsolets o buits després de suprimir una ruta
+• Millorat el gràfic d'elevació buit de les rutes enregistrades
+• El botó per a suprimir els marcadors és més fàcil de trobar
+• Després de sortir de la pantalla d'edició, els marcadors es desen automàticament
+• La paleta de colors inclou colors predefinits i permet triar qualsevol color personalitzat
+• Altres millores de la interfície d'usuari
+
+## Transport públic
+• Els noms de les parades, les transferències i les estacions ara utilitzen un contorn blanc per mantenir-se llegibles tant en temes clars com foscos
+• La capa del metro reapareix correctament després de tancar la previsualització d'una ruta de transport públic
+
+## Rutes i navegació
+• S'han solucionat problemes amb indicacions incorrectes i que faltaven
+• Ara es mostren avisos de ruta (peatges, ferris, camins sense asfaltar, escales, etc.) per a totes les rutes alternatives
+• S'ha solucionat un bloqueig esporàdic en crear una ruta i s'ha millorat el tractament dels carrers sense sortida i dels punts d'inici/final en una via restringida
+• Millorat l'indicador de progrés de la ruta al botó d'inici
+• Reordenar les parades de la ruta ja no fa que la llista es mogui
+
+## Traduccions
+• Millorada la redacció en xinès
+• Actualitzades les traduccions a l'ucraïnès
+• Corregides les traduccions de les regions del mapa a l'italià

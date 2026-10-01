@@ -1,0 +1,18 @@
+# Text files are checked out with LF by default because tests compare fixtures byte for byte.
+* text=auto eol=lf
+
+# Windows batch files are checked out with CRLF line endings.
+*.bat    text eol=crlf
+
+# Binary files are not normalized.
+*.bin     binary
+*.bz2     binary
+*.kmz     binary
+*.mwm     binary
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.ttf     binary
+*.slf     binary
+*.borders binary
+*.pdf     binary

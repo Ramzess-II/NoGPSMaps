@@ -1,0 +1,28 @@
+• Met de nieuwe instelling „Zoekgeschiedenis opslaan“ kun je je zoekgeschiedenis indien nodig privé houden
+
+## Kaart en plaatsen
+• OpenStreetMap-gegevens per 14 juli
+• OpenStreetMap-notities worden nu op de exacte locatie geplaatst die je selecteert, in plaats van midden in het bos
+• Verbeterde kaartselectie voor regio’s die de 180°-antimeridiaan doorkruisen
+• Hoogteprofielen van routes tonen geen verouderde of lege grafieken meer nadat een route is verwijderd
+• De lege hoogtegrafiek voor opgenomen routes is verbeterd
+• De knop voor het verwijderen van bladwijzers is gemakkelijker te vinden
+• Automatisch opslaan van bladwijzers wanneer je het bewerkingsscherm verlaat
+• Het kleurenpalet bevat vooraf gedefinieerde kleuren en biedt de mogelijkheid om elke gewenste kleur te kiezen
+• Overige verbeteringen aan de gebruikersinterface
+
+## Openbaar vervoer
+• Namen van haltes, overstappunten en stations hebben nu een witte omtrek, zodat ze zowel in het lichte als het donkere thema goed leesbaar blijven
+• De metrolaag verschijnt weer correct nadat je het voorbeeld van een openbaarvervoerroute hebt gesloten
+
+## Routebepaling en navigatie
+• Problemen met verkeerde en ontbrekende aanwijzingen zijn verholpen
+• Routewaarschuwingen (tolwegen, veerboten, onverharde wegen, trappen, enz.) worden nu voor alle alternatieve routes weergegeven
+• Een zeldzame vastloper tijdens het samenstellen van een route is verholpen en de afhandeling van doodlopende wegen en start-/eindpunten op een weg met beperkte toegang is verbeterd
+• De voortgang van de route op de startknop is verbeterd
+• Bij het herschikken van routehaltes springt de lijst niet meer heen en weer
+
+## Vertalingen
+• De Chinese bewoordingen zijn verbeterd
+• De Oekraïense vertalingen zijn bijgewerkt
+• De vertalingen van kaartregio’s in het Italiaans zijn gecorrigeerd

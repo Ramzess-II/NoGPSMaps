@@ -1,0 +1,197 @@
+#include "drape_frontend/drape_frontend_tests/shape_test_fixture.hpp"
+
+#include "drape_frontend/shape_view_params.hpp"
+#include "drape_frontend/visual_params.hpp"
+
+#include "drape/gl_functions.hpp"
+#include "drape/gl_includes.hpp"
+#include "drape/oglcontext.hpp"
+#include "drape/support_manager.hpp"
+
+#include "qt_tstfrm/test_main_loop.hpp"
+
+#include "platform/platform.hpp"
+
+#include "base/file_name_utils.hpp"
+
+#include <QtGui/QPainter>
+
+namespace df::test_support
+{
+namespace
+{
+/// Lightweight OGLContext wrapper that assumes a GL context is already current
+/// (e.g., set up by RunTestInOpenGLOffscreenEnvironment).
+class CurrentOGLContext : public dp::OGLContext
+{
+public:
+  void MakeCurrent() override {}
+  void DoneCurrent() override {}
+  void Present() override { GLFunctions::glFinish(); }
+
+  void SetFramebuffer(ref_ptr<dp::BaseFramebuffer>) override {}
+  void ForgetFramebuffer(ref_ptr<dp::BaseFramebuffer>) override {}
+  void ApplyFramebuffer(std::string const &) override {}
+};
+}  // namespace
+
+void ShapeTestFixture::Render(char const * title, uint32_t width, uint32_t height, ShapeCreatorFn const & createShapes)
+{
+  RunTestInOpenGLOffscreenEnvironment(title, [&]()
+  {
+    Init(width, height);
+
+    createShapes(*this);
+
+    Flush();
+    Render();
+    ReleaseGLResources();
+  });
+
+  RunTestLoop(title, [this](QPaintDevice * device)
+  {
+    if (!m_lastImage.isNull())
+    {
+      QPainter painter(device);
+      painter.fillRect(QRectF(0, 0, device->width(), device->height()), Qt::darkGray);
+      painter.drawImage(0, 0, m_lastImage);
+    }
+  }, true /* autoExit */);  // pass false if you need to inspect locally
+}
+
+void ShapeTestFixture::ReleaseGLResources()
+{
+  m_buckets.clear();
+  m_batcher.reset();
+  m_texMng.reset();
+  m_progMng.reset();
+
+  m_framebuffer.reset();
+
+  m_context.reset();
+}
+
+void ShapeTestFixture::Init(uint32_t width, uint32_t height)
+{
+  m_width = width;
+  m_height = height;
+
+  // Assumes a GL context is already current (from RunTestInOpenGLOffscreenEnvironment).
+  auto ctx = std::make_unique<CurrentOGLContext>();
+  ctx->Init(dp::ApiVersion::OpenGLES3);
+
+  dp::SupportManager::Instance().Init(make_ref(ctx));
+
+  m_context = std::move(ctx);
+  auto const contextRef = make_ref(m_context);
+
+  // Offscreen render target: the same RGBA8 color plus depth framebuffer FrontendRenderer draws into.
+  m_framebuffer =
+      make_unique_dp<dp::Framebuffer>(dp::TextureFormat::RGBA8, true /* depthEnabled */, false /* stencilEnabled */);
+  m_framebuffer->SetSize(contextRef, width, height);
+  CHECK(m_framebuffer->IsSupported(), ("RGBA8 + depth FBO is incomplete"));
+
+  m_context->SetViewport(0, 0, width, height);
+  m_context->SetDepthTestEnabled(true);
+  m_context->SetCullingEnabled(false);
+
+  // Global GL state, applied once per context by FrontendRenderer::OnContextCreate. Without it GL keeps
+  // its default (GL_ONE, GL_ZERO) and every fragment overwrites the target, so shapes would be validated
+  // against raw fragment output instead of what actually reaches the screen.
+  dp::AlphaBlendingState::Apply(contextRef);
+
+  // Initialize ProgramManager (compiles all shaders).
+  m_progMng = std::make_unique<gpu::ProgramManager>();
+  m_progMng->Init(contextRef);
+
+  // Initialize TextureManager with real data.
+  m_texMng = std::make_unique<dp::TextureManager>();
+  dp::TextureManager::Params texParams;
+  texParams.m_resPostfix = df::VisualParams::GetResourcePostfix(1.0);
+  texParams.m_visualScale = 1.0;
+  texParams.m_colors = "colors.txt";
+  texParams.m_patterns = "patterns.txt";
+  texParams.m_glyphMngParams.m_uniBlocks = base::JoinPath("fonts", "unicode_blocks.txt");
+  texParams.m_glyphMngParams.m_whitelist = base::JoinPath("fonts", "whitelist.txt");
+  texParams.m_glyphMngParams.m_blacklist = base::JoinPath("fonts", "blacklist.txt");
+  GetPlatform().GetFontNames(texParams.m_glyphMngParams.m_fonts);
+  m_texMng->Init(contextRef, texParams);
+
+  // Upload textures to GPU (creates hardware texture objects).
+  m_texMng->UpdateDynamicTextures(contextRef);
+
+  // Create batcher.
+  uint32_t constexpr kBatchSize = 5000;
+  m_batcher = std::make_unique<dp::Batcher>(kBatchSize, kBatchSize);
+  m_batcher->StartSession([this](dp::RenderState const & state, drape_ptr<dp::RenderBucket> && bucket)
+  { m_buckets.push_back({state, std::move(bucket)}); });
+}
+
+void ShapeTestFixture::AddShape(drape_ptr<MapShape> && shape)
+{
+  CHECK(m_batcher != nullptr, ("Call Init() before AddShape()"));
+  shape->Draw(make_ref(m_context), make_ref(m_batcher), make_ref(m_texMng));
+}
+
+void ShapeTestFixture::Flush()
+{
+  CHECK(m_batcher != nullptr, ("Call Init() before Flush()"));
+  m_batcher->EndSession(make_ref(m_context));
+
+  // Upload any new texture data that was requested during AddShape (color/stipple regions).
+  m_texMng->UpdateDynamicTextures(make_ref(m_context));
+}
+
+void ShapeTestFixture::Render()
+{
+  auto const contextRef = make_ref(m_context);
+
+  m_framebuffer->Bind();
+  m_context->SetClearColor(dp::Color::White());
+  m_context->Clear(dp::ClearBits::ColorBit | dp::ClearBits::DepthBit, 0);
+
+  // Coordinate pipeline:
+  //   world coords -> ToShapeVertex2: (world - tileCenter) * kShapeCoordScalar -> shape coords
+  //   shape coords -> modelView -> pixel coords (1 unit = 1 pixel from center)
+  //   pixel coords -> projection -> NDC [-1, 1]
+  float const halfW = static_cast<float>(m_width) / 2.0f;
+  float const halfH = static_cast<float>(m_height) / 2.0f;
+  float const invScale = 1.0f / static_cast<float>(kShapeCoordScalar);
+
+  gpu::MapProgramParams params;
+  params.m_modelView = glsl::mat4(invScale, 0, 0, 0, 0, invScale, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
+  params.m_projection = glsl::mat4(1.0f / halfW, 0, 0, 0, 0, 1.0f / halfH, 0, 0, 0, 0, -0.5f, 0, 0, 0, 0.5f, 1);
+  params.m_pivotTransform = glsl::mat4(1.0f);
+  params.m_opacity = 1.0f;
+  params.m_zScale = 1.0f;
+
+  for (auto & entry : m_buckets)
+  {
+    auto const programId = entry.m_state.GetProgram<gpu::Program>();
+    auto program = m_progMng->GetProgram(programId);
+    program->Bind();
+    dp::ApplyState(contextRef, program, entry.m_state);
+
+    entry.m_bucket->GetBuffer()->Build(contextRef, program);
+    m_progMng->GetParamsSetter()->Apply(contextRef, program, params);
+    entry.m_bucket->Render(contextRef, entry.m_state.GetDrawAsLine());
+  }
+
+  m_context->Flush();
+
+  // Read pixels from FBO.
+  std::vector<uint8_t> pixels(m_width * m_height * 4);
+  glReadPixels(0, 0, m_width, m_height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+
+  // glReadPixels returns bottom-up; QImage expects top-down.
+  QImage img(m_width, m_height, QImage::Format_RGBA8888);
+  for (uint32_t y = 0; y < m_height; ++y)
+  {
+    uint8_t const * src = pixels.data() + (m_height - 1 - y) * m_width * 4;
+    memcpy(img.scanLine(y), src, m_width * 4);
+  }
+
+  m_lastImage = img;
+}
+
+}  // namespace df::test_support

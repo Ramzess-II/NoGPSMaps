@@ -1,0 +1,28 @@
+• Le nouveau paramètre « Enregistrer l’historique de recherche » vous aide à préserver la confidentialité de votre historique de recherche au besoin
+
+## Carte et lieux
+• Données OpenStreetMap à la date du 14 juillet
+• Les notes OpenStreetMap sont désormais placées à l’emplacement exact que vous sélectionnez, et non plus au milieu de la forêt
+• Amélioration de la sélection des cartes pour les régions traversant l’antiméridien de 180°
+• Les profils d’altitude des tracés n’affichent plus de graphiques obsolètes ou vides après la suppression d’un tracé
+• Amélioration du graphique d’altitude vide pour les tracés enregistrés
+• Le bouton permettant de supprimer les signets est plus facile à trouver
+• Enregistrement automatique des signets lorsque vous quittez l’écran d’édition
+• La palette de couleurs comprend des couleurs prédéfinies et vous permet de choisir n’importe quelle couleur personnalisée
+• Autres améliorations de l’interface utilisateur
+
+## Transports en commun
+• Les noms des arrêts, des correspondances et des stations sont désormais entourés d’un contour blanc pour rester lisibles aussi bien avec le thème clair qu’avec le thème sombre
+• La couche « métro » réapparaît correctement après la fermeture de l’aperçu d’un itinéraire en transports en commun
+
+## Calcul d’itinéraire et navigation
+• Correction de problèmes liés à des indications erronées ou manquantes
+• Les avertissements d’itinéraire (péages, ferries, routes non goudronnées, escaliers, etc.) s’affichent désormais pour tous les itinéraires alternatifs
+• Correction d’un rare blocage lors de la création d’un itinéraire et amélioration de la gestion des impasses et des points de départ/d’arrivée sur une route à circulation restreinte
+• Amélioration de l’affichage de la progression de l’itinéraire sur le bouton « Démarrer »
+• Le réordonnancement des étapes d’un itinéraire ne provoque plus de sauts dans la liste
+
+## Traductions
+• Amélioration de la formulation en chinois
+• Mise à jour des traductions en ukrainien
+• Correction des traductions des régions cartographiques en italien

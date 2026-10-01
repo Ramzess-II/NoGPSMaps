@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  xmlns:tools="http://schemas.android.com/tools"
+  style="@style/BookmarkListRow"
+  android:background="@drawable/bg_card_item_middle"
+  android:paddingStart="@dimen/dp_0">
+
+  <ImageView
+    android:id="@+id/eye"
+    style="@style/BookmarkListRow.VisibilityEye"
+    android:contentDescription="@string/hide"
+    app:srcCompat="@drawable/visibility_selector"
+    app:tint="?accentColorSelector" />
+
+  <LinearLayout style="@style/BookmarkListRow.Text">
+    <TextView
+      android:id="@+id/name"
+      style="@style/BookmarkListRow.Title"
+      android:ellipsize="middle"
+      tools:text="Bookmark name looooooooooooooooooongasdasdasd" />
+
+    <TextView
+      android:id="@+id/size"
+      style="@style/BookmarkListRow.Subtitle"
+      tools:text="42000000" />
+  </LinearLayout>
+
+  <ImageView
+    android:id="@+id/more"
+    style="@style/BookmarkListRow.TrailingIcon"
+    android:contentDescription="@string/placepage_more_button"
+    app:srcCompat="@drawable/ic_more"
+    app:tint="?secondary" />
+</LinearLayout>

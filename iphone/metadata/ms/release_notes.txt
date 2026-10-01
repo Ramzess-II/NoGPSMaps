@@ -1,0 +1,28 @@
+• Tetapan baharu "Simpan sejarah carian" membantu anda mengekalkan privasi sejarah carian anda jika diperlukan
+
+## Peta & tempat
+• Data OpenStreetMap setakat 14 Julai
+• Nota OpenStreetMap kini diletakkan di lokasi tepat yang anda pilih, bukannya di tengah hutan
+• Pilihan peta yang dipertingkatkan untuk kawasan yang melintasi antimeridian 180°
+• Profil ketinggian laluan tidak lagi memaparkan carta lapuk atau kosong selepas laluan dipadamkan
+• Dipertingkatkan carta ketinggian kosong untuk laluan yang direkodkan
+• Butang untuk memadam penanda buku kini lebih mudah ditemui
+• Penyimpanan penanda buku secara automatik apabila anda meninggalkan skrin suntingan
+• Palet warna merangkumi warna yang telah ditetapkan dan membolehkan anda memilih mana-mana warna tersuai
+• Penambahbaikan UI lain
+
+## Pengangkutan awam
+• Nama perhentian, pertukaran, dan stesen kini menggunakan garis putih untuk kekal boleh dibaca dalam tema cerah dan gelap
+• Lapisan kereta bawah tanah muncul semula dengan betul selepas anda menutup pratonton laluan pengangkutan awam
+
+## Laluan & navigasi
+• Masalah arahan yang salah dan hilang telah diperbaiki
+• Amaran laluan (cukai jalan, feri, jalan tidak berturap, tangga, dan lain-lain) kini dipaparkan untuk semua laluan alternatif
+• Masalah beku yang jarang berlaku semasa membina laluan telah diperbaiki dan pengendalian jalan buntu serta titik permulaan/pengakhiran di jalan terhad telah dipertingkatkan
+• Meningkatkan kemajuan laluan pada butang mula
+• Mengatur semula hentian laluan tidak lagi menyebabkan senarai melompat-lompat
+
+## Terjemahan
+• Meningkatkan istilah bahasa Cina
+• Mengemas kini terjemahan Ukraine
+• Membetulkan terjemahan wilayah peta dalam bahasa Itali

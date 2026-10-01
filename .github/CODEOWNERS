@@ -1,0 +1,88 @@
+# Default owner.
+* @organicmaps/mergers
+
+# Android (catch-all — must precede android-specific overrides).
+/android/ @organicmaps/android
+
+# iOS (catch-all — must precede ios-specific overrides).
+/iphone/ @organicmaps/ios
+/xcode/ @organicmaps/ios
+
+# Visual design (overrides — AFTER android/ios catch-alls).
+/android/app/src/main/res/drawable*/ @organicmaps/design
+/android/app/src/main/res/font/ @organicmaps/design
+/android/libs/branding/ @organicmaps/design
+/iphone/Maps/Resources/Images.xcassets/ @organicmaps/design
+/data/fonts/*.ttf @organicmaps/design
+/data/symbols-svg/ @organicmaps/design
+
+# Android Auto (overrides — AFTER android catch-all).
+/android/app/src/main/java/app/organicmaps/car/ @organicmaps/android-auto
+/android/libs/car/ @organicmaps/android-auto
+/android/sdk/car/ @organicmaps/android-auto
+
+# Qt.
+/qt/ @organicmaps/qt
+
+# Rendering (updated paths).
+/libs/drape/ @organicmaps/rendering
+/libs/drape_frontend/ @organicmaps/rendering
+
+# Map Data.
+/tools/python/maps_generator/ @organicmaps/data
+/generator/ @organicmaps/data
+/data/borders/ @organicmaps/data
+/data/conf/isolines/ @organicmaps/data
+/docs/SUBWAY_GENERATION.md @organicmaps/data
+/docs/MAPS.md @organicmaps/data
+# no owner (changed often to add a new POI)
+/generator/generator_tests/osm_type_test.cpp
+
+# Map Styles.
+/data/styles/ @organicmaps/styles
+/data/types.txt @organicmaps/styles
+/data/visibility.txt @organicmaps/styles
+/data/mapcss-mapping.csv @organicmaps/styles
+/data/replaced_tags.txt @organicmaps/styles
+/data/classificator.txt @organicmaps/styles
+/data/drules_* @organicmaps/styles
+/docs/STYLES.md @organicmaps/styles
+/tools/kothic @organicmaps/styles
+
+# DevOps (gradle override — AFTER android catch-all).
+/.github/workflows @organicmaps/devops
+/android/*gradle* @organicmaps/devops
+/docs/RELEASE_MANAGEMENT.md @organicmaps/devops
+/xcode/fastlane/ @organicmaps/devops
+
+# App store listings (overrides — AFTER android/ios catch-alls).
+/android/app/src/fdroid/play/ @organicmaps/mergers
+/android/app/src/google/play/ @organicmaps/mergers
+/iphone/metadata/ @organicmaps/mergers
+
+# Android docs.
+/docs/ANDROID_LOCATION_TEST.md @organicmaps/android
+
+# Legal (anchored to repo root).
+/LEGAL @organicmaps/legal
+/LICENSE @organicmaps/legal
+/NOTICE @organicmaps/legal
+/CONTRIBUTORS @organicmaps/legal
+/docs/CODE_OF_CONDUCT.md @organicmaps/legal
+/docs/DCO.md @organicmaps/legal
+/docs/GOVERNANCE.md @organicmaps/legal
+
+# Translations: no owner. Keep LAST in the file, so that a new override can't
+# silently re-claim generated files (e.g. the Android Auto rule above owns
+# android/libs/car/, including its generated strings.xml).
+# The complete list of tools/unix/generate_localizations.sh outputs:
+/android/app/src/main/res/values*/strings.xml
+/android/sdk/src/main/res/values*/strings.xml
+/android/sdk/src/main/res/values*/types_strings.xml
+/android/libs/car/src/main/res/values*/strings.xml
+/android/libs/downloader/src/main/res/values*/strings.xml
+/android/libs/routing/src/main/res/values*/strings.xml
+/android/wear/src/main/res/values*/wear_strings.xml
+/iphone/Maps/LocalizedStrings/
+/iphone/Chart/Chart/*.lproj/
+/data/sound-strings/

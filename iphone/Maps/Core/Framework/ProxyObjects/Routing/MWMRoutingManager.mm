@@ -1,0 +1,408 @@
+#import "MWMRoutingManager.h"
+#import "MWMCoreRouterType.h"
+#import "MWMCoreUnits.h"
+#import "MWMFrameworkListener.h"
+#import "MWMFrameworkObservers.h"
+#import "MWMLocationManager.h"
+#import "MWMLocationObserver.h"
+#import "MWMRoutePoint+CPP.h"
+#import "SwiftBridge.h"
+
+#include <CoreApi/Framework.h>
+
+#include "geometry/mercator.hpp"
+#include "indexer/feature_meta.hpp"
+#include "platform/country_file.hpp"
+#include "storage/country_info_getter.hpp"
+
+namespace
+{
+MWMRouteTurnDirection RouteTurnDirection(routing::turns::CarDirection turn)
+{
+  using namespace routing::turns;
+  switch (turn)
+  {
+  case CarDirection::None:
+  case CarDirection::Count: return MWMRouteTurnDirectionNone;
+  case CarDirection::GoStraight: return MWMRouteTurnDirectionStraight;
+  case CarDirection::TurnRight: return MWMRouteTurnDirectionRight;
+  case CarDirection::TurnSharpRight: return MWMRouteTurnDirectionSharpRight;
+  case CarDirection::TurnSlightRight: return MWMRouteTurnDirectionSlightRight;
+  case CarDirection::TurnLeft: return MWMRouteTurnDirectionLeft;
+  case CarDirection::TurnSharpLeft: return MWMRouteTurnDirectionSharpLeft;
+  case CarDirection::TurnSlightLeft: return MWMRouteTurnDirectionSlightLeft;
+  case CarDirection::UTurnLeft: return MWMRouteTurnDirectionUTurnLeft;
+  case CarDirection::UTurnRight: return MWMRouteTurnDirectionUTurnRight;
+  case CarDirection::EnterRoundAbout: return MWMRouteTurnDirectionEnterRoundabout;
+  case CarDirection::LeaveRoundAbout: return MWMRouteTurnDirectionLeaveRoundabout;
+  case CarDirection::StayOnRoundAbout: return MWMRouteTurnDirectionStayOnRoundabout;
+  case CarDirection::StartAtEndOfStreet: return MWMRouteTurnDirectionStartAtEndOfStreet;
+  case CarDirection::ReachedYourDestination: return MWMRouteTurnDirectionDestination;
+  case CarDirection::ExitHighwayToLeft: return MWMRouteTurnDirectionExitHighwayLeft;
+  case CarDirection::ExitHighwayToRight: return MWMRouteTurnDirectionExitHighwayRight;
+  }
+  return MWMRouteTurnDirectionNone;
+}
+
+bool IsLeftHandTraffic(storage::CountryId const & countryId)
+{
+  auto & framework = GetFramework();
+  auto const mwmId = framework.GetDataSource().GetMwmIdByCountryFile(platform::CountryFile(countryId));
+  auto const & info = mwmId.GetInfo();
+  return info && info->GetRegionData().Get(feature::RegionData::RD_DRIVING) == "l";
+}
+}  // namespace
+
+@interface MWMRoutingManager () <MWMFrameworkRouteBuilderObserver, MWMLocationObserver>
+@property(nonatomic, readonly) RoutingManager & rm;
+@property(strong, nonatomic) NSHashTable<id<MWMRoutingManagerListener>> * listeners;
+@property(nonatomic) storage::CountryInfoGetterBase::RegionId trafficRegionId;
+@property(nonatomic) BOOL isLeftHandTraffic;
+@property(strong, nonatomic) CLLocation * trafficSideLocation;
+@end
+
+@implementation MWMRoutingManager
+
++ (MWMRoutingManager *)routingManager
+{
+  static MWMRoutingManager * routingManager;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{ routingManager = [[self alloc] initManager]; });
+  return routingManager;
+}
+
+- (instancetype)initManager
+{
+  self = [super init];
+  if (self)
+  {
+    self.listeners = [NSHashTable<id<MWMRoutingManagerListener>> weakObjectsHashTable];
+    self.trafficRegionId = storage::CountryInfoGetterBase::kInvalidId;
+    [MWMFrameworkListener addObserver:self];
+    [MWMLocationManager addObserver:self];
+  }
+  return self;
+}
+
+- (RoutingManager &)rm
+{
+  return GetFramework().GetRoutingManager();
+}
+
+- (routing::SpeedCameraManager &)scm
+{
+  return self.rm.GetSpeedCamManager();
+}
+
+- (MWMRoutePoint *)startPoint
+{
+  auto const routePoints = self.rm.GetRoutePoints();
+  if (routePoints.empty())
+    return nil;
+  auto const & routePoint = routePoints.front();
+  if (routePoint.m_pointType == RouteMarkType::Start)
+    return [[MWMRoutePoint alloc] initWithRouteMarkData:routePoint];
+  return nil;
+}
+
+- (MWMRoutePoint *)endPoint
+{
+  auto const routePoints = self.rm.GetRoutePoints();
+  if (routePoints.empty())
+    return nil;
+  auto const & routePoint = routePoints.back();
+  if (routePoint.m_pointType == RouteMarkType::Finish)
+    return [[MWMRoutePoint alloc] initWithRouteMarkData:routePoint];
+  return nil;
+}
+
+- (BOOL)isOnRoute
+{
+  return self.rm.IsRoutingFollowing();
+}
+
+- (BOOL)isRoutingActive
+{
+  return self.rm.IsRoutingActive();
+}
+
+- (BOOL)isRouteFinished
+{
+  return self.rm.IsRouteFinished();
+}
+
+- (MWMRouteInfo *)routeInfo
+{
+  if (!self.isRoutingActive)
+    return nil;
+  routing::FollowingInfo info;
+  self.rm.GetRouteFollowingInfo(info);
+  if (!info.IsValid())
+    return nil;
+  CLLocation * lastLocation = [MWMLocationManager lastLocation];
+  [self updateTrafficSideAtLocation:lastLocation];
+  double speedMps = 0;
+  if (lastLocation && lastLocation.speed >= 0)
+    speedMps = lastLocation.speed;
+  NSInteger roundExitNumber = 0;
+  if (info.m_turn == routing::turns::CarDirection::EnterRoundAbout ||
+      info.m_turn == routing::turns::CarDirection::StayOnRoundAbout ||
+      info.m_turn == routing::turns::CarDirection::LeaveRoundAbout)
+  {
+    roundExitNumber = info.m_exitNum;
+  }
+
+  auto nextTurnDirection = routing::turns::CarDirection::None;
+  if (info.m_nextTurn != routing::turns::CarDirection::None)
+  {
+    // m_nextTurn controls when the "then" maneuver is shown, but its cached direction can lag behind the route.
+    auto const * route = self.rm.RoutingSession().GetRoute();
+    double distanceToNextTurnMeters = 0.0;
+    routing::turns::TurnItem nextTurn;
+    if (route && route->GetNextTurn(distanceToNextTurnMeters, nextTurn))
+      nextTurnDirection = nextTurn.m_turn;
+  }
+
+  return [[MWMRouteInfo alloc] initWithTimeToTarget:info.m_time
+                                     targetDistance:info.m_distToTarget.GetDistance()
+                                   targetUnitsIndex:static_cast<UInt8>(info.m_distToTarget.GetUnits())
+                                     distanceToTurn:info.m_distToTurn.GetDistance()
+                                     turnUnitsIndex:static_cast<UInt8>(info.m_distToTurn.GetUnits())
+                                  currentStreetName:@(info.m_currentStreetName.c_str())
+                                         streetName:@(info.m_nextStreetName.c_str())
+                                     nextStreetName:@(info.m_nextNextStreetName.c_str())
+                                      turnDirection:RouteTurnDirection(info.m_turn)
+                                  nextTurnDirection:RouteTurnDirection(nextTurnDirection)
+                                      turnImageName:[self turnImageName:info.m_turn isPrimary:YES]
+                                  nextTurnImageName:[self turnImageName:nextTurnDirection isPrimary:NO]
+                                           speedMps:speedMps
+                                      speedLimitMps:info.m_speedLimitMps
+                                    roundExitNumber:roundExitNumber
+                                  isLeftHandTraffic:self.isLeftHandTraffic];
+}
+
+- (MWMRouterType)type
+{
+  return routerType(self.rm.GetRouter());
+}
+
+- (void)addListener:(id<MWMRoutingManagerListener>)listener
+{
+  [self.listeners addObject:listener];
+}
+
+- (void)removeListener:(id<MWMRoutingManagerListener>)listener
+{
+  [self.listeners removeObject:listener];
+}
+
+- (void)stopRoutingAndRemoveRoutePoints:(BOOL)flag
+{
+  self.rm.CloseRouting(flag);
+  [MWMThemeManager invalidate];
+}
+
+- (void)deleteSavedRoutePoints
+{
+  self.rm.DeleteSavedRoutePoints();
+}
+
+- (void)applyRouterType:(MWMRouterType)type
+{
+  self.rm.SetRouter(coreRouterType(type));
+}
+
+- (void)addRoutePoint:(MWMRoutePoint *)point
+{
+  RouteMarkData startPt = point.routeMarkData;
+  self.rm.AddRoutePoint(std::move(startPt));
+}
+
+- (void)saveRoute
+{
+  self.rm.SaveRoutePoints();
+}
+
+- (void)buildRouteWithDidFailError:(NSError * __autoreleasing __nullable *)errorPtr
+{
+  auto const & points = self.rm.GetRoutePoints();
+  auto const pointsCount = points.size();
+
+  if (pointsCount > 1)
+  {
+    self.rm.BuildRoute();
+  }
+  else if (errorPtr)
+  {
+    if (pointsCount == 0)
+    {
+      *errorPtr = [NSError errorWithDomain:@"omaps.app.routing"
+                                      code:MWMRouterResultCodeStartPointNotFound
+                                  userInfo:nil];
+    }
+    else
+    {
+      auto const & routePoint = points.front();
+      MWMRouterResultCode code;
+      if (routePoint.m_pointType == RouteMarkType::Start)
+        code = MWMRouterResultCodeEndPointNotFound;
+      else
+        code = MWMRouterResultCodeStartPointNotFound;
+      *errorPtr = [NSError errorWithDomain:@"omaps.app.routing" code:code userInfo:nil];
+    }
+  }
+}
+
+- (void)startRoute
+{
+  [self saveRoute];
+  self.rm.FollowRoute();
+  [MWMThemeManager invalidate];
+}
+
+- (MWMSpeedCameraManagerMode)speedCameraMode
+{
+  auto const mode = self.scm.GetMode();
+  switch (mode)
+  {
+  case routing::SpeedCameraManagerMode::Auto: return MWMSpeedCameraManagerModeAuto;
+  case routing::SpeedCameraManagerMode::Always: return MWMSpeedCameraManagerModeAlways;
+  default: return MWMSpeedCameraManagerModeNever;
+  }
+}
+
+- (void)setSpeedCameraMode:(MWMSpeedCameraManagerMode)mode
+{
+  switch (mode)
+  {
+  case MWMSpeedCameraManagerModeAuto: self.scm.SetMode(routing::SpeedCameraManagerMode::Auto); break;
+  case MWMSpeedCameraManagerModeAlways: self.scm.SetMode(routing::SpeedCameraManagerMode::Always); break;
+  default: self.scm.SetMode(routing::SpeedCameraManagerMode::Never);
+  }
+}
+
+- (void)setOnNewTurnCallback:(MWMVoidBlock)callback
+{
+  self.rm.RoutingSession().SetOnNewTurnCallback([callback] { callback(); });
+}
+
+- (void)resetOnNewTurnCallback
+{
+  self.rm.RoutingSession().SetOnNewTurnCallback(nullptr);
+}
+
+#pragma mark - MWMFrameworkRouteBuilderObserver implementation
+
+- (void)processRouteBuilderEvent:(routing::RouterResultCode)code
+                       countries:(storage::CountriesSet const &)absentCountries
+{
+  NSArray<id<MWMRoutingManagerListener>> * objects = self.listeners.allObjects;
+  MWMRouterResultCode objCCode = MWMRouterResultCode(code);
+  NSMutableArray<NSString *> * objCAbsentCountries = [NSMutableArray new];
+  std::for_each(absentCountries.begin(), absentCountries.end(), ^(std::string const & str) {
+    id nsstr = [NSString stringWithUTF8String:str.c_str()];
+    [objCAbsentCountries addObject:nsstr];
+  });
+  for (id<MWMRoutingManagerListener> object in objects)
+    [object processRouteBuilderEventWithCode:objCCode countries:objCAbsentCountries];
+}
+
+- (void)speedCameraShowedUpOnRoute:(double)speedLimit
+{
+  NSArray<id<MWMRoutingManagerListener>> * objects = self.listeners.allObjects;
+  for (id<MWMRoutingManagerListener> object in objects)
+  {
+    if (speedLimit == routing::SpeedCameraOnRoute::kNoSpeedInfo)
+    {
+      [object updateCameraInfo:YES speedLimitMps:-1];
+    }
+    else
+    {
+      auto const metersPerSecond = measurement_utils::KmphToMps(speedLimit);
+      [object updateCameraInfo:YES speedLimitMps:metersPerSecond];
+    }
+  }
+}
+
+- (void)speedCameraLeftVisibleArea
+{
+  NSArray<id<MWMRoutingManagerListener>> * objects = self.listeners.allObjects;
+  for (id<MWMRoutingManagerListener> object in objects)
+    [object updateCameraInfo:NO speedLimitMps:-1];
+}
+
+#pragma mark - MWMLocationObserver implementation
+
+- (void)onLocationUpdate:(CLLocation *)location
+{
+  NSMutableArray<NSString *> * turnNotifications = [NSMutableArray array];
+  std::vector<std::string> notifications;
+  auto announceStreets = [NSUserDefaults.standardUserDefaults boolForKey:@"UserDefaultsNeedToEnableStreetNamesTTS"];
+  self.rm.GenerateNotifications(notifications, announceStreets);
+  for (auto const & text : notifications)
+    [turnNotifications addObject:@(text.c_str())];
+  NSArray<id<MWMRoutingManagerListener>> * objects = self.listeners.allObjects;
+  for (id<MWMRoutingManagerListener> object in objects)
+    [object didLocationUpdate:turnNotifications];
+}
+
+- (void)updateTrafficSideAtLocation:(CLLocation *)location
+{
+  if (!location)
+    return;
+  if ([self.trafficSideLocation isEqual:location])
+    return;
+  self.trafficSideLocation = location;
+
+  auto & countryInfoGetter = GetFramework().GetCountryInfoGetter();
+  auto const coordinate = location.coordinate;
+  auto const position = mercator::FromLatLon(coordinate.latitude, coordinate.longitude);
+  if (self.trafficRegionId != storage::CountryInfoGetterBase::kInvalidId &&
+      countryInfoGetter.BelongsToAnyRegion(position, {self.trafficRegionId}))
+  {
+    return;
+  }
+
+  auto const countryId = countryInfoGetter.GetRegionCountryId(position);
+  if (countryId.empty())
+  {
+    self.trafficRegionId = storage::CountryInfoGetterBase::kInvalidId;
+    self.isLeftHandTraffic = NO;
+    return;
+  }
+
+  self.trafficRegionId = countryInfoGetter.GetRegionId(countryId);
+  self.isLeftHandTraffic = IsLeftHandTraffic(countryId);
+}
+
+- (NSString *)turnImageName:(routing::turns::CarDirection)turn isPrimary:(BOOL)isPrimary
+{
+  using namespace routing::turns;
+  NSString * imageName = nil;
+  switch (turn)
+  {
+  case CarDirection::ExitHighwayToRight: imageName = @"ic_cp_exit_highway_to_right"; break;
+  case CarDirection::TurnSlightRight: imageName = @"ic_cp_slight_right"; break;
+  case CarDirection::TurnRight: imageName = @"ic_cp_simple_right"; break;
+  case CarDirection::TurnSharpRight: imageName = @"ic_cp_sharp_right"; break;
+  case CarDirection::ExitHighwayToLeft: imageName = @"ic_cp_exit_highway_to_left"; break;
+  case CarDirection::TurnSlightLeft: imageName = @"ic_cp_slight_left"; break;
+  case CarDirection::TurnLeft: imageName = @"ic_cp_simple_left"; break;
+  case CarDirection::TurnSharpLeft: imageName = @"ic_cp_sharp_left"; break;
+  case CarDirection::UTurnLeft: imageName = @"ic_cp_uturn_left"; break;
+  case CarDirection::UTurnRight: imageName = @"ic_cp_uturn_right"; break;
+  case CarDirection::ReachedYourDestination: imageName = @"ic_cp_finish_point"; break;
+  case CarDirection::LeaveRoundAbout:
+  case CarDirection::EnterRoundAbout: imageName = @"ic_cp_round"; break;
+  case CarDirection::GoStraight: imageName = @"ic_cp_straight"; break;
+  case CarDirection::StartAtEndOfStreet:
+  case CarDirection::StayOnRoundAbout:
+  case CarDirection::Count:
+  case CarDirection::None: imageName = isPrimary ? @"ic_cp_straight" : nil; break;
+  }
+  if (!isPrimary && imageName != nil)
+    imageName = [NSString stringWithFormat:@"%@_then", imageName];
+  return imageName;
+}
+
+@end

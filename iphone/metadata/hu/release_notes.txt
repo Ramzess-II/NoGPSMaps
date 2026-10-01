@@ -1,0 +1,28 @@
+• Az új „Keresési előzmények mentése” beállítás segít szükség esetén megőrizni keresési előzményei titkosságát
+
+## Térkép és helyek
+• OpenStreetMap-adatok július 14-i állapot szerint
+• Az OpenStreetMap-jegyzetek mostantól pontosan a kiválasztott helyen jelennek meg, nem pedig az erdő közepén
+• Javított térképválasztás az 180°-os antimeridiánt átlépő régiók esetében
+• A magassági profilok már nem jelennek meg elavult vagy üres grafikonokkal, miután egy útvonalat eltávolítottak
+• Javítottuk a rögzített útvonalak üres magassági grafikonját
+• A könyvjelzők eltávolítására szolgáló gomb könnyebben megtalálható
+• Automatikus könyvjelző-mentés, amikor kilép a szerkesztőképernyőről
+• A színpaletta előre definiált színeket tartalmaz, és lehetővé teszi bármely egyéni szín kiválasztását
+• Egyéb felhasználói felület-fejlesztések
+
+## Tömegközlekedés
+• A megállók, átszállási pontok és állomások nevei most fehér kontúrral jelennek meg, hogy világos és sötét témákban egyaránt jól olvashatók legyenek
+• A metróréteg helyesen jelenik meg újra a tömegközlekedési útvonal-előnézet bezárása után
+
+## Útvonaltervezés és navigáció
+• Kijavítottuk a hibás és hiányzó útbaigazításokkal kapcsolatos problémákat
+• Az útvonal-figyelmeztetések (útdíjak, kompok, földutak, lépcsők stb.) mostantól minden alternatív útvonal esetében megjelennek
+• Kijavítottuk az útvonal-tervezés során ritkán előforduló lefagyást, és javítottuk a zsákutcák, valamint a korlátozott forgalmú utakon lévő kiindulási és érkezési pontok kezelését
+• Javítottuk az útvonal előrehaladásának jelzését a „Start” gombon
+• Az útvonalállomások sorrendjének megváltoztatása már nem okoz ugrálást a listában
+
+## Fordítások
+• Javítottuk a kínai szövegezést
+• Frissítettük az ukrán fordításokat
+• Javítottuk a térképrégiók olasz nyelvű fordításait

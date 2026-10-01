@@ -1,0 +1,7 @@
+• OSM-adatok július 14-i állapot szerint
+• A tömegközlekedési megállók, átszállási pontok és állomások nevei mostantól fehér kontúrral jelennek meg
+• Javított nyitvatartási idők megjelenítése
+• Helyesbítettük a hibás vagy hiányzó útbaigazításokat
+• A szerkesztett könyvjelzők és nyomvonalak automatikusan mentődnek
+• Az útvonal-figyelmeztetések (útdíjak, kompok, földutak, lépcsők stb.) mostantól minden alternatív útvonal esetében megjelennek
+…további információk az omaps.org/hu/news oldalon

@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="24765" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" colorMatched="YES">
+    <device id="retina4_7" orientation="portrait" appearance="light"/>
+    <dependencies>
+        <deployment identifier="iOS"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="24743"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <objects>
+        <placeholder placeholderIdentifier="IBFilesOwner" id="-1" userLabel="File's Owner"/>
+        <placeholder placeholderIdentifier="IBFirstResponder" id="-2" customClass="UIResponder"/>
+        <tableViewCell contentMode="scaleToFill" selectionStyle="none" indentationWidth="10" id="KGk-i7-Jjw" customClass="MWMPlacePageOpeningHoursCell" propertyAccessControl="none">
+            <rect key="frame" x="0.0" y="0.0" width="320" height="249"/>
+            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+            <tableViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" tableViewCell="KGk-i7-Jjw" id="H2p-sc-9uM">
+                <rect key="frame" x="0.0" y="0.0" width="320" height="249"/>
+                <autoresizingMask key="autoresizingMask"/>
+                <subviews>
+                    <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" translatesAutoresizingMaskIntoConstraints="NO" id="Ylu-Dm-Mgt" userLabel="Opening Hours Stack View">
+                        <rect key="frame" x="0.0" y="0.0" width="320" height="249"/>
+                        <subviews>
+                            <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="swk-um-XzG" customClass="MWMPlacePageOpeningHoursDayView">
+                                <rect key="frame" x="0.0" y="0.0" width="320" height="126"/>
+                                <subviews>
+                                    <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" spacing="4" translatesAutoresizingMaskIntoConstraints="NO" id="9al-zC-OVD" userLabel="Current Day Data Stack View">
+                                        <rect key="frame" x="60" y="12" width="220" height="102"/>
+                                        <subviews>
+                                            <label hidden="YES" opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Mo-Su 11:00-24:00" textAlignment="natural" lineBreakMode="wordWrap" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontForContentSizeCategory="YES" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="ZdV-4y-cz4">
+                                                <rect key="frame" x="0.0" y="0.0" width="220" height="0.0"/>
+                                                <fontDescription key="fontDescription" type="system" pointSize="16"/>
+                                                <color key="textColor" red="0.0" green="0.0" blue="0.0" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                                <nil key="highlightedColor"/>
+                                                <userDefinedRuntimeAttributes>
+                                                    <userDefinedRuntimeAttribute type="string" keyPath="styleName" value="regular16:blackPrimaryText"/>
+                                                </userDefinedRuntimeAttributes>
+                                            </label>
+                                            <stackView opaque="NO" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="618-eX-3w2">
+                                                <rect key="frame" x="0.0" y="0.0" width="220" height="19.5"/>
+                                                <subviews>
+                                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Сегодня" lineBreakMode="wordWrap" baselineAdjustment="alignBaselines" minimumScaleFactor="0.5" adjustsLetterSpacingToFitWidth="YES" adjustsFontForContentSizeCategory="YES" translatesAutoresizingMaskIntoConstraints="NO" id="Ot5-QJ-jhp">
+                                                        <rect key="frame" x="0.0" y="0.0" width="122" height="19.5"/>
+                                                        <fontDescription key="fontDescription" type="system" pointSize="16"/>
+                                                        <color key="textColor" red="0.0" green="0.0" blue="0.0" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                                        <nil key="highlightedColor"/>
+                                                        <userDefinedRuntimeAttributes>
+                                                            <userDefinedRuntimeAttribute type="string" keyPath="styleName" value="regular16:blackPrimaryText"/>
+                                                        </userDefinedRuntimeAttributes>
+                                                    </label>
+                                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="252" verticalHuggingPriority="251" text="10:00—20:00" textAlignment="right" lineBreakMode="wordWrap" baselineAdjustment="alignBaselines" minimumScaleFactor="0.5" adjustsLetterSpacingToFitWidth="YES" adjustsFontForContentSizeCategory="YES" translatesAutoresizingMaskIntoConstraints="NO" id="oTF-IZ-Un1">
+                                                        <rect key="frame" x="122" y="0.0" width="98" height="19.5"/>
+                                                        <fontDescription key="fontDescription" type="system" pointSize="16"/>
+                                                        <color key="textColor" red="0.0" green="0.0" blue="0.0" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                                        <nil key="highlightedColor"/>
+                                                        <userDefinedRuntimeAttributes>
+                                                            <userDefinedRuntimeAttribute type="string" keyPath="styleName" value="regular16:blackPrimaryText"/>
+                                                        </userDefinedRuntimeAttributes>
+                                                    </label>
+                                                </subviews>
+                                            </stackView>
+                                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Перерыв" textAlignment="right" lineBreakMode="wordWrap" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontForContentSizeCategory="YES" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="hpw-oR-ZSb">
+                                                <rect key="frame" x="0.0" y="23.5" width="220" height="17"/>
+                                                <fontDescription key="fontDescription" type="system" pointSize="14"/>
+                                                <color key="textColor" red="0.0" green="0.0" blue="0.0" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                                <nil key="highlightedColor"/>
+                                                <userDefinedRuntimeAttributes>
+                                                    <userDefinedRuntimeAttribute type="string" keyPath="styleName" value="regular14:blackSecondaryText"/>
+                                                    <userDefinedRuntimeAttribute type="string" keyPath="localizedText" value="editor_hours_closed"/>
+                                                </userDefinedRuntimeAttributes>
+                                            </label>
+                                            <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" translatesAutoresizingMaskIntoConstraints="NO" id="7Oa-hg-icC" userLabel="Breaks Stack View">
+                                                <rect key="frame" x="0.0" y="44.5" width="220" height="50"/>
+                                                <color key="backgroundColor" red="0.0" green="0.0" blue="0.0" alpha="0.0" colorSpace="custom" customColorSpace="sRGB"/>
+                                            </stackView>
+                                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Сейчас закрыто" textAlignment="natural" lineBreakMode="wordWrap" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontForContentSizeCategory="YES" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="EcD-Q8-7zu">
+                                                <rect key="frame" x="0.0" y="98.5" width="220" height="3.5"/>
+                                                <fontDescription key="fontDescription" type="system" pointSize="14"/>
+                                                <color key="textColor" red="1" green="0.0" blue="0.0" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                                <nil key="highlightedColor"/>
+                                                <userDefinedRuntimeAttributes>
+                                                    <userDefinedRuntimeAttribute type="string" keyPath="styleName" value="regular14:redText"/>
+                                                    <userDefinedRuntimeAttribute type="string" keyPath="localizedText" value="closed_now"/>
+                                                </userDefinedRuntimeAttributes>
+                                            </label>
+                                        </subviews>
+                                    </stackView>
+                                    <imageView userInteractionEnabled="NO" contentMode="center" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="ic_arrow_gray_down" translatesAutoresizingMaskIntoConstraints="NO" id="mGc-k4-uvQ">
+                                        <rect key="frame" x="288" y="51" width="24" height="24"/>
+                                        <constraints>
+                                            <constraint firstAttribute="width" constant="24" id="514-4Z-QO3"/>
+                                            <constraint firstAttribute="height" constant="24" id="OJ4-4J-1uv"/>
+                                        </constraints>
+                                        <userDefinedRuntimeAttributes>
+                                            <userDefinedRuntimeAttribute type="string" keyPath="styleName" value="MWMGray"/>
+                                        </userDefinedRuntimeAttributes>
+                                    </imageView>
+                                    <imageView userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="ic_placepage_open_hours" translatesAutoresizingMaskIntoConstraints="NO" id="pa0-fe-w8W">
+                                        <rect key="frame" x="16" y="49" width="28" height="28"/>
+                                        <constraints>
+                                            <constraint firstAttribute="width" constant="28" id="2AI-Zc-VlL"/>
+                                            <constraint firstAttribute="height" constant="28" id="gd5-OU-PDF"/>
+                                        </constraints>
+                                        <userDefinedRuntimeAttributes>
+                                            <userDefinedRuntimeAttribute type="string" keyPath="styleName" value="MWMBlack"/>
+                                        </userDefinedRuntimeAttributes>
+                                    </imageView>
+                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="3Fa-V6-tC5" userLabel="Toggle Button">
+                                        <rect key="frame" x="0.0" y="0.0" width="320" height="126"/>
+                                        <color key="backgroundColor" red="0.0" green="0.0" blue="0.0" alpha="0.0" colorSpace="custom" customColorSpace="sRGB"/>
+                                        <state key="normal">
+                                            <color key="titleColor" red="0.0" green="0.0" blue="0.0" alpha="0.0" colorSpace="custom" customColorSpace="sRGB"/>
+                                            <color key="titleShadowColor" red="0.0" green="0.0" blue="0.0" alpha="0.0" colorSpace="custom" customColorSpace="sRGB"/>
+                                        </state>
+                                        <connections>
+                                            <action selector="toggleButtonTap" destination="KGk-i7-Jjw" eventType="touchUpInside" id="XDD-YV-Lea"/>
+                                        </connections>
+                                    </button>
+                                </subviews>
+                                <color key="backgroundColor" red="0.0" green="0.0" blue="0.0" alpha="0.0" colorSpace="custom" customColorSpace="sRGB"/>
+                                <constraints>
+                                    <constraint firstItem="9al-zC-OVD" firstAttribute="top" secondItem="swk-um-XzG" secondAttribute="top" constant="12" id="3wp-tM-ZWF"/>
+                                    <constraint firstAttribute="trailing" secondItem="mGc-k4-uvQ" secondAttribute="trailing" constant="8" id="CS2-Y7-odx"/>
+                                    <constraint firstItem="pa0-fe-w8W" firstAttribute="centerY" secondItem="9al-zC-OVD" secondAttribute="centerY" id="CXB-0i-wxj"/>
+                                    <constraint firstItem="mGc-k4-uvQ" firstAttribute="centerY" secondItem="9al-zC-OVD" secondAttribute="centerY" id="DQP-gP-Lv1"/>
+                                    <constraint firstItem="pa0-fe-w8W" firstAttribute="leading" secondItem="swk-um-XzG" secondAttribute="leading" constant="16" id="Dgv-BZ-60x"/>
+                                    <constraint firstAttribute="bottom" secondItem="9al-zC-OVD" secondAttribute="bottom" constant="12" id="JOe-Dg-TuQ"/>
+                                    <constraint firstItem="mGc-k4-uvQ" firstAttribute="leading" secondItem="9al-zC-OVD" secondAttribute="trailing" constant="8" id="LZq-Ox-U9s"/>
+                                    <constraint firstAttribute="trailing" secondItem="3Fa-V6-tC5" secondAttribute="trailing" id="aZP-ue-WKX"/>
+                                    <constraint firstItem="9al-zC-OVD" firstAttribute="leading" secondItem="swk-um-XzG" secondAttribute="leading" constant="60" id="c9l-1Q-1db"/>
+                                    <constraint firstAttribute="bottom" secondItem="3Fa-V6-tC5" secondAttribute="bottom" id="izA-pv-gwm"/>
+                                    <constraint firstItem="3Fa-V6-tC5" firstAttribute="leading" secondItem="swk-um-XzG" secondAttribute="leading" id="mxB-Kf-vXb"/>
+                                    <constraint firstItem="3Fa-V6-tC5" firstAttribute="top" secondItem="swk-um-XzG" secondAttribute="top" id="vaY-Kx-oQg"/>
+                                </constraints>
+                                <connections>
+                                    <outlet property="breakLabel" destination="hpw-oR-ZSb" id="3Rc-7X-y7r"/>
+                                    <outlet property="breaksHolder" destination="7Oa-hg-icC" id="ttI-ww-abo"/>
+                                    <outlet property="closedLabel" destination="EcD-Q8-7zu" id="hhh-Q4-9vo"/>
+                                    <outlet property="compatibilityLabel" destination="ZdV-4y-cz4" id="Jwu-Ux-lqO"/>
+                                    <outlet property="label" destination="Ot5-QJ-jhp" id="zOc-Fe-grg"/>
+                                    <outlet property="openTime" destination="oTF-IZ-Un1" id="oSf-bK-Va1"/>
+                                </connections>
+                            </view>
+                            <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="0kQ-hh-2Cy" userLabel="Separator Container">
+                                <rect key="frame" x="0.0" y="126" width="320" height="1"/>
+                                <subviews>
+                                    <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="separator_image" translatesAutoresizingMaskIntoConstraints="NO" id="o3j-TT-IaW">
+                                        <rect key="frame" x="60" y="0.0" width="228" height="1"/>
+                                        <userDefinedRuntimeAttributes>
+                                            <userDefinedRuntimeAttribute type="string" keyPath="styleName" value="MWMSeparator"/>
+                                        </userDefinedRuntimeAttributes>
+                                    </imageView>
+                                </subviews>
+                                <constraints>
+                                    <constraint firstAttribute="height" constant="1" id="5lV-kq-jGM"/>
+                                    <constraint firstAttribute="bottom" secondItem="o3j-TT-IaW" secondAttribute="bottom" id="H3f-MF-LO9"/>
+                                    <constraint firstItem="o3j-TT-IaW" firstAttribute="leading" secondItem="0kQ-hh-2Cy" secondAttribute="leading" constant="60" id="KwF-TF-PmH"/>
+                                    <constraint firstAttribute="trailing" secondItem="o3j-TT-IaW" secondAttribute="trailing" constant="32" id="RqH-0b-AyG"/>
+                                    <constraint firstItem="o3j-TT-IaW" firstAttribute="top" secondItem="0kQ-hh-2Cy" secondAttribute="top" id="zj8-eS-CgN"/>
+                                </constraints>
+                            </view>
+                            <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" translatesAutoresizingMaskIntoConstraints="NO" id="fNU-1q-AiR" userLabel="Week Days Stack View">
+                                <rect key="frame" x="0.0" y="127" width="320" height="122"/>
+                                <color key="backgroundColor" red="0.0" green="0.0" blue="0.0" alpha="0.0" colorSpace="custom" customColorSpace="sRGB"/>
+                            </stackView>
+                        </subviews>
+                    </stackView>
+                </subviews>
+                <constraints>
+                    <constraint firstAttribute="bottom" secondItem="Ylu-Dm-Mgt" secondAttribute="bottom" id="Rxa-E1-r4v"/>
+                    <constraint firstItem="Ylu-Dm-Mgt" firstAttribute="top" secondItem="H2p-sc-9uM" secondAttribute="top" id="VsQ-qI-dIi"/>
+                    <constraint firstItem="Ylu-Dm-Mgt" firstAttribute="leading" secondItem="H2p-sc-9uM" secondAttribute="leading" id="p14-Mi-kcR"/>
+                    <constraint firstAttribute="trailing" secondItem="Ylu-Dm-Mgt" secondAttribute="trailing" id="zir-No-59Q"/>
+                </constraints>
+                <userDefinedRuntimeAttributes>
+                    <userDefinedRuntimeAttribute type="string" keyPath="styleName" value="Background"/>
+                </userDefinedRuntimeAttributes>
+            </tableViewCellContentView>
+            <inset key="separatorInset" minX="60" minY="0.0" maxX="0.0" maxY="0.0"/>
+            <connections>
+                <outlet property="currentDay" destination="swk-um-XzG" id="CJG-LQ-Pu8"/>
+                <outlet property="expandImage" destination="mGc-k4-uvQ" id="ohq-Yq-hLX"/>
+                <outlet property="middleSeparator" destination="0kQ-hh-2Cy" id="TJM-Ch-7E0"/>
+                <outlet property="openTime" destination="oTF-IZ-Un1" id="hsY-uV-wWE"/>
+                <outlet property="toggleButton" destination="3Fa-V6-tC5" id="8FI-Je-uFy"/>
+                <outlet property="weekDaysView" destination="fNU-1q-AiR" id="zM3-OD-vBA"/>
+            </connections>
+            <point key="canvasLocation" x="139" y="155"/>
+        </tableViewCell>
+    </objects>
+    <resources>
+        <image name="ic_arrow_gray_down" width="28" height="28"/>
+        <image name="ic_placepage_open_hours" width="28" height="28"/>
+        <image name="separator_image" width="1" height="1"/>
+    </resources>
+</document>

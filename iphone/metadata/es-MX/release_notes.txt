@@ -1,0 +1,28 @@
+• La nueva configuración «Guardar historial de búsqueda» te ayuda a mantener privado tu historial de búsqueda si lo necesitas
+
+## Mapas y lugares
+• Datos de OpenStreetMap al 14 de julio
+• Las notas de OpenStreetMap ahora se colocan en la ubicación exacta que selecciones, en lugar de en medio del bosque
+• Se ha mejorado la selección de mapas para las regiones que cruzan el antimeridiano de 180°
+• Los perfiles de elevación de los recorridos ya no muestran gráficos obsoletos o vacíos después de eliminar un recorrido
+• Se ha mejorado el gráfico de elevación vacío para los recorridos grabados
+• El botón para eliminar marcadores es más fácil de encontrar
+• Se guardan automáticamente los marcadores al salir de la pantalla de edición
+• La paleta de colores incluye colores predefinidos y te permite elegir cualquier color personalizado
+• Otras mejoras en la interfaz de usuario
+
+## Transporte público
+• Los nombres de las paradas, transbordos y estaciones ahora tienen un contorno blanco para que se puedan leer tanto en el tema claro como en el oscuro
+• La capa del metro vuelve a aparecer correctamente después de cerrar la vista previa de una ruta de transporte público
+
+## Rutas y navegación
+• Se corrigieron problemas con indicaciones erróneas o faltantes
+• Las advertencias de ruta (peajes, transbordadores, caminos sin pavimentar, escaleras, etc.) ahora se muestran para todas las rutas alternativas
+• Se corrigió un congelamiento poco frecuente al trazar una ruta y se mejoró el manejo de callejones sin salida y puntos de inicio/fin en una vía con restricciones
+• Se ha mejorado la indicación del progreso de la ruta en el botón de inicio
+• Al reordenar las paradas de la ruta, la lista ya no salta de un lado a otro
+
+## Traducciones
+• Se ha mejorado la redacción en chino
+• Se han actualizado las traducciones al ucraniano
+• Se han corregido las traducciones de las regiones del mapa en italiano

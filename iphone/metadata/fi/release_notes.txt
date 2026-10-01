@@ -1,0 +1,28 @@
+• Uusi ”Tallenna hakuhistoria” -asetus auttaa pitämään hakuhistoriasi yksityisenä tarvittaessa
+
+## Kartta ja paikat
+• OpenStreetMap-tiedot päivätty 14. heinäkuuta
+• OpenStreetMap-muistiinpanot sijoitetaan nyt tarkalleen valitsemallesi paikalle, eivätkä enää metsän keskelle
+• Parannettu kartan valinta alueilla, jotka ylittävät 180°:n vastameridiaanin
+• Korkeusprofiileissa ei enää näy vanhentuneita tai tyhjiä kaavioita reitin poistamisen jälkeen
+• Tallennettujen reittien tyhjää korkeuskaaviota on parannettu
+• Kirjanmerkkien poistopainike on helpompi löytää
+• Kirjanmerkit tallennetaan automaattisesti, kun poistut muokkausnäytöltä
+• Värivalikoima sisältää valmiita värejä, ja voit valita minkä tahansa mukautetun värin
+• Muita käyttöliittymän parannuksia
+
+## Julkinen liikenne
+• Pysäkkien, vaihtopaikkojen ja asemien nimissä käytetään nyt valkoista ääriviivaa, jotta ne ovat luettavissa sekä vaaleassa että tummassa teemassa
+• Metrokarttakerros tulee jälleen näkyviin oikein, kun suljet julkisen liikenteen reitin esikatselun
+
+## Reititys ja navigointi
+• Korjattu virheellisiä ja puuttuvia reittiohjeita koskevia ongelmia
+• Reittivaroitukset (tiemaksut, lautat, päällystämättömät tiet, portaat jne.) näkyvät nyt kaikilla vaihtoehtoisilla reiteillä
+• Korjattu harvinainen jumittuminen reitin suunnittelun aikana ja parannettu umpikujien sekä lähtö- ja päätepisteiden käsittelyä rajoitetuilla teillä
+• Parannettu reitin etenemisen näyttöä aloituspainikkeessa
+• Reitin pysähdyspaikkojen järjestyksen muuttaminen ei enää aiheuta luettelon hyppimistä
+
+## Käännökset
+• Parannettu kiinankielistä sanamuotoa
+• Päivitetty ukrainankielisiä käännöksiä
+• Korjattu kartta-alueiden käännöksiä italiaksi

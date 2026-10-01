@@ -1,0 +1,28 @@
+• Nové nastavení „Uložit historii vyhledávání“ vám v případě potřeby pomůže zachovat soukromí historie vyhledávání
+
+## Mapy a místa
+• Data OpenStreetMap k 14. červenci
+• Poznámky OpenStreetMap se nyní umisťují přesně na místo, které vyberete, namísto uprostřed lesa
+• Vylepšený výběr mapy pro regiony, které překračují antimeridián 180°
+• Profily nadmořské výšky tras již po odstranění trasy nezobrazují zastaralé nebo prázdné grafy
+• Vylepšen prázdný graf nadmořské výšky pro zaznamenané trasy
+• Tlačítko pro odstranění záložek je snáze k nalezení
+• Automatické ukládání záložek při opuštění obrazovky úprav
+• Paleta barev obsahuje předdefinované barvy a umožňuje vybrat libovolnou vlastní barvu
+• Další vylepšení uživatelského rozhraní
+
+## Veřejná doprava
+• Názvy zastávek, přestupních bodů a stanic mají nyní bílý obrys, aby byly čitelné jak ve světlém, tak v tmavém motivu
+• Vrstva metra se po zavření náhledu trasy veřejné dopravy znovu správně zobrazí
+
+## Plánování tras a navigace
+• Opraveny problémy s nesprávnými a chybějícími pokyny
+• Varování na trase (mýtné, trajekty, nezpevněné silnice, schody atd.) se nyní zobrazují u všech alternativních tras
+• Opraveno vzácné zamrznutí při vytváření trasy a vylepšeno zpracování slepých uliček a počátečních/cílových bodů na silnici s omezeným průjezdem
+• Vylepšen ukazatel průběhu trasy na tlačítku „Start“
+• Při změně pořadí zastávek na trase již nedochází k poskakování seznamu
+
+## Překlady
+• Vylepšeno znění v čínštině
+• Aktualizovány ukrajinské překlady
+• Opraveny překlady mapových regionů v italštině

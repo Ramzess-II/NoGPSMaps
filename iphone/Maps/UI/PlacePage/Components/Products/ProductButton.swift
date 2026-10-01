@@ -1,0 +1,36 @@
+final class ProductButton: UIButton {
+  private var action: () -> Void
+
+  init(title: String, action: @escaping () -> Void) {
+    self.action = action
+    super.init(frame: .zero)
+    setup(title: title, action: action)
+    layout()
+  }
+
+  @available(*, unavailable)
+  required init?(coder _: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+  }
+
+  private func setup(title: String, action _: @escaping () -> Void) {
+    setStyleAndApply(.blueBackground)
+    setTitle(title, for: .normal)
+    setTitleColor(.whitePrimary, for: .normal)
+    titleLabel?.font = UIFont.regular14.dynamic
+    titleLabel?.adjustsFontForContentSizeCategory = true
+    titleLabel?.configureSingleLineAutoScaling()
+    layer.setCornerRadius(.buttonDefaultSmall)
+    layer.masksToBounds = true
+    addTarget(self, action: #selector(buttonDidTap), for: .touchUpInside)
+  }
+
+  private func layout() {
+    translatesAutoresizingMaskIntoConstraints = false
+    heightAnchor.constraint(equalToConstant: 30.0).isActive = true
+  }
+
+  @objc private func buttonDidTap() {
+    action()
+  }
+}

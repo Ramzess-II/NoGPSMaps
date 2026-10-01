@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  xmlns:tools="http://schemas.android.com/tools"
+  style="@style/BookmarkListRow"
+  android:background="@drawable/bg_card_item_middle">
+
+  <CheckBox
+    android:id="@+id/selection_checkbox"
+    style="@style/BookmarkListRow.Checkbox"
+    tools:visibility="visible" />
+
+  <ImageView
+    android:id="@+id/iv__bookmark_color"
+    style="@style/BookmarkListRow.Icon"
+    android:contentDescription="@string/change_color"
+    tools:background="@color/base_red" />
+
+  <LinearLayout style="@style/BookmarkListRow.Text">
+    <TextView
+      android:id="@+id/tv__bookmark_name"
+      style="@style/BookmarkListRow.Title"
+      tools:text="@string/tracks_title" />
+
+    <TextView
+      android:id="@+id/tv__bookmark_distance"
+      style="@style/BookmarkListRow.Subtitle"
+      tools:text="@string/by_distance" />
+  </LinearLayout>
+
+  <ImageView
+    android:id="@+id/eye"
+    style="@style/BookmarkListRow.TrailingIcon"
+    android:contentDescription="@string/hide_track"
+    app:srcCompat="@drawable/ic_show"
+    app:tint="?secondary" />
+
+  <ImageView
+    android:id="@+id/more"
+    style="@style/BookmarkListRow.TrailingIcon"
+    android:contentDescription="@string/placepage_more_button"
+    app:srcCompat="@drawable/ic_more"
+    app:tint="?secondary" />
+</LinearLayout>

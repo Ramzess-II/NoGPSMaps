@@ -1,0 +1,28 @@
+• Den nya inställningen ”Spara sökhistorik” hjälper dig att hålla din sökhistorik privat vid behov
+
+## Kartor och platser
+• OpenStreetMap-data per den 14 juli
+• OpenStreetMap-anteckningar placeras nu på den exakta platsen du väljer, istället för mitt i skogen
+• Förbättrat kartval för regioner som sträcker sig över 180°-antimeridianen
+• Höjdprofiler för spår visar inte längre inaktuella eller tomma diagram efter att ett spår har tagits bort
+• Det tomma höjddiagrammet för inspelade spår har förbättrats
+• Knappen för att ta bort bokmärken är lättare att hitta
+• Automatisk sparning av bokmärken när du lämnar redigeringsskärmen
+• Färgpaletten innehåller fördefinierade färger och låter dig välja valfri anpassad färg
+• Övriga förbättringar av användargränssnittet
+
+## Kollektivtrafik
+• Namn på hållplatser, byten och stationer har nu en vit kontur för att förbli läsbara i både ljusa och mörka teman
+• Tunnelbanelagret visas åter korrekt efter att du stängt förhandsvisningen av en kollektivtrafikrutt
+
+## Ruttplanering och navigering
+• Problem med felaktiga och saknade vägbeskrivningar har åtgärdats
+• Ruttvarningar (vägtullar, färjor, oasfalterade vägar, trappor osv.) visas nu för alla alternativa rutter
+• Ett sällsynt hängningsfel vid ruttplanering har åtgärdats och hanteringen av återvändsgränder samt start- och slutpunkter på en avstängd väg har förbättrats
+• Förbättrad visning av ruttförloppet på startknappen
+• Om man ändrar ordningen på ruttens stopp hoppar listan inte längre omkring
+
+## Översättningar
+• Förbättrad formulering på kinesiska
+• Uppdaterade översättningar till ukrainska
+• Korrigerade översättningar av kartregioner på italienska

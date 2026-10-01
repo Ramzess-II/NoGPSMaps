@@ -1,0 +1,104 @@
+# Please use android/.gitignore for all Android stuff
+
+*~
+.DS_Store
+/screenlog.0
+compile_commands.json
+
+# Styles and colors edited by the built-in designer (see qt/build_style)
+data/symbols/*/design/
+data/drules_design.bin
+data/colors_design.txt
+data/patterns_design.txt
+# User data written by the app (local OSM edits, bookmarks)
+data/bookmarks
+data/edits.xml
+data/settings.ini
+
+# Python compiled files and dependencies
+*.pyc
+uv.lock
+
+# Windows generated files
+*.vcxproj*
+*.sln
+*.user
+*.pdb
+*.rc
+!qt/res/windows/windows.rc
+/out/
+
+# XCode
+xcode/keys/*
+xcode/fastlane/report.xml
+xcode/fastlane/README.md
+iphone/*/*.xcodeproj/*.pbxuser
+iphone/*/*.xcodeproj/project.xcworkspace/*
+!iphone/*/*.xcodeproj/project.xcworkspace/xcshareddata/
+**/DerivedData/*
+**/xcuserdata
+**/xcshareddata/swiftpm/
+**/xcshareddata/IDEWorkspaceChecks.plist
+iphone/**/*.moved-aside
+iphone/**/*.swp
+iphone/**/*.mode1v3
+iphone/**/*.mode2v3
+iphone/**/*.perspectivev3
+
+# data
+data/[0-9][0-9][0-9][0-9][0-9][0-9]
+data/gps_track.dat
+# custom raster background tiles disk cache
+data/bg_tiles/
+# JetBrains IDEs
+.idea/
+!/android/.idea/
+/android/.idea/*
+# Must stay here: git does not descend into an excluded directory, so android/.gitignore cannot re-include icon.svg
+!/android/.idea/icon.svg
+
+# Visual Studio
+/.vs/
+
+# VS Code
+/.vscode/*
+!/.vscode/extensions.json
+
+# clangd
+/.cache/
+
+# Qt Designer
+*.autosave
+
+# Vim files
+*.sw?
+
+# CMake
+/cmake-build-*
+build/
+/build*/
+# Per-developer CMake preset overrides (CMakePresets.json is committed).
+CMakeUserPresets.json
+
+#python modules building
+/tools/python/*/build
+/tools/python/*/dist
+/tools/python/*/*.egg-info
+/tools/python/data/*/build
+/tools/python/data/*/dist
+/tools/python/data/*/*.egg-info
+/tools/python/*/venv/
+
+# Configs
+/tools/python/maps_generator/var/etc/map_generator.ini
+/tools/python/routing/etc/*.ini
+/tools/unix/maps/settings.sh
+
+# Helpers
+/node_modules/
+/package-lock.json
+
+# AppStore metadata (Google Play listings are in android/app/.gitignore)
+/screenshots/
+/keywords/
+/iphone/metadata/**/keywords.txt

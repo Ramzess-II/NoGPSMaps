@@ -1,0 +1,28 @@
+• Cài đặt mới “Lưu lịch sử tìm kiếm” giúp bạn giữ riêng tư lịch sử tìm kiếm khi cần
+
+## Bản đồ & địa điểm
+• Dữ liệu OpenStreetMap cập nhật đến ngày 14 tháng 7
+• Các ghi chú OpenStreetMap giờ đây được đặt chính xác tại vị trí bạn chọn, thay vì ở giữa khu rừng
+• Cải thiện việc chọn bản đồ cho các khu vực nằm qua đường kinh tuyến đối diện 180°
+• Biểu đồ độ cao của lộ trình không còn hiển thị các biểu đồ lỗi thời hoặc trống sau khi xóa lộ trình
+• Cải thiện biểu đồ độ cao trống cho các lộ trình đã ghi lại
+• Nút xóa dấu trang dễ tìm hơn
+• Tự động lưu dấu trang khi bạn thoát khỏi màn hình chỉnh sửa
+• Bảng màu bao gồm các màu được định sẵn và cho phép bạn chọn bất kỳ màu tùy chỉnh nào
+• Các cải tiến khác về giao diện người dùng
+
+## Giao thông công cộng
+• Tên các trạm dừng, điểm chuyển tuyến và ga hiện sử dụng viền trắng để đảm bảo dễ đọc trong cả chế độ sáng và tối
+• Lớp bản đồ tàu điện ngầm hiển thị lại chính xác sau khi bạn đóng bản xem trước lộ trình giao thông công cộng
+
+## Lập lộ trình & điều hướng
+• Đã khắc phục các sự cố liên quan đến chỉ dẫn sai hoặc thiếu
+• Các cảnh báo lộ trình (phí cầu đường, phà, đường chưa trải nhựa, cầu thang, v.v.) nay được hiển thị cho tất cả các lộ trình thay thế
+• Đã khắc phục tình trạng ứng dụng hiếm khi bị đơ khi xây dựng lộ trình và cải thiện cách xử lý các ngõ cụt cũng như điểm xuất phát/đích trên đường có hạn chế
+• Cải thiện hiển thị tiến trình lộ trình trên nút bắt đầu
+• Việc sắp xếp lại thứ tự các điểm dừng trên lộ trình không còn khiến danh sách bị nhảy loạn nữa
+
+## Bản dịch
+• Cải thiện cách diễn đạt trong tiếng Trung
+• Cập nhật bản dịch tiếng Ukraina
+• Sửa lỗi bản dịch tên các khu vực trên bản đồ bằng tiếng Ý

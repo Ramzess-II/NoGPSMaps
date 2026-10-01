@@ -1,0 +1,50 @@
+extension UITextField {
+  @objc override func applyTheme() {
+    for style in StyleManager.shared.getStyle(styleName)
+      where !style.isEmpty && !style.hasExclusion(view: self) {
+      UITextFieldRenderer.render(self, style: style)
+    }
+  }
+
+  @objc override func sw_didMoveToWindow() {
+    // A nil app window (a CarPlay-first launch, or a disconnected phone scene) must not match a
+    // view that is leaving the hierarchy: nil === nil is true.
+    guard let appWindow = MapsAppDelegate.theApp().window, appWindow === window else {
+      sw_didMoveToWindow()
+      return
+    }
+    applyTheme()
+    isStyleApplied = true
+    sw_didMoveToWindow()
+  }
+}
+
+class UITextFieldRenderer {
+  class func render(_ control: UITextField, style: Style) {
+    if let cornerRadius = style.cornerRadius {
+      control.layer.setCornerRadius(cornerRadius)
+      control.clipsToBounds = true
+    }
+    control.borderStyle = .none
+    var placeholderAttributes = [NSAttributedString.Key: Any]()
+    if let backgroundColor = style.backgroundColor {
+      control.backgroundColor = backgroundColor
+    }
+    if let fontStyle = style.fontStyle {
+      control.font = fontStyle.font
+      control.adjustsFontForContentSizeCategory = fontStyle.isDynamic
+      placeholderAttributes[NSAttributedString.Key.font] = fontStyle.font
+    }
+    if let fontColor = style.fontColor {
+      control.textColor = fontColor
+    }
+    if let tintColor = style.tintColor {
+      control.tintColor = tintColor
+      placeholderAttributes[NSAttributedString.Key.foregroundColor] = tintColor
+    }
+    if let attributedPlaceholder = control.attributedPlaceholder, !attributedPlaceholder.string.isEmpty {
+      control.attributedPlaceholder = NSAttributedString(string: attributedPlaceholder.string,
+                                                         attributes: placeholderAttributes)
+    }
+  }
+}

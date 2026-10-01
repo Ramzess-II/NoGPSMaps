@@ -1,0 +1,28 @@
+• Nova postavka „Spremi povijest pretraživanja“ pomaže vam da po potrebi zadržite privatnost svoje povijesti pretraživanja
+
+## Karte i mjesta
+• Podaci OpenStreetMapa od 14. srpnja
+• Bilješke OpenStreetMapa sada se postavljaju na točnu lokaciju koju odaberete, umjesto usred šume
+• Poboljšan odabir karte za regije koje prelaze antimeridijan od 180°
+• Profili nadmorske visine staze više ne prikazuju zastarjele ili prazne grafikone nakon uklanjanja staze
+• Poboljšan prazan grafikon nadmorske visine za snimljene staze
+• Gumb za uklanjanje oznaka lakše je pronaći
+• Automatsko spremanje oznaka pri napuštanju zaslona za uređivanje
+• Paleta boja uključuje unaprijed definirane boje i omogućuje odabir bilo koje prilagođene boje
+• Ostala poboljšanja korisničkog sučelja
+
+## Javni prijevoz
+• Nazivi stanica, prijelaza i postaja sada koriste bijeli obrub kako bi ostali čitljivi i u svijetlim i u tamnim temama
+• Sloj podzemne željeznice ispravno se ponovno pojavljuje nakon zatvaranja pretpregleda rute javnog prijevoza
+
+## Planiranje ruta i navigacija
+• Ispravljeni problemi s pogrešnim i nedostajućim uputama
+• Upozorenja o ruti (naplatne ceste, trajekti, neravne ceste, stepenice itd.) sada se prikazuju za sve alternativne rute
+• Ispravljena rijetka pojava zamrzavanja tijekom izrade rute i poboljšana obrada slijepih ulica te početnih/krajnjih točaka na ograničenoj cesti
+• Poboljšan prikaz napretka rute na gumbu za početak
+• Preuređivanje stanica rute više ne uzrokuje skakanje popisa
+
+## Prijevodi
+• Poboljšan kineski tekst
+• Ažurirani ukrajinski prijevodi
+• Ispravljeni prijevodi regija karte na talijanskom

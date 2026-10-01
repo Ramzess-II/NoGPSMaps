@@ -1,0 +1,40 @@
+name: Code style check
+
+on:
+  pull_request:
+    branches: [ master ]
+    # Filter by extension, not by directory: per-module directory lists silently drift
+    # when modules move or get added (this filter missed all of android/libs/* since the
+    # module split). Same extensions as CLANG_FORMAT_TARGETS in tools/hooks/format-config.bash.
+    paths:
+      - '**.java'
+      - '**.[ch]pp'
+      - '**.[hm]'
+      - '**.mm'
+      - '.clang-format'
+      - '.clang-format-ignore'
+      - '.github/workflows/code-style-check.yaml'
+      - 'tools/hooks/format-config.bash'
+      - 'tools/unix/clang-format.sh'
+
+jobs:
+  code-style-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v6
+
+      # The versioned binary is enough: clang-format.sh resolves clang-format-$CLANG_FORMAT_VERSION
+      # by name and verifies its version, so the unversioned one in the image is never used.
+      - name: Install clang-format
+        run: |
+          source tools/hooks/format-config.bash
+          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+          echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-$CLANG_FORMAT_VERSION main" | sudo tee /etc/apt/sources.list.d/llvm-toolchain-noble-$CLANG_FORMAT_VERSION.list
+          sudo apt-get update
+          sudo apt-get install -y "clang-format-$CLANG_FORMAT_VERSION"
+
+      - name: Run clang-format
+        run: tools/unix/clang-format.sh

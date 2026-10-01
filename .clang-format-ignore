@@ -1,0 +1,11 @@
+# Files clang-format must not touch. Patterns are globs relative to this file;
+# `**` crosses directories, a single `*` does not.
+
+# Third-party sources, kept as they are upstream.
+3party/**
+tools/osmctools/**
+xcode/**
+# A patched copy of the https://registry.khronos.org/OpenGL/api/GLES3/gl3.h
+android/sdk/src/main/cpp/app/organicmaps/sdk/opengl/gl3stub.h
+# Replaced by the private configuration at build time.
+private.h

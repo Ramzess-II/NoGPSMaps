@@ -1,0 +1,7 @@
+• 14 iyulgacha bo'lgan OSM ma'lumotlari
+• Jamoat transporti to'xtash joylari, o'tkazish va stansiya nomlari endi oq konturga ega
+• Ish vaqtlari ko'rsatmasining yaxshilanganligi
+• Noto'g'ri yoki yetishmayotgan yo'l ko'rsatmalari tuzatildi
+• Tahrirlangan belgilamalar va izlar endi avtomatik saqlanadi
+• Barcha muqobil yo'nalishlar uchun yo'l ogohlantirishlari (pullik yo'llar, parom, asfaltlanmagan yo'llar, zinapoyalar va boshqalar) endi ko'rsatiladi
+…batafsil omaps.org/news saytida

@@ -1,0 +1,28 @@
+• Noua setare „Salvare istoric de căutare” vă ajută să vă păstrați istoricul căutărilor privat, dacă este necesar
+
+## Hărți și locuri
+• Date OpenStreetMap actualizate la 14 iulie
+• Notele OpenStreetMap sunt acum plasate exact în locația selectată de dvs., în loc să apară în mijlocul pădurii
+• Selecție îmbunătățită a hărții pentru regiunile care traversează antimeridianul de 180°
+• Profilurile de altitudine ale traseelor nu mai afișează grafice învechite sau goale după ce un traseu este șters
+• S-a îmbunătățit graficul de altitudine gol pentru traseele înregistrate
+• Butonul pentru ștergerea marcajelor este mai ușor de găsit
+• Salvarea automată a marcajelor atunci când părăsiți ecranul de editare
+• Paleta de culori include culori predefinite și vă permite să alegeți orice culoare personalizată
+• Alte îmbunătățiri ale interfeței utilizatorului
+
+## Transportul public
+• Numele stațiilor, ale punctelor de transfer și ale stațiilor de metrou au acum un contur alb pentru a rămâne lizibile atât în tema deschisă, cât și în cea întunecată
+• Stratul de metrou reapare corect după ce închideți previzualizarea unui traseu de transport public
+
+## Calcularea traseului și navigarea
+• S-au remediat problemele legate de indicații de direcție greșite sau lipsă
+• Avertismentele privind traseul (taxe de drum, feriboturi, drumuri neasfaltate, scări etc.) sunt acum afișate pentru toate traseele alternative
+• S-a remediat o blocare rară care apărea în timpul creării unui traseu și s-a îmbunătățit gestionarea străzilor fără ieșire și a punctelor de start/sosire pe un drum cu acces restricționat
+• S-a îmbunătățit afișarea progresului traseului pe butonul de pornire
+• Reordonarea opririlor de pe traseu nu mai provoacă salturi ale listei
+
+## Traduceri
+• S-a îmbunătățit formularea în limba chineză
+• S-au actualizat traducerile în limba ucraineană
+• S-au remediat traducerile regiunilor de pe hartă în limba italiană

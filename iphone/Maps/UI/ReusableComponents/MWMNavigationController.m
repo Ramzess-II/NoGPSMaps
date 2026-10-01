@@ -1,0 +1,92 @@
+#import "MWMNavigationController.h"
+#import "MWMController.h"
+#import "SwiftBridge.h"
+
+#import <SafariServices/SafariServices.h>
+
+NSNotificationName const kUserInterfaceStyleDidChangeNotification = @"UserInterfaceStyleDidChangeNotification";
+NSString * const kUserInterfaceStyleKey = @"UserInterfaceStyle";
+
+@interface MWMNavigationController () <UINavigationControllerDelegate>
+
+@end
+
+@implementation MWMNavigationController
+
+- (UIStatusBarStyle)preferredStatusBarStyle
+{
+  return UIStatusBarStyleLightContent;
+}
+
+- (void)viewDidLoad
+{
+  [super viewDidLoad];
+  self.delegate = self;
+  self.navigationItem.leftBarButtonItem.tintColor = [UIColor whitePrimaryText];
+  self.navigationItem.rightBarButtonItem.tintColor = [UIColor whitePrimaryText];
+
+  [MWMThemeManager invalidate];
+}
+
+- (void)navigationController:(UINavigationController *)navigationController
+      willShowViewController:(UIViewController *)viewController
+                    animated:(BOOL)animated
+{
+  if ([viewController isKindOfClass:[SFSafariViewController class]])
+  {
+    [navigationController setNavigationBarHidden:YES animated:animated];
+    return;
+  }
+
+  NSAssert([viewController conformsToProtocol:@protocol(MWMController)],
+           @"Controller must inherit ViewController or TableViewController class");
+  id<MWMController> vc = (id<MWMController>)viewController;
+  [navigationController setNavigationBarHidden:!vc.hasNavigationBar animated:animated];
+}
+
+- (void)pushViewController:(UIViewController *)viewController animated:(BOOL)animated
+{
+  UIViewController * topVC = self.viewControllers.lastObject;
+  [self setupNavigationBackButtonItemFor:topVC];
+  [super pushViewController:viewController animated:animated];
+}
+
+- (void)setViewControllers:(NSArray<UIViewController *> *)viewControllers animated:(BOOL)animated
+{
+  [viewControllers enumerateObjectsUsingBlock:^(UIViewController * vc, NSUInteger idx, BOOL * stop) {
+    if (idx == viewControllers.count - 1)
+      return;
+    [self setupNavigationBackButtonItemFor:vc];
+  }];
+  [super setViewControllers:viewControllers animated:animated];
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+  [super traitCollectionDidChange:previousTraitCollection];
+  // React only to a genuine light/dark switch: the map style and themed colors depend
+  // solely on userInterfaceStyle. -hasDifferentColorAppearanceComparedToTraitCollection: also
+  // fires on contrast/gamut/interface-level deltas, and macOS emits such spurious trait changes
+  // on focus loss/restore. Re-deriving the map style there flips an active vehicle route to the
+  // dimmed MapStyleVehicle* palette.
+  if (self.traitCollection.userInterfaceStyle != previousTraitCollection.userInterfaceStyle)
+  {
+    [MWMThemeManager invalidate];
+    [NSNotificationCenter.defaultCenter
+        postNotificationName:kUserInterfaceStyleDidChangeNotification
+                      object:self
+                    userInfo:@{kUserInterfaceStyleKey: @(self.traitCollection.userInterfaceStyle)}];
+  }
+}
+
+- (BOOL)shouldAutorotate
+{
+  return YES;
+}
+
+- (void)setupNavigationBackButtonItemFor:(UIViewController *)viewController
+{
+  viewController.navigationItem.backButtonDisplayMode = UINavigationItemBackButtonDisplayModeMinimal;
+}
+
+@end
