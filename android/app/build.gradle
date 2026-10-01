@@ -67,6 +67,8 @@ android {
     println('VersionCode: ' + versionCode)
     applicationId rootProject.ext.appId
     buildConfigField 'String', 'SUPPORT_MAIL', '"most05062014@gmail.com"'
+    // Editing OpenStreetMap needs an OAuth application of NoGPS Maps, the one of Organic Maps is not used.
+    buildConfigField 'boolean', 'MAP_EDITING', 'false'
     // Should be customized in flavors.
     buildConfigField 'String', 'REVIEW_URL', '""'
     resourceConfigurations += [project.ext.supportedLocalizations]

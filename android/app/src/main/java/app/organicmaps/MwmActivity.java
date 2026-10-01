@@ -340,6 +340,8 @@ public class MwmActivity extends BaseMwmFragmentActivity
     {
       // Remove old OAuth v1 secrets
       OsmOAuth.clearOAuth1Credentials();
+      if (!BuildConfig.MAP_EDITING)
+        return;
 
       // Notify user to re-login
       dismissAlertDialog();
@@ -2135,8 +2137,9 @@ public class MwmActivity extends BaseMwmFragmentActivity
     if (id.equals(MAIN_MENU_ID))
     {
       ArrayList<MenuBottomSheetItem> items = new ArrayList<>();
-      items.add(new MenuBottomSheetItem(R.string.placepage_add_place_button, R.drawable.ic_plus,
-                                        this::onAddPlaceOptionSelected));
+      if (BuildConfig.MAP_EDITING)
+        items.add(new MenuBottomSheetItem(R.string.placepage_add_place_button, R.drawable.ic_plus,
+                                          this::onAddPlaceOptionSelected));
       items.add(new MenuBottomSheetItem(R.string.download_maps, R.drawable.ic_download, getDownloadMapsCounter(),
                                         this::onDownloadMapsOptionSelected));
       mDonatesUrl = Utils.getDonateUrl(getApplicationContext());
