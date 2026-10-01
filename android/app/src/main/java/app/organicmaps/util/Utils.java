@@ -259,7 +259,7 @@ public class Utils
   public static void sendBugReport(@NonNull ActivityResultLauncher<SharingUtils.SharingIntent> launcher,
                                    @NonNull Activity activity, @NonNull String subject, @NonNull String body)
   {
-    subject = "Organic Maps Bugreport" + (TextUtils.isEmpty(subject) ? "" : ": " + subject);
+    subject = "NoGPS Maps Bugreport" + (TextUtils.isEmpty(subject) ? "" : ": " + subject);
     LogsManager.INSTANCE.zipLogs(
         new SupportInfoWithLogsCallback(launcher, activity, subject, body, BuildConfig.SUPPORT_MAIL));
   }
@@ -270,7 +270,7 @@ public class Utils
                                   @NonNull Activity activity)
   {
     LogsManager.INSTANCE.zipLogs(
-        new SupportInfoWithLogsCallback(launcher, activity, "Organic Maps Feedback", "", BuildConfig.SUPPORT_MAIL));
+        new SupportInfoWithLogsCallback(launcher, activity, "NoGPS Maps Feedback", "", BuildConfig.SUPPORT_MAIL));
   }
 
   public static void navigateToParent(@NonNull Activity activity)
