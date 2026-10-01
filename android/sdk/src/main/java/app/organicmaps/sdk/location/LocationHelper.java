@@ -205,6 +205,9 @@ public class LocationHelper implements BaseLocationProvider.Listener
   @Nullable
   private InertialNavigator mInertial;
   private long mLastTrustedGpsMs;
+  // The trusted position is saved not more often than this.
+  private static final long SAVE_TRUSTED_INTERVAL_MS = 30_000;
+  private long mSavedTrustedTimeMs;
   // Elapsed realtime when the manual mode was left: GPS was ignored in it, so it is waited for anew.
   private long mManualLeftMs;
   // GPS positions off the roads in a row.
@@ -371,8 +374,15 @@ public class LocationHelper implements BaseLocationProvider.Listener
     boolean trusted = true;
     if (isNetwork)
     {
-      if (!mSpoofingDetector.onNetworkPosition(location.getLatitude(), location.getLongitude(),
-                                               location.getAccuracy(), timeMs))
+      final String phantoms = mSpoofingDetector.serializePhantoms();
+      final boolean accepted = mSpoofingDetector.onNetworkPosition(location.getLatitude(), location.getLongitude(),
+                                                                   location.getAccuracy(), timeMs);
+      if (!phantoms.equals(mSpoofingDetector.serializePhantoms()))
+      {
+        Logger.w(TAG, "Wrong network points = " + mSpoofingDetector.serializePhantoms());
+        Config.setNoGpsWrongNetworkPoints(mSpoofingDetector.serializePhantoms());
+      }
+      if (!accepted)
       {
         Logger.w(TAG, "The network location jumps away, ignoring it = " + location);
         return;
@@ -387,6 +397,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
     final boolean spoofed = mSpoofingDetector.isSpoofed();
     if (spoofed != wasSpoofed)
       onGpsSpoofingChanged(spoofed);
+    saveTrustedPosition();
 
     if (trusted && !isNetwork && mInertial != null && isInertialNavigationEnabled() && isSpeedTableGps(location))
       mInertial.onSpeedTableGps(location);
@@ -812,6 +823,9 @@ public class LocationHelper implements BaseLocationProvider.Listener
       Logger.w(TAG, "Network provider is disabled, GPS spoofing detection is limited");
       return;
     }
+    if (mSpoofingDetector.getPhantomsCount() == 0)
+      mSpoofingDetector.deserializePhantoms(Config.getNoGpsWrongNetworkPoints());
+    restoreTrustedPosition();
     // Verify the very first GPS positions too, the fresh network position may arrive only several seconds later.
     final Location lastNetworkLocation = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
     if (lastNetworkLocation != null && mNetworkLocation == null)
@@ -825,6 +839,34 @@ public class LocationHelper implements BaseLocationProvider.Listener
     final LocationRequestCompat request = new LocationRequestCompat.Builder(INTERVAL_NETWORK_MS).build();
     LocationManagerCompat.requestLocationUpdates(locationManager, LocationManager.NETWORK_PROVIDER, request,
                                                  mNetworkListener, Looper.getMainLooper());
+  }
+
+  private void saveTrustedPosition()
+  {
+    final double[] trusted = mSpoofingDetector.getLastTrusted();
+    if (trusted == null || (long) trusted[2] - mSavedTrustedTimeMs < SAVE_TRUSTED_INTERVAL_MS)
+      return;
+    mSavedTrustedTimeMs = (long) trusted[2];
+    final long unixTimeMs = System.currentTimeMillis() - (SystemClock.elapsedRealtime() - mSavedTrustedTimeMs);
+    Config.setNoGpsLastTrusted(trusted[0] + "," + trusted[1] + "," + unixTimeMs);
+  }
+
+  private void restoreTrustedPosition()
+  {
+    final String[] position = Config.getNoGpsLastTrusted().split(",");
+    if (position.length != 3)
+      return;
+    try
+    {
+      final long timeMs =
+          SystemClock.elapsedRealtime() - (System.currentTimeMillis() - Long.parseLong(position[2]));
+      mSpoofingDetector.restoreTrusted(Double.parseDouble(position[0]), Double.parseDouble(position[1]), timeMs);
+      Logger.i(TAG, "Last trusted position = " + Config.getNoGpsLastTrusted());
+    }
+    catch (NumberFormatException e)
+    {
+      Logger.e(TAG, "Wrong last trusted position = " + Config.getNoGpsLastTrusted(), e);
+    }
   }
 
   private void stopNetworkUpdates()

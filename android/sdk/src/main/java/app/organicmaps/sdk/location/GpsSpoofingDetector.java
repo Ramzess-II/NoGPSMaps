@@ -30,7 +30,7 @@ public class GpsSpoofingDetector
   static final long JUMP_CONFIRM_MS = NETWORK_MAX_AGE_MS;
   // Positions from the same cell tower or Wi-Fi point.
   static final double SAME_POINT_M = 10;
-  // Points that jumped away and back, they are ignored until the app restarts.
+  // Points that jumped away and back are ignored. They are saved, as after a restart such a point may be the only one.
   static final int MAX_PHANTOMS = 16;
   // A Wi-Fi position (tens of meters) is used at once after a coarse cell tower one (hundreds of meters).
   static final double MORE_ACCURATE_FACTOR = 2;
@@ -64,6 +64,72 @@ public class GpsSpoofingDetector
   public boolean isSpoofed()
   {
     return mSpoofed;
+  }
+
+  /**
+   * @return the wrong network points as "lat,lon;lat,lon".
+   */
+  public String serializePhantoms()
+  {
+    final StringBuilder sb = new StringBuilder();
+    for (double[] phantom : mPhantoms)
+    {
+      if (sb.length() > 0)
+        sb.append(';');
+      sb.append(phantom[0]).append(',').append(phantom[1]);
+    }
+    return sb.toString();
+  }
+
+  public void deserializePhantoms(String phantoms)
+  {
+    mPhantoms.clear();
+    for (String point : phantoms.split(";"))
+    {
+      final String[] latLon = point.split(",");
+      if (latLon.length != 2)
+        continue;
+      try
+      {
+        addPhantom(Double.parseDouble(latLon[0]), Double.parseDouble(latLon[1]));
+      }
+      catch (NumberFormatException ignored)
+      {}
+    }
+  }
+
+  /**
+   * @return {lat, lon, timeMs} of the last trusted satellite or network position, null if there is none.
+   */
+  public double[] getLastTrusted()
+  {
+    if (mHasNetwork && (!mHasTrusted || mNetworkTimeMs > mTrustedTimeMs))
+      return new double[] {mNetworkLat, mNetworkLon, mNetworkTimeMs};
+    if (mHasTrusted)
+      return new double[] {mTrustedLat, mTrustedLon, mTrustedTimeMs};
+    return null;
+  }
+
+  /**
+   * Restores the position trusted before the app restarted, as after a restart a spoofed position may come first.
+   * @param timeMs monotonic time of the position, may be negative if it was before the device restart.
+   */
+  public void restoreTrusted(double lat, double lon, long timeMs)
+  {
+    if (!mHasTrusted && !mHasNetwork)
+      setTrusted(lat, lon, timeMs);
+  }
+
+  public int getPhantomsCount()
+  {
+    return mPhantoms.size();
+  }
+
+  private void addPhantom(double lat, double lon)
+  {
+    if (mPhantoms.size() >= MAX_PHANTOMS)
+      mPhantoms.remove(0);
+    mPhantoms.add(new double[] {lat, lon});
   }
 
   /**
@@ -117,8 +183,8 @@ public class GpsSpoofingDetector
         <= networkTolerance(Math.max(accuracyM, refAccuracyM), timeMs - refTimeMs))
     {
       // Back from a jump soon: the jump point is wrong.
-      if (mHasJump && timeMs - mJumpTimeMs < JUMP_CONFIRM_MS && mPhantoms.size() < MAX_PHANTOMS)
-        mPhantoms.add(new double[] {mJumpLat, mJumpLon});
+      if (mHasJump && timeMs - mJumpTimeMs < JUMP_CONFIRM_MS)
+        addPhantom(mJumpLat, mJumpLon);
       mHasJump = false;
       return true;
     }

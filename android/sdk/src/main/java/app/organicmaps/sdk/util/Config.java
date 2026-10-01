@@ -46,6 +46,8 @@ public final class Config
   private static final String KEY_NOGPS_SHIFT_BUTTONS = "NoGpsShiftButtons";
   private static final String KEY_NOGPS_SPEED_SCALE = "NoGpsSpeedScale";
   private static final String KEY_NOGPS_SPEED_TABLE = "NoGpsSpeedTable";
+  private static final String KEY_NOGPS_WRONG_NETWORK_POINTS = "NoGpsWrongNetworkPoints";
+  private static final String KEY_NOGPS_LAST_TRUSTED = "NoGpsLastTrusted";
   private static final String KEY_NOGPS_ESP32_SOURCE = "NoGpsEsp32Source";
   private static final String KEY_NOGPS_ESP32_ADDRESS = "NoGpsEsp32Address";
 
@@ -277,6 +279,34 @@ public final class Config
   public static void setNoGpsSpeedTable(@NonNull String table)
   {
     setString(KEY_NOGPS_SPEED_TABLE, table);
+  }
+
+  /**
+   * @return network points jumping kilometers away from the real position, see GpsSpoofingDetector.
+   */
+  @NonNull
+  public static String getNoGpsWrongNetworkPoints()
+  {
+    return getString(KEY_NOGPS_WRONG_NETWORK_POINTS, "");
+  }
+
+  public static void setNoGpsWrongNetworkPoints(@NonNull String points)
+  {
+    setString(KEY_NOGPS_WRONG_NETWORK_POINTS, points);
+  }
+
+  /**
+   * @return "lat,lon,unixTimeMs" of the last position trusted by GpsSpoofingDetector, empty if there is none.
+   */
+  @NonNull
+  public static String getNoGpsLastTrusted()
+  {
+    return getString(KEY_NOGPS_LAST_TRUSTED, "");
+  }
+
+  public static void setNoGpsLastTrusted(@NonNull String position)
+  {
+    setString(KEY_NOGPS_LAST_TRUSTED, position);
   }
 
   /**

@@ -64,6 +64,35 @@ public class GpsSpoofingDetectorTest
   }
 
   @Test
+  public void remembersWrongPointsAfterRestart()
+  {
+    final GpsSpoofingDetector detector = new GpsSpoofingDetector();
+    assertTrue(detector.onNetworkPosition(KYIV_LAT, KYIV_LON, 90, 0));
+    assertFalse(detector.onNetworkPosition(KYIV_LAT + 70 * STEP, KYIV_LON, 200, 20_000));
+    assertTrue(detector.onNetworkPosition(KYIV_LAT, KYIV_LON, 90, 40_000));
+
+    // After a restart the wrong point is the first and the only one.
+    final GpsSpoofingDetector restarted = new GpsSpoofingDetector();
+    restarted.deserializePhantoms(detector.serializePhantoms());
+    assertEquals(1, restarted.getPhantomsCount());
+    assertFalse(restarted.onNetworkPosition(KYIV_LAT + 70 * STEP, KYIV_LON, 200, 0));
+  }
+
+  @Test
+  public void detectsSpoofingRightAfterRestart()
+  {
+    final GpsSpoofingDetector detector = new GpsSpoofingDetector();
+    assertTrue(detector.onNetworkPosition(KYIV_LAT, KYIV_LON, 90, 0));
+    final double[] trusted = detector.getLastTrusted();
+
+    // Restarted an hour later, the network gives nothing usable and the fused position is still spoofed.
+    final GpsSpoofingDetector restarted = new GpsSpoofingDetector();
+    restarted.restoreTrusted(trusted[0], trusted[1], (long) trusted[2] - 3_600_000);
+    assertFalse(restarted.checkSatellitePosition(LIMA_LAT, LIMA_LON, 0));
+    assertTrue(restarted.isSpoofed());
+  }
+
+  @Test
   public void prefersWiFiToCellTowerAtWrongPoint()
   {
     final GpsSpoofingDetector detector = new GpsSpoofingDetector();
