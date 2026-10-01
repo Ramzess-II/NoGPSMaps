@@ -44,6 +44,22 @@ public final class Esp32Protocol
   }
 
   /**
+   * An event of the box: an error, its end or a calibration.
+   */
+  public static final class Event
+  {
+    public long number;
+    public long timeMs;
+    // E - error, W - warning, I - information.
+    @NonNull
+    public String level = "";
+    @NonNull
+    public String code = "";
+    @NonNull
+    public String text = "";
+  }
+
+  /**
    * A reply to a command.
    */
   public static final class Reply
@@ -153,6 +169,48 @@ public final class Esp32Protocol
     catch (NumberFormatException e)
     {
       return null;
+    }
+  }
+
+  /**
+   * @return the event of an NGE line, null if it is another line or is malformed.
+   */
+  @Nullable
+  public static Event parseEvent(@NonNull String[] fields)
+  {
+    if (fields.length < 7 || !"NGE".equals(fields[0]))
+      return null;
+    try
+    {
+      final Event event = new Event();
+      event.number = Long.parseLong(fields[2]);
+      event.timeMs = Long.parseLong(fields[3]);
+      event.level = fields[4];
+      event.code = fields[5];
+      event.text = fields[6];
+      return event;
+    }
+    catch (NumberFormatException e)
+    {
+      return null;
+    }
+  }
+
+  /**
+   * @return the number of the last event of the box from an NGS line, -1 if it is another line or the box doesn't
+   * tell it.
+   */
+  public static long parseLastEventNumber(@NonNull String[] fields)
+  {
+    if (fields.length < 16 || !"NGS".equals(fields[0]))
+      return -1;
+    try
+    {
+      return Long.parseLong(fields[15]);
+    }
+    catch (NumberFormatException e)
+    {
+      return -1;
     }
   }
 

@@ -19,6 +19,7 @@ import java.net.InetAddress;
 import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.util.Queue;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
@@ -37,6 +38,10 @@ public class Esp32MotionSource implements MotionSource
   private static final int RECEIVE_TIMEOUT_MS = 200;
   // A calibration takes ~3 s on the box.
   private static final long CALIBRATION_TIMEOUT_MS = 10_000;
+  // Events lost over Wi-Fi are asked again not more often than this.
+  private static final long EVENTS_REQUEST_INTERVAL_MS = 2000;
+  // More than the box keeps in its journal.
+  private static final int MAX_LOGGED_EVENTS = 64;
 
   @NonNull
   private final String mAddress;
@@ -68,6 +73,9 @@ public class Esp32MotionSource implements MotionSource
   // The state of the ELM327 adapter of the box from its status, null until it comes.
   @Nullable
   private String mObdState;
+  // The numbers of the events of the box written to the log.
+  private final TreeSet<Long> mLoggedEvents = new TreeSet<>();
+  private long mEventsRequestMs;
   private int mNextCommandId = 1;
   // The calibration command waiting for its reply, 0 if none.
   private int mCalibrationId;
@@ -227,6 +235,13 @@ public class Esp32MotionSource implements MotionSource
       onReply(reply);
       return;
     }
+    final Esp32Protocol.Event event = Esp32Protocol.parseEvent(fields);
+    if (event != null)
+    {
+      onEvent(event);
+      return;
+    }
+    onLastEventNumber(Esp32Protocol.parseLastEventNumber(fields));
     final String imuName = Esp32Protocol.parseImuName(fields);
     if (imuName != null)
       mImuName = imuName.isEmpty() ? null : imuName;
@@ -259,6 +274,52 @@ public class Esp32MotionSource implements MotionSource
     mLastYawMdeg = data.yawMdeg;
   }
 
+  /**
+   * Writes the errors of the box to the log, to find later why the speed or the gyroscope was lost.
+   */
+  private void onEvent(@NonNull Esp32Protocol.Event event)
+  {
+    final long lastNumber = mLoggedEvents.isEmpty() ? -1 : mLoggedEvents.last();
+    // The journal of the box sent on request comes after the new events, so the order doesn't matter.
+    if (!mLoggedEvents.add(event.number))
+      return;
+    if (mLoggedEvents.size() > MAX_LOGGED_EVENTS)
+      mLoggedEvents.pollFirst();
+    final String message = "Box event #" + event.number + " at " + event.timeMs + " ms: " + event.code + " "
+                         + event.text;
+    if ("I".equals(event.level))
+      Logger.i(TAG, message);
+    else
+      Logger.w(TAG, message);
+    if (event.number > lastNumber + 1)
+      requestLostEvents(lastNumber + 1);
+  }
+
+  /**
+   * Asks the journal of the box for the events since the given number, which were lost over Wi-Fi or came before
+   * the connection.
+   */
+  private void requestLostEvents(long fromNumber)
+  {
+    final long now = SystemClock.elapsedRealtime();
+    if (now - mEventsRequestMs < EVENTS_REQUEST_INTERVAL_MS)
+      return;
+    mEventsRequestMs = now;
+    mOutgoing.add(Esp32Protocol.command(mNextCommandId++, "EVENTS," + fromNumber));
+  }
+
+  private void onLastEventNumber(long lastNumber)
+  {
+    if (lastNumber < 0)
+      return;
+    // The box has restarted and counts its events again.
+    if (!mLoggedEvents.isEmpty() && lastNumber < mLoggedEvents.last())
+      mLoggedEvents.clear();
+    final long loggedNumber = mLoggedEvents.isEmpty() ? -1 : mLoggedEvents.last();
+    if (lastNumber > loggedNumber)
+      requestLostEvents(loggedNumber + 1);
+  }
+
   private void onReply(@NonNull Esp32Protocol.Reply reply)
   {
     if (reply.id != mCalibrationId)
@@ -288,10 +349,10 @@ public class Esp32MotionSource implements MotionSource
       return State.CONNECTING;
     if ((mFlags & Esp32Protocol.FLAG_OBD_OK) != 0)
       return State.CONNECTED;
+    // OBD_ABSENT is set also when ELM327 is off in the box, only the status tells one from another.
     if ("DISABLED".equals(mObdState))
       return State.OBD_DISABLED;
-    final boolean noAdapter = (mFlags & Esp32Protocol.FLAG_OBD_ABSENT) != 0 || "NO_ADAPTER".equals(mObdState);
-    return noAdapter ? State.NO_ADAPTER : State.NO_CAR_DATA;
+    return "NO_ADAPTER".equals(mObdState) ? State.NO_ADAPTER : State.NO_CAR_DATA;
   }
 
   @Override

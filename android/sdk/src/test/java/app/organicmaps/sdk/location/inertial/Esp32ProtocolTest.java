@@ -101,4 +101,30 @@ public class Esp32ProtocolTest
     assertEquals("NO_ADAPTER", Esp32Protocol.parseObdState(fields));
     assertNull(Esp32Protocol.parseObdState(Esp32Protocol.parse("$NGA,18,OK*461D")));
   }
+
+  @Test
+  public void parsesLinesOfFirmware()
+  {
+    // Lines from the firmware 0.2.0: ELM327 is off, the box stands still.
+    final Esp32Protocol.Data data = Esp32Protocol.parseData(Esp32Protocol.parse("$NGD,1,1234,845213,-15300,0,0,-1,-1,227*AEEE"));
+    assertNotNull(data);
+    assertEquals(-15300, data.yawMdeg);
+    assertEquals(-1, data.speedKmh);
+    assertEquals(Esp32Protocol.FLAG_IMU_OK | Esp32Protocol.FLAG_BIAS_OK | Esp32Protocol.FLAG_UP_OK
+                     | Esp32Protocol.FLAG_STILL | Esp32Protocol.FLAG_OBD_ABSENT,
+                 data.flags);
+
+    final String[] status = Esp32Protocol.parse("$NGS,1,0.2.0,ICM20602,500,DISABLED,,,331,0,OK,0x12,NONE,0,-386,3*9ED2");
+    assertNotNull(status);
+    assertEquals("ICM20602", Esp32Protocol.parseImuName(status));
+    assertEquals("DISABLED", Esp32Protocol.parseObdState(status));
+    assertEquals(3, Esp32Protocol.parseLastEventNumber(status));
+
+    final Esp32Protocol.Event event = Esp32Protocol.parseEvent(Esp32Protocol.parse("$NGE,1,7,845100,I,CAL_AUTO,-386*AC09"));
+    assertNotNull(event);
+    assertEquals(7, event.number);
+    assertEquals("I", event.level);
+    assertEquals("CAL_AUTO", event.code);
+    assertEquals("-386", event.text);
+  }
 }
