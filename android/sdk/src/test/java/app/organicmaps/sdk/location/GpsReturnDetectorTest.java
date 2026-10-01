@@ -124,6 +124,21 @@ public class GpsReturnDetectorTest
   }
 
   @Test
+  public void trustsGpsFollowingCarInJam()
+  {
+    // The car creeps at ~2 m/s: 120 m in a minute.
+    final GpsReturnDetector detector = new GpsReturnDetector();
+    boolean back = false;
+    for (int i = 0; i <= 60 && !back; i++)
+    {
+      final double lat = LAT + i * STEP * 2 / 11;
+      back = detector.onGpsPosition(lat + 500 * STEP / 11, LON, 10, i * 1000L, lat, LON, 20, 2, 2.2, true);
+      assertTrue(back || i < 50);
+    }
+    assertTrue(back);
+  }
+
+  @Test
   public void distrustsGpsNotFollowingCar()
   {
     // A spoofer moves the position while the car stands or drives slower.

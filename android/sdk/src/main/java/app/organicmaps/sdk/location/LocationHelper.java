@@ -29,6 +29,7 @@ import app.organicmaps.sdk.location.inertial.RoadWalker;
 import app.organicmaps.sdk.location.inertial.Roads;
 import app.organicmaps.sdk.routing.JunctionInfo;
 import app.organicmaps.sdk.routing.RoutingController;
+import app.organicmaps.sdk.routing.RoutingInfo;
 import app.organicmaps.sdk.util.Config;
 import app.organicmaps.sdk.util.NetworkPolicy;
 import app.organicmaps.sdk.util.log.Logger;
@@ -989,6 +990,13 @@ public class LocationHelper implements BaseLocationProvider.Listener
     line.append(" spoofed=").append(mSpoofingDetector.isSpoofed() ? 1 : 0);
     line.append(" paused=").append(isPaused() ? 1 : 0);
     line.append(" nav=").append(RoutingController.get().isNavigating() ? 1 : 0);
+    // The route left tells if the route follows the car: the passed part is cut off by it.
+    if (RoutingController.get().isNavigating())
+    {
+      final RoutingInfo info = Framework.nativeGetRouteFollowingInfo();
+      if (info != null)
+        line.append(" left=").append(info.distToTarget.mDistanceStr).append(info.distToTarget.mUnits);
+    }
     if (mNetworkLocation != null)
     {
       line.append(String.format(Locale.US, " net=%.5f,%.5f acc=%.0f age=%s", mNetworkLocation.getLatitude(),

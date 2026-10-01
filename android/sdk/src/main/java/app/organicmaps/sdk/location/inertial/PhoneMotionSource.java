@@ -41,6 +41,9 @@ public class PhoneMotionSource implements MotionSource, SensorEventListener, Elm
   private InertialNavigator.CalibrationState mCalibrationState = InertialNavigator.CalibrationState.NONE;
   // The car has driven during the calibration asked by the user.
   private boolean mCalibrationMoved;
+  // The last automatic calibration at the current stop, it is used when the next one confirms it.
+  @Nullable
+  private float[] mPreviousAutoBias;
   @Nullable
   private float[] mBias;
   @Nullable
@@ -226,6 +229,7 @@ public class PhoneMotionSource implements MotionSource, SensorEventListener, Elm
     if (!stopped)
     {
       mAutoCalibrator.reset();
+      mPreviousAutoBias = null;
       return;
     }
     mAutoCalibrator.add(gyro, mAccel);
@@ -233,14 +237,22 @@ public class PhoneMotionSource implements MotionSource, SensorEventListener, Elm
     {
       if (mAutoCalibrator.isStill())
         applyAutoCalibration(now - mStoppedSinceMs);
+      else
+        mPreviousAutoBias = null;
       mAutoCalibrator.reset();
     }
   }
 
   private void applyAutoCalibration(long stoppedMs)
   {
-    final float[] bias = mAutoCalibrator.getBias();
     final float[] up = mAutoCalibrator.getUp();
+    final float[] previous = mPreviousAutoBias;
+    mPreviousAutoBias = mAutoCalibrator.getBias();
+    if (previous == null)
+      return;
+    final float[] bias = GyroCalibrator.confirm(previous, mPreviousAutoBias, up);
+    if (bias == null)
+      return;
     final double changeDeg = mBias != null ? GyroCalibrator.yawRateDeg(bias, mBias, up) : 0;
     if (!GyroCalibrator.isBiasChangeAllowed(mBias, bias, up, stoppedMs))
     {
@@ -249,7 +261,8 @@ public class PhoneMotionSource implements MotionSource, SensorEventListener, Elm
     }
     if (Math.abs(changeDeg) > 0.1)
       Logger.i(TAG, "Automatic calibration changes the yaw by " + changeDeg + " deg/s");
-    applyCalibration(mAutoCalibrator);
+    mBias = bias;
+    mUp = up;
     mCalibrationState = InertialNavigator.CalibrationState.DONE;
     Logger.d(TAG, "Automatic calibration at a stop");
   }

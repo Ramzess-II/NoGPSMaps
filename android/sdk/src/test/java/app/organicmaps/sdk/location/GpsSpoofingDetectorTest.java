@@ -31,6 +31,21 @@ public class GpsSpoofingDetectorTest
   }
 
   @Test
+  public void ignoresSingleWrongNetworkPosition()
+  {
+    final GpsSpoofingDetector detector = new GpsSpoofingDetector();
+    detector.onNetworkPosition(KYIV_LAT, KYIV_LON, 70, 0);
+    assertTrue(detector.checkSatellitePosition(KYIV_LAT, KYIV_LON, 1000));
+    // A Wi-Fi point 8 km away.
+    detector.onNetworkPosition(KYIV_LAT + 70 * STEP, KYIV_LON, 200, 1500);
+    detector.onNetworkPosition(KYIV_LAT + 70 * STEP, KYIV_LON, 200, 1500);
+    assertTrue(detector.checkSatellitePosition(KYIV_LAT, KYIV_LON, 2000));
+    // The next one confirms it: GPS is spoofed.
+    detector.onNetworkPosition(KYIV_LAT + 70 * STEP, KYIV_LON, 200, 2500);
+    assertFalse(detector.checkSatellitePosition(KYIV_LAT, KYIV_LON, 3000));
+  }
+
+  @Test
   public void detectsGpsOnAnotherContinent()
   {
     final GpsSpoofingDetector detector = new GpsSpoofingDetector();

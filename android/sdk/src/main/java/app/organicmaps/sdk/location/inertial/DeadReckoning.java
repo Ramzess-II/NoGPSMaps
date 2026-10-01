@@ -17,6 +17,9 @@ public class DeadReckoning
   // roundabout behind the car, where the gyroscope is right and the road is not.
   static final double MAX_HEADING_PULL_DIFF_DEG = 10;
   static final double SNAP_HEADING_WEIGHT = 0.1;
+  // A heading aside from the road the car keeps being snapped to is wrong, e.g. taken from a short piece of a road
+  // at a crossing: a fork or a slow turn takes the car off the road sooner.
+  static final double MAX_ASIDE_ON_ROAD_M = 50;
 
   private static final double EARTH_RADIUS_M = 6_371_000;
 
@@ -27,6 +30,10 @@ public class DeadReckoning
   private double mHeadingDeg;
   private double mSpeedMps;
   private double mDistanceSinceFixM;
+  private double mOdometerM;
+  // The odometer when the heading went aside from the road to the side of the sign, NaN if it is along the road.
+  private double mAsideSinceM = Double.NaN;
+  private double mAsideSign;
 
   public void setPosition(double lat, double lon)
   {
@@ -52,6 +59,7 @@ public class DeadReckoning
   {
     mHasHeading = true;
     mHeadingDeg = normalize(headingDeg);
+    mAsideSinceM = Double.NaN;
   }
 
   public void setSpeed(double speedMps)
@@ -81,6 +89,7 @@ public class DeadReckoning
     mLat = moved[0];
     mLon = moved[1];
     mDistanceSinceFixM += distance;
+    mOdometerM += distance;
   }
 
   /**
@@ -101,6 +110,13 @@ public class DeadReckoning
     mLat = lat;
     mLon = lon;
     if (Math.abs(diff) <= MAX_HEADING_PULL_DIFF_DEG)
+      mAsideSinceM = Double.NaN;
+    else if (Double.isNaN(mAsideSinceM) || Math.signum(diff) != mAsideSign)
+    {
+      mAsideSinceM = mOdometerM;
+      mAsideSign = Math.signum(diff);
+    }
+    if (Double.isNaN(mAsideSinceM) || mOdometerM - mAsideSinceM >= MAX_ASIDE_ON_ROAD_M)
       mHeadingDeg = normalize(mHeadingDeg + diff * SNAP_HEADING_WEIGHT);
     return true;
   }

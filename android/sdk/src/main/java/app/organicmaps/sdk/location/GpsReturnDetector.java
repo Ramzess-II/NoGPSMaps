@@ -22,9 +22,10 @@ public class GpsReturnDetector
   static final double MAX_SPEED_MPS = 180 / 3.6;
   // GPS and the own position are compared with this margin in addition to their errors.
   static final double MIN_TOLERANCE_M = 100;
-  // GPS follows the car when it agrees with the car speed for so long and so far.
+  // GPS follows the car when it agrees with the car speed for so long and so far. The distance tells a moving
+  // car from a standing one, it is driven in a minute in a jam.
   static final long MIN_FOLLOW_MS = 30_000;
-  static final double MIN_FOLLOW_DISTANCE_M = 200;
+  static final double MIN_FOLLOW_DISTANCE_M = 100;
   static final double MAX_SPEED_DIFF_MPS = 2;
   static final double MAX_SPEED_DIFF_RATIO = 0.2;
 

@@ -580,7 +580,7 @@ bool IndexRouter::FindRoadAlong(m2::PointD const & point, m2::PointD const & dir
         continue;
       auto const closest = m2::ParametrizedSegment<m2::PointD>(start, end).ClosestPointTo(point);
       double const distanceM = mercator::DistanceOnEarth(point, closest);
-      if (distanceM > radiusM)
+      if (distanceM > radiusM || (hasDirection && IsRoadBehind(point, closest, direction)))
         continue;
 
       double angle = ang::AngleTo(start, end);

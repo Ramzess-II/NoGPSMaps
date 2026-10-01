@@ -243,6 +243,8 @@ void RoutingSession::Reset()
 void RoutingSession::SetState(SessionState state)
 {
   CHECK_THREAD_CHECKER(m_threadChecker, ());
+  if (m_state != state)
+    LOG(LINFO, ("Routing session state:", m_state, "->", state));
   if (m_changeSessionStateCallback && m_state != state)
     m_changeSessionStateCallback(m_state, state);
 

@@ -19,6 +19,9 @@ public class GyroCalibrator
   // turn: it would rotate the heading all the way until the next stop.
   static final double MAX_BIAS_CHANGE_DEG_S = 0.5;
   static final long LONG_STOP_MS = 15_000;
+  // The last calibration of a stop may catch the car starting off while the car still tells it stands. A calibration
+  // is used when the next one at the same stop agrees with it, the noise of a still phone differs by less.
+  static final double MAX_CALIBRATIONS_DIFF_DEG_S = 0.3;
 
   private final double[] mGyroSum = new double[3];
   private final double[] mGyroSqSum = new double[3];
@@ -102,6 +105,19 @@ public class GyroCalibrator
   {
     return oldBias == null || stoppedMs >= LONG_STOP_MS
         || Math.abs(yawRateDeg(newBias, oldBias, up)) <= MAX_BIAS_CHANGE_DEG_S;
+  }
+
+  /**
+   * @return the mean of two calibrations made one after another at a stop, null if they disagree.
+   */
+  public static float[] confirm(float[] previousBias, float[] bias, float[] up)
+  {
+    if (Math.abs(yawRateDeg(bias, previousBias, up)) > MAX_CALIBRATIONS_DIFF_DEG_S)
+      return null;
+    final float[] mean = new float[3];
+    for (int i = 0; i < 3; i++)
+      mean[i] = (previousBias[i] + bias[i]) / 2;
+    return mean;
   }
 
   private double std(double sum, double sqSum)

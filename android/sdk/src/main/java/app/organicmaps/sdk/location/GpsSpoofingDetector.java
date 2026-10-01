@@ -21,6 +21,9 @@ public class GpsSpoofingDetector
   static final int CONSISTENT_POSITIONS_TO_RECOVER = 5;
   // Without the network only the last trusted position is available, so be more careful.
   static final int CONSISTENT_POSITIONS_TO_RECOVER_WITHOUT_NETWORK = 10;
+  // A network position is sometimes kilometers away, e.g. from a Wi-Fi point that has moved. One contradicting the
+  // satellite position trusted just before is used when the next network position confirms it.
+  static final long TRUSTED_FRESH_MS = 5000;
 
   private static final double EARTH_RADIUS_M = 6_371_000;
 
@@ -37,6 +40,8 @@ public class GpsSpoofingDetector
 
   private boolean mSpoofed;
   private int mConsistentCount;
+  // The time of the last network position contradicting the trusted satellite position, 0 if it agreed.
+  private long mContradictedTimeMs;
 
   public boolean isSpoofed()
   {
@@ -48,6 +53,16 @@ public class GpsSpoofingDetector
    */
   public void onNetworkPosition(double lat, double lon, double accuracyM, long timeMs)
   {
+    final boolean contradicts =
+        !mSpoofed && mHasTrusted && timeMs - mTrustedTimeMs <= TRUSTED_FRESH_MS
+        && distance(lat, lon, mTrustedLat, mTrustedLon) > networkTolerance(accuracyM, timeMs - mTrustedTimeMs);
+    // Several providers report the same network position, it is not a confirmation.
+    if (contradicts && timeMs == mContradictedTimeMs)
+      return;
+    final boolean confirmed = mContradictedTimeMs != 0;
+    mContradictedTimeMs = contradicts ? timeMs : 0;
+    if (contradicts && !confirmed)
+      return;
     mHasNetwork = true;
     mNetworkLat = lat;
     mNetworkLon = lon;
@@ -90,9 +105,8 @@ public class GpsSpoofingDetector
   {
     if (hasFreshNetwork(timeMs))
     {
-      final double tolerance = Math.max(NETWORK_MIN_TOLERANCE_M, NETWORK_ACCURACY_FACTOR * mNetworkAccuracy)
-                             + MAX_SPEED_MPS * Math.abs(timeMs - mNetworkTimeMs) / 1000.0;
-      return distance(lat, lon, mNetworkLat, mNetworkLon) <= tolerance;
+      return distance(lat, lon, mNetworkLat, mNetworkLon)
+          <= networkTolerance(mNetworkAccuracy, timeMs - mNetworkTimeMs);
     }
 
     if (mHasTrusted)
@@ -103,6 +117,12 @@ public class GpsSpoofingDetector
 
     // Nothing to compare with.
     return !mSpoofed;
+  }
+
+  private static double networkTolerance(double networkAccuracyM, long dtMs)
+  {
+    return Math.max(NETWORK_MIN_TOLERANCE_M, NETWORK_ACCURACY_FACTOR * networkAccuracyM)
+         + MAX_SPEED_MPS * Math.abs(dtMs) / 1000.0;
   }
 
   private boolean hasFreshNetwork(long timeMs)

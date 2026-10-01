@@ -2,6 +2,7 @@ package app.organicmaps.sdk.location.inertial;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -116,6 +117,28 @@ public class InertialTest
     assertTrue(dr.snapToRoad(LAT + 0.0001, LON, 0));
     assertEquals(LAT + 0.0001, dr.getLat(), 1e-12);
     assertEquals(25, dr.getHeading(), 0);
+  }
+
+  @Test
+  public void turnsHeadingAsideAlongRoadDrivenLong()
+  {
+    // The heading was taken from a short piece of a road at a crossing, the car keeps going along the road.
+    final DeadReckoning dr = new DeadReckoning();
+    dr.setPosition(LAT, LON);
+    dr.setHeading(18);
+    dr.setSpeed(10);
+    for (int i = 0; i < 4; i++)
+    {
+      dr.advance(1);
+      assertTrue(dr.snapToRoad(dr.getLat(), LON, 0));
+    }
+    assertEquals(18, dr.getHeading(), 0);
+    for (int i = 0; i < 10; i++)
+    {
+      dr.advance(1);
+      assertTrue(dr.snapToRoad(dr.getLat(), LON, 0));
+    }
+    assertTrue(dr.getHeading() < 10);
   }
 
   @Test
@@ -260,5 +283,18 @@ public class InertialTest
     assertFalse(GyroCalibrator.isBiasChangeAllowed(bias, turning, up, 3000));
     // Nobody turns for so long at a stop, the bias was wrong.
     assertTrue(GyroCalibrator.isBiasChangeAllowed(bias, turning, up, GyroCalibrator.LONG_STOP_MS));
+  }
+
+  @Test
+  public void confirmsCalibrationByNextOne()
+  {
+    final float[] up = {0, 0, 1};
+    final float[] bias = {0.01f, 0.02f, 0.003f};
+    final float[] noisy = {0.01f, 0.02f, 0.003f + (float) Math.toRadians(0.2)};
+    // The car starts off while it is told to stand.
+    final float[] starting = {0.01f, 0.02f, 0.003f + (float) Math.toRadians(1.5)};
+    assertEquals(0.1, GyroCalibrator.yawRateDeg(new float[] {0, 0, 0}, GyroCalibrator.confirm(bias, noisy, up), up)
+                          - GyroCalibrator.yawRateDeg(new float[] {0, 0, 0}, bias, up), 1e-3);
+    assertNull(GyroCalibrator.confirm(bias, starting, up));
   }
 }
