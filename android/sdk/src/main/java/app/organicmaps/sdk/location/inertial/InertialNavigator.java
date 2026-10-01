@@ -84,6 +84,11 @@ public class InertialNavigator implements MotionSource.Listener
      * The car has left the roads, it is stopped where it was on a road the last time.
      */
     void onRoadLost();
+
+    /**
+     * The gyroscope turns the car the other way than GPS: the axes of its driver are wrong.
+     */
+    void onTurnsReversed();
   }
 
   @NonNull
@@ -119,6 +124,8 @@ public class InertialNavigator implements MotionSource.Listener
 
   // The speed error estimated from the corrections of the user, used until GPS measures it.
   private final SpeedScale mSpeedScale = new SpeedScale();
+  @NonNull
+  private TurnSignChecker mTurnSignChecker = new TurnSignChecker();
   // The speed errors measured by trusted GPS at different speeds.
   private final SpeedTable mSpeedTable = new SpeedTable();
   // The last GPS position the speed errors were measured by, 0 if there is none.
@@ -165,6 +172,8 @@ public class InertialNavigator implements MotionSource.Listener
     mStarted = true;
     // The speedometer error is the same on every trip.
     mSpeedScale.set(Config.getNoGpsSpeedScale());
+    // The source may have changed: a sensor box with another gyroscope or the phone.
+    mTurnSignChecker = new TurnSignChecker();
     mSource = Config.isNoGpsEsp32Source()
                 ? new Esp32MotionSource(mContext, Config.getNoGpsEsp32Address(), this)
                 : new PhoneMotionSource(mContext, Config.getElm327Address(), this);
@@ -202,7 +211,33 @@ public class InertialNavigator implements MotionSource.Listener
     setRoadPoint(location.getLatitude(), location.getLongitude());
     mTurning = false;
     if (hasGoodBearing(location))
+    {
+      checkTurnSign(location);
       setHeading(location.getBearing(), HeadingSource.GPS);
+    }
+    else
+    {
+      mTurnSignChecker.onNoGpsBearing();
+    }
+  }
+
+  private void checkTurnSign(@NonNull Location location)
+  {
+    final TurnSignChecker.Result result =
+        mTurnSignChecker.onGpsBearing(location.getBearing(), location.getElapsedRealtimeNanos() / 1_000_000);
+    if (result == null)
+      return;
+    final String turns = "same turns = " + mTurnSignChecker.getSameTurns()
+                       + ", opposite turns = " + mTurnSignChecker.getOppositeTurns();
+    if (result == TurnSignChecker.Result.REVERSED)
+    {
+      Logger.e(TAG, "The gyroscope turns the car the other way than GPS, " + turns);
+      mListener.onTurnsReversed();
+    }
+    else
+    {
+      Logger.i(TAG, "The gyroscope turns the car as GPS does, " + turns);
+    }
   }
 
   private static boolean hasGoodBearing(@NonNull Location location)
@@ -542,6 +577,7 @@ public class InertialNavigator implements MotionSource.Listener
       if (!stopped)
         trackTurn(yawDeltaDeg, dt, timestampNs);
       mDeadReckoning.rotate(yawDeltaDeg);
+      mTurnSignChecker.onGyro(yawDeltaDeg);
     }
     if (speedFresh && !stopped)
     {

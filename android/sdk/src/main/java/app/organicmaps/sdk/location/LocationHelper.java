@@ -142,6 +142,11 @@ public class LocationHelper implements BaseLocationProvider.Listener
      * The inertial navigation has left the roads: the car is stopped on the road, the user should mark it.
      */
     default void onRoadLost() {}
+
+    /**
+     * The gyroscope turns the car the other way than GPS: the inertial navigation would turn it wrong.
+     */
+    default void onTurnsReversed() {}
   }
 
   public interface GpsSpoofingListener
@@ -1115,6 +1120,13 @@ public class LocationHelper implements BaseLocationProvider.Listener
         {
           for (ManualModeListener l : mManualModeListeners)
             l.onRoadLost();
+        }
+
+        @Override
+        public void onTurnsReversed()
+        {
+          for (ManualModeListener l : mManualModeListeners)
+            l.onTurnsReversed();
         }
       };
       mInertial = new InertialNavigator(mContext, listener, roads(true /* matchRoute */));
