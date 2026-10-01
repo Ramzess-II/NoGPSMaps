@@ -157,7 +157,7 @@
 
 /********** Other translations **********/
 
-"share_bookmarks_email_body" = "Hej!\n\nVedhæftet er mine bogmærker; åbn dem venligst i Organic Maps. Hvis du ikke har den installeret, kan du downloade den her: https://omaps.app/get?kmz\n \nGod rejse med Organic Maps!";
+"share_bookmarks_email_body" = "Hej!\n\nVedhæftet er mine bogmærker; åbn dem venligst i NoGPS Maps. Hvis du ikke har den installeret, kan du downloade den her: https://github.com/Ramzess-II/NoGPSMaps\n \nGod rejse med NoGPS Maps!";
 
 /* message title of loading file */
 "load_kmz_title" = "Indlæser bogmærker";
@@ -178,10 +178,10 @@
 "share_my_position" = "Jeg er her på Organic Maps";
 
 /* Email subject when sharing a place. %1$@ is the place name or address. */
-"share_place_subject" = "%1$@ på Organic Maps";
+"share_place_subject" = "%1$@ på NoGPS Maps";
 
 /* Email subject when sharing a place that has no name or address. */
-"share_place_subject_default" = "Et sted på Organic Maps";
+"share_place_subject_default" = "Et sted på NoGPS Maps";
 
 /* Shared email link text; opens the shared place in Organic Maps or in a web browser. */
 "share_open_in_om_or_browser" = "Åbn i Organic Maps eller i en browser";
@@ -591,7 +591,7 @@
 /* To indicate the operator of ATMs, bicycle rentals, electric vehicle charging stations… */
 "operator" = "Operatør: %@";
 "editor_category_unsuitable_title" = "Kan du ikke finde en passende kategori?";
-"editor_category_unsuitable_text" = "Organic Maps giver kun mulighed for at tilføje simple punktkategorier, dvs. ingen byer, veje, søer, bygningsomrids osv. Tilføj sådanne kategorier direkte til <a href=\"https://www.openstreetmap.org\">OpenStreetMap.org</a>. Se vores <a href=\"https://organicmaps.app/faq/editing/advanced-map-editing\">guide</a> for detaljerede trin for trin-instruktioner.";
+"editor_category_unsuitable_text" = "NoGPS Maps giver kun mulighed for at tilføje simple punktkategorier, dvs. ingen byer, veje, søer, bygningsomrids osv. Tilføj sådanne kategorier direkte til <a href=\"https://www.openstreetmap.org\">OpenStreetMap.org</a>. Se vores <a href=\"https://organicmaps.app/faq/editing/advanced-map-editing\">guide</a> for detaljerede trin for trin-instruktioner.";
 "downloader_no_downloaded_maps_title" = "Du har ikke downloadet nogen kort";
 "downloader_no_downloaded_maps_message" = "Download kort for at søge og navigere offline.";
 "current_location_unknown_error_title" = "Aktuel placering er ukendt.";
@@ -998,10 +998,10 @@
 "app_tip_09" = "Vores hovedmål er at bygge hurtige, privatlivsfokuserede, brugervenlige kort, som du vil elske.";
 
 /* Text on the Android Auto or CarPlay placeholder screen that maps are displayed on the phone screen */
-"car_used_on_the_phone_screen" = "Du bruger nu Organic Maps på telefonens skærm";
+"car_used_on_the_phone_screen" = "Du bruger nu NoGPS Maps på telefonens skærm";
 
 /* Text on the phone placeholder screen that maps are displayed on the car screen */
-"car_used_on_the_car_screen" = "Du bruger nu Organic Maps på bilens skærm";
+"car_used_on_the_car_screen" = "Du bruger nu NoGPS Maps på bilens skærm";
 
 /* Displayed on the phone screen. Button to display maps on the phone screen instead of a car */
 "car_continue_on_the_phone" = "Fortsæt på telefonen";

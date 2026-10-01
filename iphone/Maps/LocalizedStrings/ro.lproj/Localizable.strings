@@ -157,7 +157,7 @@
 
 /********** Other translations **********/
 
-"share_bookmarks_email_body" = "Bună!\n\nȚi-am atașat locurile mele preferate din aplicația Organic Maps. Deschide-le dacă ai instalată Organic Maps. Dacă nu, o poți descărca pentru iOS sau Android de aici: https://organicmaps.app/";
+"share_bookmarks_email_body" = "Bună!\n\nȚi-am atașat locurile mele preferate din aplicația NoGPS Maps. Deschide-le dacă ai instalată NoGPS Maps. Dacă nu, o poți descărca pentru iOS sau Android de aici: https://organicmaps.app/";
 
 /* message title of loading file */
 "load_kmz_title" = "Se încarcă locurile preferate";
@@ -178,10 +178,10 @@
 "share_my_position" = "Sunt aici pe Organic Maps";
 
 /* Email subject when sharing a place. %1$@ is the place name or address. */
-"share_place_subject" = "%1$@ pe Organic Maps";
+"share_place_subject" = "%1$@ pe NoGPS Maps";
 
 /* Email subject when sharing a place that has no name or address. */
-"share_place_subject_default" = "Un loc pe Organic Maps";
+"share_place_subject_default" = "Un loc pe NoGPS Maps";
 
 /* Shared email link text; opens the shared place in Organic Maps or in a web browser. */
 "share_open_in_om_or_browser" = "Deschide în Organic Maps sau într-un browser";
@@ -591,7 +591,7 @@
 /* To indicate the operator of ATMs, bicycle rentals, electric vehicle charging stations… */
 "operator" = "Operator: %@";
 "editor_category_unsuitable_title" = "Nu găsiți o categorie potrivită?";
-"editor_category_unsuitable_text" = "Organic Maps permite adăugarea doar a unor categorii de puncte simple, ceea ce înseamnă că nu există orașe, drumuri, lacuri, contururi de clădiri, etc. Vă rugăm să adăugați astfel de categorii direct la <a href=\"https://www.openstreetmap.org\">OpenStreetMap.org</a>. Consultați <a href=\"https://organicmaps.app/faq/editing/advanced-map-editing\">ghidul nostru</a> pentru instrucțiuni detaliate pas cu pas.";
+"editor_category_unsuitable_text" = "NoGPS Maps permite adăugarea doar a unor categorii de puncte simple, ceea ce înseamnă că nu există orașe, drumuri, lacuri, contururi de clădiri, etc. Vă rugăm să adăugați astfel de categorii direct la <a href=\"https://www.openstreetmap.org\">OpenStreetMap.org</a>. Consultați <a href=\"https://organicmaps.app/faq/editing/advanced-map-editing\">ghidul nostru</a> pentru instrucțiuni detaliate pas cu pas.";
 "downloader_no_downloaded_maps_title" = "Nu ai descărcat nicio hartă";
 "downloader_no_downloaded_maps_message" = "Descarcă hărți pentru a căuta un loc și a naviga fără conectare la internet.";
 "current_location_unknown_error_title" = "Poziția actuală este necunoscută.";
@@ -998,10 +998,10 @@
 "app_tip_09" = "Scopul nostru principal este să construim hărți rapide, axate pe confidențialitate și ușor de utilizat, care să vă placă.";
 
 /* Text on the Android Auto or CarPlay placeholder screen that maps are displayed on the phone screen */
-"car_used_on_the_phone_screen" = "Acum utilizați Organic Maps pe ecranul telefonului";
+"car_used_on_the_phone_screen" = "Acum utilizați NoGPS Maps pe ecranul telefonului";
 
 /* Text on the phone placeholder screen that maps are displayed on the car screen */
-"car_used_on_the_car_screen" = "Acum utilizați Organic Maps pe ecranul mașinii";
+"car_used_on_the_car_screen" = "Acum utilizați NoGPS Maps pe ecranul mașinii";
 
 /* Displayed on the phone screen. Button to display maps on the phone screen instead of a car */
 "car_continue_on_the_phone" = "Continuați în telefon";

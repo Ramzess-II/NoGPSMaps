@@ -157,7 +157,7 @@
 
 /********** Other translations **********/
 
-"share_bookmarks_email_body" = "안녕하세요!\n\n제 북마크를 첨부했습니다. Organic Maps에서 열어주세요. 설치되어 있지 않다면 여기에서 다운로드할 수 있습니다: https://omaps.app/get?kmz\n\nOrganic Maps와 함께 즐거운 여행 되세요!";
+"share_bookmarks_email_body" = "안녕하세요!\n\n제 북마크를 첨부했습니다. NoGPS Maps에서 열어주세요. 설치되어 있지 않다면 여기에서 다운로드할 수 있습니다: https://github.com/Ramzess-II/NoGPSMaps\n\nNoGPS Maps와 함께 즐거운 여행 되세요!";
 
 /* message title of loading file */
 "load_kmz_title" = "즐겨찾기 로드";
@@ -178,10 +178,10 @@
 "share_my_position" = "Organic Maps에서 여기에 있습니다";
 
 /* Email subject when sharing a place. %1$@ is the place name or address. */
-"share_place_subject" = "%1$@ - Organic Maps";
+"share_place_subject" = "%1$@ - NoGPS Maps";
 
 /* Email subject when sharing a place that has no name or address. */
-"share_place_subject_default" = "Organic Maps의 장소";
+"share_place_subject_default" = "NoGPS Maps의 장소";
 
 /* Shared email link text; opens the shared place in Organic Maps or in a web browser. */
 "share_open_in_om_or_browser" = "Organic Maps 또는 브라우저에서 열기";
@@ -591,7 +591,7 @@
 /* To indicate the operator of ATMs, bicycle rentals, electric vehicle charging stations… */
 "operator" = "연산자: %@";
 "editor_category_unsuitable_title" = "적합한 카테고리를 찾을 수 없나요?";
-"editor_category_unsuitable_text" = "Organic Maps 단순한 지점 카테고리만 추가할 수 있습니다. 즉, 도시, 도로, 호수, 건물 윤곽선 등은 추가할 수 없습니다. 이러한 카테고리는 <a href=\"https://www.openstreetmap.org\">OpenStreetMap.org</a>에 직접 추가해 주십시오. 자세한 단계별 안내는 <a href=\"https://organicmaps.app/faq/editing/advanced-map-editing\">가이드를</a> 확인해 주세요.";
+"editor_category_unsuitable_text" = "NoGPS Maps 단순한 지점 카테고리만 추가할 수 있습니다. 즉, 도시, 도로, 호수, 건물 윤곽선 등은 추가할 수 없습니다. 이러한 카테고리는 <a href=\"https://www.openstreetmap.org\">OpenStreetMap.org</a>에 직접 추가해 주십시오. 자세한 단계별 안내는 <a href=\"https://organicmaps.app/faq/editing/advanced-map-editing\">가이드를</a> 확인해 주세요.";
 "downloader_no_downloaded_maps_title" = "지도를 다운로드하지 않았습니다";
 "downloader_no_downloaded_maps_message" = "오프라인으로 위치를 검색하려면 지도를 다운로드하세요.";
 "current_location_unknown_error_title" = "현재 위치를 알 수 없습니다.";
@@ -998,10 +998,10 @@
 "app_tip_09" = "우리의 주요 목표는 귀하가 좋아할 빠르고 개인 정보 보호에 중점을 두고 사용하기 쉬운 지도를 구축하는 것입니다.";
 
 /* Text on the Android Auto or CarPlay placeholder screen that maps are displayed on the phone screen */
-"car_used_on_the_phone_screen" = "현재 휴대폰 화면에서 Organic Maps을 이용 중입니다";
+"car_used_on_the_phone_screen" = "현재 휴대폰 화면에서 NoGPS Maps을 이용 중입니다";
 
 /* Text on the phone placeholder screen that maps are displayed on the car screen */
-"car_used_on_the_car_screen" = "현재 차량 화면에서 Organic Maps을 이용 중입니다";
+"car_used_on_the_car_screen" = "현재 차량 화면에서 NoGPS Maps을 이용 중입니다";
 
 /* Displayed on the phone screen. Button to display maps on the phone screen instead of a car */
 "car_continue_on_the_phone" = "전화기에서 계속";

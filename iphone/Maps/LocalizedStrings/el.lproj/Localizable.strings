@@ -157,7 +157,7 @@
 
 /********** Other translations **********/
 
-"share_bookmarks_email_body" = "Γειa!\n\nΣου επισυνάπτω τα αγαπημένα μου. Παρακαλώ άνοιξέ τα με το Organic Maps. Αν δεν το έχεις εγκαταστήσει, μπορείς να το κατεβάσεις από εδώ: https://omaps.app/get?kmz\n\nΚαλή διασκέδαση ταξιδεύοντας με το Organic Maps!";
+"share_bookmarks_email_body" = "Γειa!\n\nΣου επισυνάπτω τα αγαπημένα μου. Παρακαλώ άνοιξέ τα με το NoGPS Maps. Αν δεν το έχεις εγκαταστήσει, μπορείς να το κατεβάσεις από εδώ: https://github.com/Ramzess-II/NoGPSMaps\n\nΚαλή διασκέδαση ταξιδεύοντας με το NoGPS Maps!";
 
 /* message title of loading file */
 "load_kmz_title" = "Φορτώνονται τα αγαπημένα";
@@ -178,10 +178,10 @@
 "share_my_position" = "Είμαι εδώ στο Organic Maps";
 
 /* Email subject when sharing a place. %1$@ is the place name or address. */
-"share_place_subject" = "%1$@ στο Organic Maps";
+"share_place_subject" = "%1$@ στο NoGPS Maps";
 
 /* Email subject when sharing a place that has no name or address. */
-"share_place_subject_default" = "Ένα μέρος στο Organic Maps";
+"share_place_subject_default" = "Ένα μέρος στο NoGPS Maps";
 
 /* Shared email link text; opens the shared place in Organic Maps or in a web browser. */
 "share_open_in_om_or_browser" = "Άνοιγμα στο Organic Maps ή σε πρόγραμμα περιήγησης";
@@ -591,7 +591,7 @@
 /* To indicate the operator of ATMs, bicycle rentals, electric vehicle charging stations… */
 "operator" = "Χειριστής: %@";
 "editor_category_unsuitable_title" = "Δεν μπορείτε να βρείτε την κατάλληλη κατηγορία;";
-"editor_category_unsuitable_text" = "Organic Maps επιτρέπει την προσθήκη μόνο απλών κατηγοριών σημείων, δηλαδή όχι πόλεων, δρόμων, λιμνών, περιγραμμάτων κτιρίων κ.λπ. Παρακαλούμε προσθέστε τέτοιες κατηγορίες απευθείας στο <a href=\"https://www.openstreetmap.org\">OpenStreetMap.org</a>. Ανατρέξτε <a href=\"https://organicmaps.app/faq/editing/advanced-map-editing\">στον οδηγό</a> μας για λεπτομερείς οδηγίες βήμα προς βήμα.";
+"editor_category_unsuitable_text" = "NoGPS Maps επιτρέπει την προσθήκη μόνο απλών κατηγοριών σημείων, δηλαδή όχι πόλεων, δρόμων, λιμνών, περιγραμμάτων κτιρίων κ.λπ. Παρακαλούμε προσθέστε τέτοιες κατηγορίες απευθείας στο <a href=\"https://www.openstreetmap.org\">OpenStreetMap.org</a>. Ανατρέξτε <a href=\"https://organicmaps.app/faq/editing/advanced-map-editing\">στον οδηγό</a> μας για λεπτομερείς οδηγίες βήμα προς βήμα.";
 "downloader_no_downloaded_maps_title" = "Δεν έχετε κατεβάσει χάρτες";
 "downloader_no_downloaded_maps_message" = "Κατεβάστε χάρτες για να αναζητήσετε μια τοποθεσία και να χρησιμοποιήσετε την πλοήγησης χωρίς σύνδεση.";
 "current_location_unknown_error_title" = "Η τρέχουσα τοποθεσία είναι άγνωστη.";
@@ -998,10 +998,10 @@
 "app_tip_09" = "Ο κύριος στόχος μας είναι να δημιουργήσουμε γρήγορους, εύχρηστους και με σεβασμό στην ιδιωτικότητα χάρτες που θα λατρέψετε.";
 
 /* Text on the Android Auto or CarPlay placeholder screen that maps are displayed on the phone screen */
-"car_used_on_the_phone_screen" = "Αυτή τη στιγμή το Organic Maps βρίσκεται στην οθόνη του κινητού";
+"car_used_on_the_phone_screen" = "Αυτή τη στιγμή το NoGPS Maps βρίσκεται στην οθόνη του κινητού";
 
 /* Text on the phone placeholder screen that maps are displayed on the car screen */
-"car_used_on_the_car_screen" = "Αυτή τη στιγμή το Organic Maps βρίσκεται στην οθόνη του αυτοκινήτου";
+"car_used_on_the_car_screen" = "Αυτή τη στιγμή το NoGPS Maps βρίσκεται στην οθόνη του αυτοκινήτου";
 
 /* Displayed on the phone screen. Button to display maps on the phone screen instead of a car */
 "car_continue_on_the_phone" = "Συνέχεια στο κινητό";

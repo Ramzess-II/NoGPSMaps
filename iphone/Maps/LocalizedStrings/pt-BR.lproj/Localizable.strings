@@ -157,7 +157,7 @@
 
 /********** Other translations **********/
 
-"share_bookmarks_email_body" = "Olá!\n\nSegue em anexo meus favoritos do app Organic Maps. Se tiver instalado o Organic Maps, pode abri-los agora. Caso não tenha, baixe o app para o seu dispositivo iOS ou Android via o link https://omaps.app/get?kmz\n\nDisfrute viajar com o Organic Maps!";
+"share_bookmarks_email_body" = "Olá!\n\nSegue em anexo meus favoritos do app NoGPS Maps. Se tiver instalado o NoGPS Maps, pode abri-los agora. Caso não tenha, baixe o app para o seu dispositivo iOS ou Android via o link https://github.com/Ramzess-II/NoGPSMaps\n\nDisfrute viajar com o NoGPS Maps!";
 
 /* message title of loading file */
 "load_kmz_title" = "Carregando favoritos";
@@ -178,10 +178,10 @@
 "share_my_position" = "Estou aqui no Organic Maps";
 
 /* Email subject when sharing a place. %1$@ is the place name or address. */
-"share_place_subject" = "%1$@ no Organic Maps";
+"share_place_subject" = "%1$@ no NoGPS Maps";
 
 /* Email subject when sharing a place that has no name or address. */
-"share_place_subject_default" = "Um lugar no Organic Maps";
+"share_place_subject_default" = "Um lugar no NoGPS Maps";
 
 /* Shared email link text; opens the shared place in Organic Maps or in a web browser. */
 "share_open_in_om_or_browser" = "Abrir no Organic Maps ou em um navegador";
@@ -591,7 +591,7 @@
 /* To indicate the operator of ATMs, bicycle rentals, electric vehicle charging stations… */
 "operator" = "Operador: %@";
 "editor_category_unsuitable_title" = "Você não encontra uma categoria adequada?";
-"editor_category_unsuitable_text" = "O Organic Maps permite que você adicione apenas categorias de pontos simples, o que significa que não há cidades, estradas, lagos, contornos de edifícios etc. Por favor, adicione essas categorias diretamente no <a href=\"https://www.openstreetmap.org\">OpenStreetMap.org</a>. Consulte nosso <a href=\"https://organicmaps.app/faq/editing/advanced-map-editing\">guia</a> para obter instruções detalhadas passo a passo.";
+"editor_category_unsuitable_text" = "O NoGPS Maps permite que você adicione apenas categorias de pontos simples, o que significa que não há cidades, estradas, lagos, contornos de edifícios etc. Por favor, adicione essas categorias diretamente no <a href=\"https://www.openstreetmap.org\">OpenStreetMap.org</a>. Consulte nosso <a href=\"https://organicmaps.app/faq/editing/advanced-map-editing\">guia</a> para obter instruções detalhadas passo a passo.";
 "downloader_no_downloaded_maps_title" = "Você não fez o download de nenhum mapa";
 "downloader_no_downloaded_maps_message" = "Baixe mapas para pesquisar locais e usar navegação offline.";
 "current_location_unknown_error_title" = "A localização atual é desconhecida.";
@@ -998,10 +998,10 @@
 "app_tip_09" = "Nosso principal objetivo é construir mapas rápidos, focados na privacidade e fáceis de usar que você vai adorar.";
 
 /* Text on the Android Auto or CarPlay placeholder screen that maps are displayed on the phone screen */
-"car_used_on_the_phone_screen" = "Agora você está usando o Organic Maps na tela do telefone";
+"car_used_on_the_phone_screen" = "Agora você está usando o NoGPS Maps na tela do telefone";
 
 /* Text on the phone placeholder screen that maps are displayed on the car screen */
-"car_used_on_the_car_screen" = "Agora você está usando o Organic Maps na tela do carro";
+"car_used_on_the_car_screen" = "Agora você está usando o NoGPS Maps na tela do carro";
 
 /* Displayed on the phone screen. Button to display maps on the phone screen instead of a car */
 "car_continue_on_the_phone" = "Continuar no celular";

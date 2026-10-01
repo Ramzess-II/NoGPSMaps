@@ -157,7 +157,7 @@
 
 /********** Other translations **********/
 
-"share_bookmarks_email_body" = "Вітаю!\n\nУ далучаным файле мае закладкі, яны адкрываюцца праграмай Organic Maps. Калі такая праграма ў вас не ўсталявана, яе можна спампаваць тут: https://omaps.app/get?kmz\n\nПрыемных падарожжаў з Organic Maps!";
+"share_bookmarks_email_body" = "Вітаю!\n\nУ далучаным файле мае закладкі, яны адкрываюцца праграмай NoGPS Maps. Калі такая праграма ў вас не ўсталявана, яе можна спампаваць тут: https://github.com/Ramzess-II/NoGPSMaps\n\nПрыемных падарожжаў з NoGPS Maps!";
 
 /* message title of loading file */
 "load_kmz_title" = "Загрузка закладак";
@@ -178,10 +178,10 @@
 "share_my_position" = "Я тут на мапе Organic Maps";
 
 /* Email subject when sharing a place. %1$@ is the place name or address. */
-"share_place_subject" = "%1$@ у Organic Maps";
+"share_place_subject" = "%1$@ у NoGPS Maps";
 
 /* Email subject when sharing a place that has no name or address. */
-"share_place_subject_default" = "Месца ў Organic Maps";
+"share_place_subject_default" = "Месца ў NoGPS Maps";
 
 /* Shared email link text; opens the shared place in Organic Maps or in a web browser. */
 "share_open_in_om_or_browser" = "Адкрыць у Organic Maps або браўзеры";
@@ -591,7 +591,7 @@
 /* To indicate the operator of ATMs, bicycle rentals, electric vehicle charging stations… */
 "operator" = "Аператар: %@";
 "editor_category_unsuitable_title" = "Няма прыдатнай катэгорыі?";
-"editor_category_unsuitable_text" = "Organic Maps дазваляе дадаваць на мапу толькі простыя тыпы аб'ектаў, гэта значыць без гарадоў, дарог, азёр і будынкаў. Калі ласка, дадавайце такія катэгорыі на сайце <a href=\"https://www.openstreetmap.org/\">OpenStreetMap.org </a>. Мы таксама рэкамендуем азнаёміцца з <a href=\"https://organicmaps.app/faq/editing/advanced-map-editing/\">падрабязнымі інструкцыямі і іншымі праграмамі для рэдагавання мапы</a>.";
+"editor_category_unsuitable_text" = "NoGPS Maps дазваляе дадаваць на мапу толькі простыя тыпы аб'ектаў, гэта значыць без гарадоў, дарог, азёр і будынкаў. Калі ласка, дадавайце такія катэгорыі на сайце <a href=\"https://www.openstreetmap.org/\">OpenStreetMap.org </a>. Мы таксама рэкамендуем азнаёміцца з <a href=\"https://organicmaps.app/faq/editing/advanced-map-editing/\">падрабязнымі інструкцыямі і іншымі праграмамі для рэдагавання мапы</a>.";
 "downloader_no_downloaded_maps_title" = "Вы не спампавалі ніводнай мапы";
 "downloader_no_downloaded_maps_message" = "Спампуйце мапы, каб шукаць месцы і карыстацца навігацыяй без інтэрнэту.";
 "current_location_unknown_error_title" = "Месцазнаходжанне невядома.";
@@ -998,10 +998,10 @@
 "app_tip_09" = "Наша галоўная мэта - ствараць хуткія, арыентаваныя на прыватнасць і простыя ў выкарыстанні мапы, якія вам спадабаюцца.";
 
 /* Text on the Android Auto or CarPlay placeholder screen that maps are displayed on the phone screen */
-"car_used_on_the_phone_screen" = "Вы выкарыстоўваеце Organic Maps на экране тэлефона";
+"car_used_on_the_phone_screen" = "Вы выкарыстоўваеце NoGPS Maps на экране тэлефона";
 
 /* Text on the phone placeholder screen that maps are displayed on the car screen */
-"car_used_on_the_car_screen" = "Вы выкарыстоўваеце Organic Maps на экране аўтамабіля";
+"car_used_on_the_car_screen" = "Вы выкарыстоўваеце NoGPS Maps на экране аўтамабіля";
 
 /* Displayed on the phone screen. Button to display maps on the phone screen instead of a car */
 "car_continue_on_the_phone" = "Працягнуць на тэлефоне";

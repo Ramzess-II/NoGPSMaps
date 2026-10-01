@@ -157,7 +157,7 @@
 
 /********** Other translations **********/
 
-"share_bookmarks_email_body" = "Xin chào!\n\nĐính kèm là các dấu trang của tôi; vui lòng mở chúng trong Organic Maps. Nếu bạn chưa cài đặt ứng dụng này, bạn có thể tải xuống tại đây: https://omaps.app/get?kmz\n\nChúc bạn có những chuyến đi thú vị cùng Organic Maps!";
+"share_bookmarks_email_body" = "Xin chào!\n\nĐính kèm là các dấu trang của tôi; vui lòng mở chúng trong NoGPS Maps. Nếu bạn chưa cài đặt ứng dụng này, bạn có thể tải xuống tại đây: https://github.com/Ramzess-II/NoGPSMaps\n\nChúc bạn có những chuyến đi thú vị cùng NoGPS Maps!";
 
 /* message title of loading file */
 "load_kmz_title" = "Tải Điểm đánh dấu";
@@ -178,10 +178,10 @@
 "share_my_position" = "Tôi đang ở đây trên Organic Maps";
 
 /* Email subject when sharing a place. %1$@ is the place name or address. */
-"share_place_subject" = "%1$@ trên Organic Maps";
+"share_place_subject" = "%1$@ trên NoGPS Maps";
 
 /* Email subject when sharing a place that has no name or address. */
-"share_place_subject_default" = "Một địa điểm trên Organic Maps";
+"share_place_subject_default" = "Một địa điểm trên NoGPS Maps";
 
 /* Shared email link text; opens the shared place in Organic Maps or in a web browser. */
 "share_open_in_om_or_browser" = "Mở trong Organic Maps hoặc trình duyệt";
@@ -591,7 +591,7 @@
 /* To indicate the operator of ATMs, bicycle rentals, electric vehicle charging stations… */
 "operator" = "Toán tử: %@";
 "editor_category_unsuitable_title" = "Không thể tìm thấy một danh mục phù hợp?";
-"editor_category_unsuitable_text" = "Organic Maps chỉ cho phép thêm các loại điểm đơn giản, tức là không bao gồm các thị trấn, đường, hồ, đường viền tòa nhà, v.v. Vui lòng thêm các loại này trực tiếp vào <a href=\"https://www.openstreetmap.org\">OpenStreetMap.org</a>. Hãy tham khảo <a href=\"https://organicmaps.app/faq/editing/advanced-map-editing\">hướng dẫn</a> của chúng tôi để biết các bước thực hiện chi tiết.";
+"editor_category_unsuitable_text" = "NoGPS Maps chỉ cho phép thêm các loại điểm đơn giản, tức là không bao gồm các thị trấn, đường, hồ, đường viền tòa nhà, v.v. Vui lòng thêm các loại này trực tiếp vào <a href=\"https://www.openstreetmap.org\">OpenStreetMap.org</a>. Hãy tham khảo <a href=\"https://organicmaps.app/faq/editing/advanced-map-editing\">hướng dẫn</a> của chúng tôi để biết các bước thực hiện chi tiết.";
 "downloader_no_downloaded_maps_title" = "Bạn chưa tải về bất kỳ bản đồ nào";
 "downloader_no_downloaded_maps_message" = "Tải về bản đồ để tìm địa điểm và định hướng ngoại tuyến.";
 "current_location_unknown_error_title" = "Chưa biết địa điểm hiện tại.";
@@ -998,10 +998,10 @@
 "app_tip_09" = "Mục tiêu chính của chúng tôi là xây dựng các bản đồ nhanh chóng, tập trung vào quyền riêng tư, dễ sử dụng mà bạn sẽ yêu thích.";
 
 /* Text on the Android Auto or CarPlay placeholder screen that maps are displayed on the phone screen */
-"car_used_on_the_phone_screen" = "Bạn hiện đang sử dụng Organic Maps trên màn hình điện thoại";
+"car_used_on_the_phone_screen" = "Bạn hiện đang sử dụng NoGPS Maps trên màn hình điện thoại";
 
 /* Text on the phone placeholder screen that maps are displayed on the car screen */
-"car_used_on_the_car_screen" = "Bạn hiện đang sử dụng Organic Maps trên màn hình xe hơi";
+"car_used_on_the_car_screen" = "Bạn hiện đang sử dụng NoGPS Maps trên màn hình xe hơi";
 
 /* Displayed on the phone screen. Button to display maps on the phone screen instead of a car */
 "car_continue_on_the_phone" = "Tiếp tục trên điện thoại";

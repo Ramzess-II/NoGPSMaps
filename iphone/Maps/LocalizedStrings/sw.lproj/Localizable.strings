@@ -157,7 +157,7 @@
 
 /********** Other translations **********/
 
-"share_bookmarks_email_body" = "Habari!\n\nNimeambatanisha alamisho zangu; tafadhali zifungue kwenye Organic Maps. Ikiwa haujaweka, unaweza kupakua hapa: https://omaps.app/get?kmz\n\nFurahia kusafiri na Organic Maps!";
+"share_bookmarks_email_body" = "Habari!\n\nNimeambatanisha alamisho zangu; tafadhali zifungue kwenye NoGPS Maps. Ikiwa haujaweka, unaweza kupakua hapa: https://github.com/Ramzess-II/NoGPSMaps\n\nFurahia kusafiri na NoGPS Maps!";
 
 /* message title of loading file */
 "load_kmz_title" = "Inapakia alamisho";
@@ -178,10 +178,10 @@
 "share_my_position" = "Niko hapa kwenye Organic Maps";
 
 /* Email subject when sharing a place. %1$@ is the place name or address. */
-"share_place_subject" = "%1$@ kwenye Organic Maps";
+"share_place_subject" = "%1$@ kwenye NoGPS Maps";
 
 /* Email subject when sharing a place that has no name or address. */
-"share_place_subject_default" = "Mahali kwenye Organic Maps";
+"share_place_subject_default" = "Mahali kwenye NoGPS Maps";
 
 /* Shared email link text; opens the shared place in Organic Maps or in a web browser. */
 "share_open_in_om_or_browser" = "Fungua kwenye Organic Maps au kwenye kivinjari";
@@ -591,7 +591,7 @@
 /* To indicate the operator of ATMs, bicycle rentals, electric vehicle charging stations… */
 "operator" = "Mwendeshaji: %@";
 "editor_category_unsuitable_title" = "Je, huwezi kupata aina inayofaa?";
-"editor_category_unsuitable_text" = "Organic Maps inakuwezesha kuongeza tu aina rahisi za alama, ikimaanisha hakuna miji, barabara, maziwa, mipaka ya majengo, n.k. Tafadhali ongeza aina hizo moja kwa moja kwenye <a href=\"https://www.openstreetmap.org\">OpenStreetMap.org</a>. Angalia <a href=\"https://organicmaps.app/faq/editing/advanced-map-editing\">mwongozo</a> wetu kwa maelekezo ya kina hatua kwa hatua.";
+"editor_category_unsuitable_text" = "NoGPS Maps inakuwezesha kuongeza tu aina rahisi za alama, ikimaanisha hakuna miji, barabara, maziwa, mipaka ya majengo, n.k. Tafadhali ongeza aina hizo moja kwa moja kwenye <a href=\"https://www.openstreetmap.org\">OpenStreetMap.org</a>. Angalia <a href=\"https://organicmaps.app/faq/editing/advanced-map-editing\">mwongozo</a> wetu kwa maelekezo ya kina hatua kwa hatua.";
 "downloader_no_downloaded_maps_title" = "Haujapakua ramani yoyote";
 "downloader_no_downloaded_maps_message" = "Pakua ramani ili kutafuta na kuvinjari bila muunganisho.";
 "current_location_unknown_error_title" = "Mahali pa sasa halijulikani.";
@@ -998,10 +998,10 @@
 "app_tip_09" = "Lengo letu kuu ni kujenga ramani za haraka, zinazozingatia faragha, na rahisi kutumia ambazo utapenda.";
 
 /* Text on the Android Auto or CarPlay placeholder screen that maps are displayed on the phone screen */
-"car_used_on_the_phone_screen" = "Sasa unatumia Organic Maps kwenye skrini ya simu";
+"car_used_on_the_phone_screen" = "Sasa unatumia NoGPS Maps kwenye skrini ya simu";
 
 /* Text on the phone placeholder screen that maps are displayed on the car screen */
-"car_used_on_the_car_screen" = "Sasa unatumia Organic Maps kwenye skrini ya gari";
+"car_used_on_the_car_screen" = "Sasa unatumia NoGPS Maps kwenye skrini ya gari";
 
 /* Displayed on the phone screen. Button to display maps on the phone screen instead of a car */
 "car_continue_on_the_phone" = "Endelea kwenye simu";

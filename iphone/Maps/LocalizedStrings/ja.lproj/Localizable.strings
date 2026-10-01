@@ -157,7 +157,7 @@
 
 /********** Other translations **********/
 
-"share_bookmarks_email_body" = "こんにちは！\n\n添付ファイルOrganic Mapsのお気に入りリストです。もしインストールされていない場合はここからダウンロードができます： https://omaps.app/get?kmz\n\n旅行を楽しむときはOrganic Mapsを使用してください!";
+"share_bookmarks_email_body" = "こんにちは！\n\n添付ファイルNoGPS Mapsのお気に入りリストです。もしインストールされていない場合はここからダウンロードができます： https://github.com/Ramzess-II/NoGPSMaps\n\n旅行を楽しむときはNoGPS Mapsを使用してください!";
 
 /* message title of loading file */
 "load_kmz_title" = "お気に入りをロード中";
@@ -178,10 +178,10 @@
 "share_my_position" = "Organic Mapsでここにいます";
 
 /* Email subject when sharing a place. %1$@ is the place name or address. */
-"share_place_subject" = "%1$@ - Organic Maps";
+"share_place_subject" = "%1$@ - NoGPS Maps";
 
 /* Email subject when sharing a place that has no name or address. */
-"share_place_subject_default" = "Organic Mapsの場所";
+"share_place_subject_default" = "NoGPS Mapsの場所";
 
 /* Shared email link text; opens the shared place in Organic Maps or in a web browser. */
 "share_open_in_om_or_browser" = "Organic Mapsまたはブラウザーで開く";
@@ -591,7 +591,7 @@
 /* To indicate the operator of ATMs, bicycle rentals, electric vehicle charging stations… */
 "operator" = "運営者: %@";
 "editor_category_unsuitable_title" = "適切なカテゴリーが見つからない？";
-"editor_category_unsuitable_text" = "Organic Maps このアプリでは、シンプルな地点カテゴリのみを追加できます。つまり、町、道路、湖、建物の輪郭などは追加できません。そのようなカテゴリは、<a href=\"https://www.openstreetmap.org\">OpenStreetMap.org</a>に直接追加してください。詳細な手順については、<a href=\"https://organicmaps.app/faq/editing/advanced-map-editing\">ガイド</a>をご確認ください。";
+"editor_category_unsuitable_text" = "NoGPS Maps このアプリでは、シンプルな地点カテゴリのみを追加できます。つまり、町、道路、湖、建物の輪郭などは追加できません。そのようなカテゴリは、<a href=\"https://www.openstreetmap.org\">OpenStreetMap.org</a>に直接追加してください。詳細な手順については、<a href=\"https://organicmaps.app/faq/editing/advanced-map-editing\">ガイド</a>をご確認ください。";
 "downloader_no_downloaded_maps_title" = "マップをダウンロードしていません";
 "downloader_no_downloaded_maps_message" = "ロケーションの検索とオフラインナビゲートのためにマップをダウンロードしてください。";
 "current_location_unknown_error_title" = "現在地は不明です。";
@@ -998,10 +998,10 @@
 "app_tip_09" = "私たちの主な目標は、ユーザーに気に入っていただける、プライバシーを重視した使いやすいマップを高速に構築することです。";
 
 /* Text on the Android Auto or CarPlay placeholder screen that maps are displayed on the phone screen */
-"car_used_on_the_phone_screen" = "端末の画面でOrganic Mapsを使用している";
+"car_used_on_the_phone_screen" = "端末の画面でNoGPS Mapsを使用している";
 
 /* Text on the phone placeholder screen that maps are displayed on the car screen */
-"car_used_on_the_car_screen" = "現在、車の画面でOrganic Mapsをご利用中です";
+"car_used_on_the_car_screen" = "現在、車の画面でNoGPS Mapsをご利用中です";
 
 /* Displayed on the phone screen. Button to display maps on the phone screen instead of a car */
 "car_continue_on_the_phone" = "電話で続ける";

@@ -157,7 +157,7 @@
 
 /********** Other translations **********/
 
-"share_bookmarks_email_body" = "Ahoj!\n\nV příloze najdeš mé záložky; otevři je v aplikaci Organic Maps. Pokud ji nemáš nainstalovanou, můžeš si ji stáhnout zde: https://omaps.app/get?kmz \n\nUžij si cestování s Organic Maps!";
+"share_bookmarks_email_body" = "Ahoj!\n\nV příloze najdeš mé záložky; otevři je v aplikaci NoGPS Maps. Pokud ji nemáš nainstalovanou, můžeš si ji stáhnout zde: https://github.com/Ramzess-II/NoGPSMaps \n\nUžij si cestování s NoGPS Maps!";
 
 /* message title of loading file */
 "load_kmz_title" = "Nahrávání záložek";
@@ -178,10 +178,10 @@
 "share_my_position" = "Jsem tady na mapě Organic Maps";
 
 /* Email subject when sharing a place. %1$@ is the place name or address. */
-"share_place_subject" = "%1$@ v Organic Maps";
+"share_place_subject" = "%1$@ v NoGPS Maps";
 
 /* Email subject when sharing a place that has no name or address. */
-"share_place_subject_default" = "Místo v Organic Maps";
+"share_place_subject_default" = "Místo v NoGPS Maps";
 
 /* Shared email link text; opens the shared place in Organic Maps or in a web browser. */
 "share_open_in_om_or_browser" = "Otevřít v Organic Maps nebo v prohlížeči";
@@ -591,7 +591,7 @@
 /* To indicate the operator of ATMs, bicycle rentals, electric vehicle charging stations… */
 "operator" = "Operátor: %@";
 "editor_category_unsuitable_title" = "Nemůžete najít vhodnou kategorii?";
-"editor_category_unsuitable_text" = "Organic Maps umožňuje přidávat pouze jednoduché bodové kategorie, to znamená žádná města, silnice, jezera, obrysy budov atd. Tyto kategorie prosím přidávejte přímo na <a href=\"https://www.openstreetmap.org\">OpenStreetMap.org</a>. Podrobný návod krok za krokem najdete v našem <a href=\"https://organicmaps.app/faq/editing/advanced-map-editing\">průvodci</a>.";
+"editor_category_unsuitable_text" = "NoGPS Maps umožňuje přidávat pouze jednoduché bodové kategorie, to znamená žádná města, silnice, jezera, obrysy budov atd. Tyto kategorie prosím přidávejte přímo na <a href=\"https://www.openstreetmap.org\">OpenStreetMap.org</a>. Podrobný návod krok za krokem najdete v našem <a href=\"https://organicmaps.app/faq/editing/advanced-map-editing\">průvodci</a>.";
 "downloader_no_downloaded_maps_title" = "Nemáte stažené žádné mapy";
 "downloader_no_downloaded_maps_message" = "Stáhněte si mapy a hledejte cestu a její cíl, i když jste offline.";
 "current_location_unknown_error_title" = "Současná poloha nezjištěna.";
@@ -998,10 +998,10 @@
 "app_tip_09" = "Naším hlavním cílem je vytvářet rychlé, na soukromí zaměřené a snadno použitelné mapy, které si zamilujete.";
 
 /* Text on the Android Auto or CarPlay placeholder screen that maps are displayed on the phone screen */
-"car_used_on_the_phone_screen" = "Na obrazovce telefonu nyní používáte aplikaci Organic Maps";
+"car_used_on_the_phone_screen" = "Na obrazovce telefonu nyní používáte aplikaci NoGPS Maps";
 
 /* Text on the phone placeholder screen that maps are displayed on the car screen */
-"car_used_on_the_car_screen" = "Na obrazovce auta nyní používáte aplikaci Organic Maps";
+"car_used_on_the_car_screen" = "Na obrazovce auta nyní používáte aplikaci NoGPS Maps";
 
 /* Displayed on the phone screen. Button to display maps on the phone screen instead of a car */
 "car_continue_on_the_phone" = "Pokračujte v telefonu";

@@ -157,7 +157,7 @@
 
 /********** Other translations **********/
 
-"share_bookmarks_email_body" = "สวัสดีครับ\n\nแนบมาด้วยบุ๊กมาร์กของผม; กรุณาเปิดใน Organic Maps หากคุณยังไม่ได้ติดตั้ง คุณสามารถดาวน์โหลดได้ที่นี่: https://omaps.app/get?kmz\n\nขอให้สนุกกับการเดินทางด้วย Organic Maps!";
+"share_bookmarks_email_body" = "สวัสดีครับ\n\nแนบมาด้วยบุ๊กมาร์กของผม; กรุณาเปิดใน NoGPS Maps หากคุณยังไม่ได้ติดตั้ง คุณสามารถดาวน์โหลดได้ที่นี่: https://github.com/Ramzess-II/NoGPSMaps\n\nขอให้สนุกกับการเดินทางด้วย NoGPS Maps!";
 
 /* message title of loading file */
 "load_kmz_title" = "กำลังโหลดบุ๊กมาร์ก";
@@ -178,10 +178,10 @@
 "share_my_position" = "ฉันอยู่ที่นี่บน Organic Maps";
 
 /* Email subject when sharing a place. %1$@ is the place name or address. */
-"share_place_subject" = "%1$@ บน Organic Maps";
+"share_place_subject" = "%1$@ บน NoGPS Maps";
 
 /* Email subject when sharing a place that has no name or address. */
-"share_place_subject_default" = "สถานที่บน Organic Maps";
+"share_place_subject_default" = "สถานที่บน NoGPS Maps";
 
 /* Shared email link text; opens the shared place in Organic Maps or in a web browser. */
 "share_open_in_om_or_browser" = "เปิดใน Organic Maps หรือในเบราว์เซอร์";
@@ -591,7 +591,7 @@
 /* To indicate the operator of ATMs, bicycle rentals, electric vehicle charging stations… */
 "operator" = "ตัวดำเนินการ: %@";
 "editor_category_unsuitable_title" = "ไม่พบหมวดหมู่ที่เหมาะสมใช่ไหม?";
-"editor_category_unsuitable_text" = "Organic Maps อนุญาตให้เพิ่มหมวดหมู่จุดแบบง่ายเท่านั้น ซึ่งหมายถึงไม่สามารถเพิ่มเมือง ถนน ทะเลสาบ เส้นขอบอาคาร ฯลฯ ได้ กรุณาเพิ่มหมวดหมู่ดังกล่าวโดยตรงที่ <a href=\"https://www.openstreetmap.org\">OpenStreetMap.org</a> โปรดตรวจสอบ<a href=\"https://organicmaps.app/faq/editing/advanced-map-editing\">คู่มือ</a>ของเราสำหรับคำแนะนำแบบละเอียดทีละขั้นตอน";
+"editor_category_unsuitable_text" = "NoGPS Maps อนุญาตให้เพิ่มหมวดหมู่จุดแบบง่ายเท่านั้น ซึ่งหมายถึงไม่สามารถเพิ่มเมือง ถนน ทะเลสาบ เส้นขอบอาคาร ฯลฯ ได้ กรุณาเพิ่มหมวดหมู่ดังกล่าวโดยตรงที่ <a href=\"https://www.openstreetmap.org\">OpenStreetMap.org</a> โปรดตรวจสอบ<a href=\"https://organicmaps.app/faq/editing/advanced-map-editing\">คู่มือ</a>ของเราสำหรับคำแนะนำแบบละเอียดทีละขั้นตอน";
 "downloader_no_downloaded_maps_title" = "คุณยังไม่ได้ดาวน์โหลดแผนที่";
 "downloader_no_downloaded_maps_message" = "ดาวน์โหลดแผนที่เพื่อค้นหาสถานที่ และนำทางแบบออฟไลน์";
 "current_location_unknown_error_title" = "ไม่ทราบชื่อของที่ตั้งปัจจุบัน";
@@ -998,10 +998,10 @@
 "app_tip_09" = "เป้าหมายหลักของเราคือการสร้างแผนที่ที่รวดเร็ว เน้นความเป็นส่วนตัว และใช้งานง่ายที่คุณจะหลงรัก";
 
 /* Text on the Android Auto or CarPlay placeholder screen that maps are displayed on the phone screen */
-"car_used_on_the_phone_screen" = "ขณะนี้คุณกำลังใช้ Organic Maps บนหน้าจอโทรศัพท์";
+"car_used_on_the_phone_screen" = "ขณะนี้คุณกำลังใช้ NoGPS Maps บนหน้าจอโทรศัพท์";
 
 /* Text on the phone placeholder screen that maps are displayed on the car screen */
-"car_used_on_the_car_screen" = "ขณะนี้คุณกำลังใช้ Organic Maps บนหน้าจอรถยนต์";
+"car_used_on_the_car_screen" = "ขณะนี้คุณกำลังใช้ NoGPS Maps บนหน้าจอรถยนต์";
 
 /* Displayed on the phone screen. Button to display maps on the phone screen instead of a car */
 "car_continue_on_the_phone" = "ดำเนินการต่อบนโทรศัพท์";

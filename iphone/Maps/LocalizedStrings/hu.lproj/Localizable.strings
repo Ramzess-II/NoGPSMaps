@@ -157,7 +157,7 @@
 
 /********** Other translations **********/
 
-"share_bookmarks_email_body" = "Üdvözlöm!\n\nMellékeltem a könyvjelzőimet; nyissa meg őket az Organic Maps alkalmazásban. Ha még nem telepítette, akkor innen tudja letölteni: https://omaps.app/get?kmz\n\nJó utat kívánok az Organic Maps alkalmazással!";
+"share_bookmarks_email_body" = "Üdvözlöm!\n\nMellékeltem a könyvjelzőimet; nyissa meg őket az NoGPS Maps alkalmazásban. Ha még nem telepítette, akkor innen tudja letölteni: https://github.com/Ramzess-II/NoGPSMaps\n\nJó utat kívánok az NoGPS Maps alkalmazással!";
 
 /* message title of loading file */
 "load_kmz_title" = "Könyvjelzők betöltése";
@@ -178,10 +178,10 @@
 "share_my_position" = "Itt vagyok az Organic Mapsben";
 
 /* Email subject when sharing a place. %1$@ is the place name or address. */
-"share_place_subject" = "%1$@ az Organic Mapsben";
+"share_place_subject" = "%1$@ az NoGPS Mapsben";
 
 /* Email subject when sharing a place that has no name or address. */
-"share_place_subject_default" = "Egy hely az Organic Mapsben";
+"share_place_subject_default" = "Egy hely az NoGPS Mapsben";
 
 /* Shared email link text; opens the shared place in Organic Maps or in a web browser. */
 "share_open_in_om_or_browser" = "Megnyitás az Organic Mapsben vagy böngészőben";
@@ -591,7 +591,7 @@
 /* To indicate the operator of ATMs, bicycle rentals, electric vehicle charging stations… */
 "operator" = "Üzemeltető: %@";
 "editor_category_unsuitable_title" = "Nem találja a megfelelő kategóriát?";
-"editor_category_unsuitable_text" = "Az Organic Maps csak egyszerű pontkategóriák hozzáadását teszi lehetővé, azaz nem tartalmaz városokat, utakat, tavakat, épületek körvonalait stb., az ilyen kategóriákat közvetlenül az <a href=\"https://www.openstreetmap.org\">OpenStreetMap.org</a> oldalon adhatja hozzá. A részletes, lépésről lépésre történő útmutatásért tekintse meg az <a href=\"https://organicmaps.app/faq/editing/advanced-map-editing\">útmutatónkat</a>.";
+"editor_category_unsuitable_text" = "Az NoGPS Maps csak egyszerű pontkategóriák hozzáadását teszi lehetővé, azaz nem tartalmaz városokat, utakat, tavakat, épületek körvonalait stb., az ilyen kategóriákat közvetlenül az <a href=\"https://www.openstreetmap.org\">OpenStreetMap.org</a> oldalon adhatja hozzá. A részletes, lépésről lépésre történő útmutatásért tekintse meg az <a href=\"https://organicmaps.app/faq/editing/advanced-map-editing\">útmutatónkat</a>.";
 "downloader_no_downloaded_maps_title" = "Még nem töltött le térképet";
 "downloader_no_downloaded_maps_message" = "Térképek letöltése az offline kereséshez és navigáláshoz.";
 "current_location_unknown_error_title" = "A jelenlegi tartózkodási hely ismeretlen.";
@@ -998,10 +998,10 @@
 "app_tip_09" = "A fő célunk az, hogy gyors, az adatvédelemre fókuszáló, könnyen használható térképeket készítsünk, amelyeket szeretni fog.";
 
 /* Text on the Android Auto or CarPlay placeholder screen that maps are displayed on the phone screen */
-"car_used_on_the_phone_screen" = "Ön most az Organic Maps alkalmazást használja az eszköz képernyőjén";
+"car_used_on_the_phone_screen" = "Ön most az NoGPS Maps alkalmazást használja az eszköz képernyőjén";
 
 /* Text on the phone placeholder screen that maps are displayed on the car screen */
-"car_used_on_the_car_screen" = "Ön most az Organic Maps alkalmazást használja az autó képernyőjén";
+"car_used_on_the_car_screen" = "Ön most az NoGPS Maps alkalmazást használja az autó képernyőjén";
 
 /* Displayed on the phone screen. Button to display maps on the phone screen instead of a car */
 "car_continue_on_the_phone" = "Folytatás a hordozható eszközön";

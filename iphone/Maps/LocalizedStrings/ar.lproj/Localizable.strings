@@ -157,7 +157,7 @@
 
 /********** Other translations **********/
 
-"share_bookmarks_email_body" = "مرحباً! ْ\n\n تم إرفاق إشاراتي المرجعية من تطبيق Organic Maps. الرجاء فتحهم إذا لديك تطبيق Organic Maps مثبتاً. أو، إذا لم يكن مثبتاً، قم بتنزيل التطبيق لنظام iOS أو أندرويد من خلال الضغط على هذا الرابط: https://omaps.app/get?kmz \n\nاستمتع بالسفر مع Organic Maps!";
+"share_bookmarks_email_body" = "مرحباً! ْ\n\n تم إرفاق إشاراتي المرجعية من تطبيق NoGPS Maps. الرجاء فتحهم إذا لديك تطبيق NoGPS Maps مثبتاً. أو، إذا لم يكن مثبتاً، قم بتنزيل التطبيق لنظام iOS أو أندرويد من خلال الضغط على هذا الرابط: https://github.com/Ramzess-II/NoGPSMaps \n\nاستمتع بالسفر مع NoGPS Maps!";
 
 /* message title of loading file */
 "load_kmz_title" = "يتم تحميل الإشارات المرجعية";
@@ -178,10 +178,10 @@
 "share_my_position" = "أنا هنا على Organic Maps";
 
 /* Email subject when sharing a place. %1$@ is the place name or address. */
-"share_place_subject" = "%1$@ على Organic Maps";
+"share_place_subject" = "%1$@ على NoGPS Maps";
 
 /* Email subject when sharing a place that has no name or address. */
-"share_place_subject_default" = "مكان على Organic Maps";
+"share_place_subject_default" = "مكان على NoGPS Maps";
 
 /* Shared email link text; opens the shared place in Organic Maps or in a web browser. */
 "share_open_in_om_or_browser" = "افتح في Organic Maps أو في المتصفح";
@@ -591,7 +591,7 @@
 /* To indicate the operator of ATMs, bicycle rentals, electric vehicle charging stations… */
 "operator" = "المشغل: %@";
 "editor_category_unsuitable_title" = "لا يمكن العثور على فئة مناسبة؟";
-"editor_category_unsuitable_text" = "Organic Maps تسمح بإضافة فئات النقاط البسيطة فقط، وهذا يعني عدم إضافة المدن والطرق والبحيرات وخطوط المباني، إلخ. يرجى إضافة هذه الفئات مباشرة إلى <a href=\"https://www.openstreetmap.org\">OpenStreetMap.org</a>. راجع <a href=\"https://organicmaps.app/faq/editing/advanced-map-editing\">دليلنا</a> للحصول على إرشادات تفصيلية خطوة بخطوة.";
+"editor_category_unsuitable_text" = "NoGPS Maps تسمح بإضافة فئات النقاط البسيطة فقط، وهذا يعني عدم إضافة المدن والطرق والبحيرات وخطوط المباني، إلخ. يرجى إضافة هذه الفئات مباشرة إلى <a href=\"https://www.openstreetmap.org\">OpenStreetMap.org</a>. راجع <a href=\"https://organicmaps.app/faq/editing/advanced-map-editing\">دليلنا</a> للحصول على إرشادات تفصيلية خطوة بخطوة.";
 "downloader_no_downloaded_maps_title" = "لم تقم بتنزيل أية خرائط";
 "downloader_no_downloaded_maps_message" = "قم بتنزيل خرائط للبحث عن مكان واستخدام الملاحة بدون اتصال بالإنترنت.";
 "current_location_unknown_error_title" = "الموقع الحالي غير معروف.";
@@ -998,10 +998,10 @@
 "app_tip_09" = "هدفنا الرئيسي هو إنشاء خرائط سريعة وسهلة الاستخدام تركز على الخصوصية والتي ستعجبك.";
 
 /* Text on the Android Auto or CarPlay placeholder screen that maps are displayed on the phone screen */
-"car_used_on_the_phone_screen" = "أنت تستخدم الآن Organic Maps على شاشة الهاتف";
+"car_used_on_the_phone_screen" = "أنت تستخدم الآن NoGPS Maps على شاشة الهاتف";
 
 /* Text on the phone placeholder screen that maps are displayed on the car screen */
-"car_used_on_the_car_screen" = "أنت تستخدم الآن Organic Maps على شاشة السيارة";
+"car_used_on_the_car_screen" = "أنت تستخدم الآن NoGPS Maps على شاشة السيارة";
 
 /* Displayed on the phone screen. Button to display maps on the phone screen instead of a car */
 "car_continue_on_the_phone" = "تواصل على الهاتف";

@@ -157,7 +157,7 @@
 
 /********** Other translations **********/
 
-"share_bookmarks_email_body" = "Ciao!\n\nIn allegato ci sono i miei luoghi preferiti. Aprili se hai installato Organic Maps. Oppure, se non ce l'hai, scarica l'app per iOS o Android seguendo questo link: https://omaps.app/\n\nDivertiti a viaggiare con Organic Maps!";
+"share_bookmarks_email_body" = "Ciao!\n\nIn allegato ci sono i miei luoghi preferiti. Aprili se hai installato NoGPS Maps. Oppure, se non ce l'hai, scarica l'app per iOS o Android seguendo questo link: https://omaps.app/\n\nDivertiti a viaggiare con NoGPS Maps!";
 
 /* message title of loading file */
 "load_kmz_title" = "Caricamento luoghi preferiti";
@@ -178,10 +178,10 @@
 "share_my_position" = "Sono qui su Organic Maps";
 
 /* Email subject when sharing a place. %1$@ is the place name or address. */
-"share_place_subject" = "%1$@ su Organic Maps";
+"share_place_subject" = "%1$@ su NoGPS Maps";
 
 /* Email subject when sharing a place that has no name or address. */
-"share_place_subject_default" = "Un luogo su Organic Maps";
+"share_place_subject_default" = "Un luogo su NoGPS Maps";
 
 /* Shared email link text; opens the shared place in Organic Maps or in a web browser. */
 "share_open_in_om_or_browser" = "Apri in Organic Maps o in un browser";
@@ -591,7 +591,7 @@
 /* To indicate the operator of ATMs, bicycle rentals, electric vehicle charging stations… */
 "operator" = "Gestore: %@";
 "editor_category_unsuitable_title" = "Non riesci a trovare una categoria adatta?";
-"editor_category_unsuitable_text" = "Organic Maps consente di aggiungere solo punti semplici, escludendo p.es. città, strade, laghi, planimetria edifici ecc. È possibile aggiungere tali categorie direttamente su <a href=\"https://www.openstreetmap.org\">OpenStreetMap.org</a>. Consulta la nostra <a href=\"https://organicmaps.app/faq/editing/advanced-map-editing\">guida</a> per istruzioni dettagliate.";
+"editor_category_unsuitable_text" = "NoGPS Maps consente di aggiungere solo punti semplici, escludendo p.es. città, strade, laghi, planimetria edifici ecc. È possibile aggiungere tali categorie direttamente su <a href=\"https://www.openstreetmap.org\">OpenStreetMap.org</a>. Consulta la nostra <a href=\"https://organicmaps.app/faq/editing/advanced-map-editing\">guida</a> per istruzioni dettagliate.";
 "downloader_no_downloaded_maps_title" = "Non hai scaricato mappe";
 "downloader_no_downloaded_maps_message" = "Scarica mappe per trovare luoghi e navigare offline.";
 "current_location_unknown_error_title" = "Posizione attuale sconosciuta.";
@@ -998,10 +998,10 @@
 "app_tip_09" = "Il nostro obiettivo principale è creare mappe veloci, incentrate sulla privacy e facili da usare che adorerai.";
 
 /* Text on the Android Auto or CarPlay placeholder screen that maps are displayed on the phone screen */
-"car_used_on_the_phone_screen" = "Stai utilizzando Organic Maps sullo schermo del telefono";
+"car_used_on_the_phone_screen" = "Stai utilizzando NoGPS Maps sullo schermo del telefono";
 
 /* Text on the phone placeholder screen that maps are displayed on the car screen */
-"car_used_on_the_car_screen" = "Stai utilizzando Organic Maps sullo schermo dell'auto";
+"car_used_on_the_car_screen" = "Stai utilizzando NoGPS Maps sullo schermo dell'auto";
 
 /* Displayed on the phone screen. Button to display maps on the phone screen instead of a car */
 "car_continue_on_the_phone" = "Continua sul telefono";

@@ -157,7 +157,7 @@
 
 /********** Other translations **********/
 
-"share_bookmarks_email_body" = "Hei!\n\nVedlagt er mine bokmerker fra Organic Maps-appen. Åpne de dersom du har Organic Maps installert. Har du ikke har det, last ned appen til iOS eller Android ved å trykke på denne linken: https://omaps.app/get?kmz\n\nNyt reisen med Organic Maps!";
+"share_bookmarks_email_body" = "Hei!\n\nVedlagt er mine bokmerker fra NoGPS Maps-appen. Åpne de dersom du har NoGPS Maps installert. Har du ikke har det, last ned appen til iOS eller Android ved å trykke på denne linken: https://github.com/Ramzess-II/NoGPSMaps\n\nNyt reisen med NoGPS Maps!";
 
 /* message title of loading file */
 "load_kmz_title" = "Laster inn bokmerker";
@@ -178,10 +178,10 @@
 "share_my_position" = "Jeg er her på Organic Maps";
 
 /* Email subject when sharing a place. %1$@ is the place name or address. */
-"share_place_subject" = "%1$@ på Organic Maps";
+"share_place_subject" = "%1$@ på NoGPS Maps";
 
 /* Email subject when sharing a place that has no name or address. */
-"share_place_subject_default" = "Et sted på Organic Maps";
+"share_place_subject_default" = "Et sted på NoGPS Maps";
 
 /* Shared email link text; opens the shared place in Organic Maps or in a web browser. */
 "share_open_in_om_or_browser" = "Åpne i Organic Maps eller i en nettleser";
@@ -591,7 +591,7 @@
 /* To indicate the operator of ATMs, bicycle rentals, electric vehicle charging stations… */
 "operator" = "Operatør: %@";
 "editor_category_unsuitable_title" = "Finner du ikke en passende kategori?";
-"editor_category_unsuitable_text" = "Organic Maps tillater kun å legge til enkle punktkategorier, det vil si ingen byer, veier, innsjøer, bygningsomriss osv. Vennligst legg til slike kategorier direkte til <a href=\"https://www.openstreetmap.org\">OpenStreetMap.org</a>. Sjekk vår <a href=\"https://organicmaps.app/faq/editing/advanced-map-editing\">guide</a> for detaljerte trinnvise instruksjoner.";
+"editor_category_unsuitable_text" = "NoGPS Maps tillater kun å legge til enkle punktkategorier, det vil si ingen byer, veier, innsjøer, bygningsomriss osv. Vennligst legg til slike kategorier direkte til <a href=\"https://www.openstreetmap.org\">OpenStreetMap.org</a>. Sjekk vår <a href=\"https://organicmaps.app/faq/editing/advanced-map-editing\">guide</a> for detaljerte trinnvise instruksjoner.";
 "downloader_no_downloaded_maps_title" = "Du har ikke lastet ned noen kart";
 "downloader_no_downloaded_maps_message" = "Last ned kart for å finne plasseringen og navigere frakoblet.";
 "current_location_unknown_error_title" = "Gjeldende plassering er ukjent.";
@@ -998,10 +998,10 @@
 "app_tip_09" = "Vårt hovedmål er å bygge raske, personvernfokuserte, brukervennlige kart som du vil elske.";
 
 /* Text on the Android Auto or CarPlay placeholder screen that maps are displayed on the phone screen */
-"car_used_on_the_phone_screen" = "Du bruker nå Organic Maps på telefonskjermen";
+"car_used_on_the_phone_screen" = "Du bruker nå NoGPS Maps på telefonskjermen";
 
 /* Text on the phone placeholder screen that maps are displayed on the car screen */
-"car_used_on_the_car_screen" = "Du bruker nå Organic Maps på bilskjermen";
+"car_used_on_the_car_screen" = "Du bruker nå NoGPS Maps på bilskjermen";
 
 /* Displayed on the phone screen. Button to display maps on the phone screen instead of a car */
 "car_continue_on_the_phone" = "Fortsett i telefonen";
