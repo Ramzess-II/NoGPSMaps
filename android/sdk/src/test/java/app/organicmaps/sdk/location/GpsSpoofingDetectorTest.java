@@ -34,15 +34,66 @@ public class GpsSpoofingDetectorTest
   public void ignoresSingleWrongNetworkPosition()
   {
     final GpsSpoofingDetector detector = new GpsSpoofingDetector();
-    detector.onNetworkPosition(KYIV_LAT, KYIV_LON, 70, 0);
+    assertTrue(detector.onNetworkPosition(KYIV_LAT, KYIV_LON, 70, 0));
     assertTrue(detector.checkSatellitePosition(KYIV_LAT, KYIV_LON, 1000));
-    // A Wi-Fi point 8 km away.
-    detector.onNetworkPosition(KYIV_LAT + 70 * STEP, KYIV_LON, 200, 1500);
-    detector.onNetworkPosition(KYIV_LAT + 70 * STEP, KYIV_LON, 200, 1500);
+    // A Wi-Fi point 8 km away, reported by two providers.
+    assertFalse(detector.onNetworkPosition(KYIV_LAT + 70 * STEP, KYIV_LON, 200, 1500));
+    assertFalse(detector.onNetworkPosition(KYIV_LAT + 70 * STEP, KYIV_LON, 200, 1500));
     assertTrue(detector.checkSatellitePosition(KYIV_LAT, KYIV_LON, 2000));
-    // The next one confirms it: GPS is spoofed.
-    detector.onNetworkPosition(KYIV_LAT + 70 * STEP, KYIV_LON, 200, 2500);
+    // Another point near it confirms it: GPS is spoofed.
+    assertTrue(detector.onNetworkPosition(KYIV_LAT + 71 * STEP, KYIV_LON, 200, 2500));
     assertFalse(detector.checkSatellitePosition(KYIV_LAT, KYIV_LON, 3000));
+  }
+
+  @Test
+  public void ignoresCellTowerAtWrongPoint()
+  {
+    final GpsSpoofingDetector detector = new GpsSpoofingDetector();
+    assertTrue(detector.onNetworkPosition(KYIV_LAT, KYIV_LON, 90, 0));
+    // The same wrong point 8 km away again and again: the phone lies still, the marker must not fly there.
+    long time = 0;
+    for (int i = 0; i < 5; i++)
+      assertFalse(detector.onNetworkPosition(KYIV_LAT + 70 * STEP, KYIV_LON, 200, time += 20_000));
+    // A fused position at home is not spoofed.
+    assertTrue(detector.checkSatellitePosition(KYIV_LAT, KYIV_LON, time += 1000));
+    assertTrue(detector.onNetworkPosition(KYIV_LAT, KYIV_LON, 100, time += 8000));
+    // The point jumped away and back, it is ignored later even after a long pause.
+    assertFalse(detector.onNetworkPosition(KYIV_LAT + 70 * STEP, KYIV_LON, 200,
+                                           time += 2 * GpsSpoofingDetector.JUMP_CONFIRM_MS));
+    assertFalse(detector.isSpoofed());
+  }
+
+  @Test
+  public void prefersWiFiToCellTowerAtWrongPoint()
+  {
+    final GpsSpoofingDetector detector = new GpsSpoofingDetector();
+    // In the morning the first position is from a cell tower at a wrong point, then Wi-Fi at home comes.
+    assertTrue(detector.onNetworkPosition(KYIV_LAT + 70 * STEP, KYIV_LON, 530, 0));
+    assertTrue(detector.onNetworkPosition(KYIV_LAT, KYIV_LON, 50, 3000));
+    assertTrue(detector.checkSatellitePosition(KYIV_LAT, KYIV_LON, 4000));
+  }
+
+  @Test
+  public void acceptsJumpNothingContradicts()
+  {
+    final GpsSpoofingDetector detector = new GpsSpoofingDetector();
+    assertTrue(detector.onNetworkPosition(KYIV_LAT, KYIV_LON, 90, 0));
+    // Only one cell tower far away, e.g. the phone was moved while switched off.
+    long time = 1000;
+    assertFalse(detector.onNetworkPosition(KYIV_LAT + 70 * STEP, KYIV_LON, 200, time));
+    assertFalse(detector.onNetworkPosition(KYIV_LAT + 70 * STEP, KYIV_LON, 200, time += 20_000));
+    assertTrue(detector.onNetworkPosition(KYIV_LAT + 70 * STEP, KYIV_LON, 200,
+                                          time += GpsSpoofingDetector.JUMP_CONFIRM_MS));
+  }
+
+  @Test
+  public void followsNetworkPositionsOfMovingCar()
+  {
+    final GpsSpoofingDetector detector = new GpsSpoofingDetector();
+    long time = 0;
+    // 60 km/h, a network position every 20 s.
+    for (int i = 0; i < 20; i++)
+      assertTrue(detector.onNetworkPosition(KYIV_LAT + 3 * i * STEP, KYIV_LON, 100, time += 20_000));
   }
 
   @Test

@@ -371,9 +371,13 @@ public class LocationHelper implements BaseLocationProvider.Listener
     boolean trusted = true;
     if (isNetwork)
     {
+      if (!mSpoofingDetector.onNetworkPosition(location.getLatitude(), location.getLongitude(),
+                                               location.getAccuracy(), timeMs))
+      {
+        Logger.w(TAG, "The network location jumps away, ignoring it = " + location);
+        return;
+      }
       mNetworkLocation = location;
-      mSpoofingDetector.onNetworkPosition(location.getLatitude(), location.getLongitude(), location.getAccuracy(),
-                                          timeMs);
     }
     else
     {
@@ -813,10 +817,10 @@ public class LocationHelper implements BaseLocationProvider.Listener
     if (lastNetworkLocation != null && mNetworkLocation == null)
     {
       Logger.i(TAG, "Last known network location = " + lastNetworkLocation);
-      mNetworkLocation = lastNetworkLocation;
-      mSpoofingDetector.onNetworkPosition(lastNetworkLocation.getLatitude(), lastNetworkLocation.getLongitude(),
-                                          lastNetworkLocation.getAccuracy(),
-                                          lastNetworkLocation.getElapsedRealtimeNanos() / 1_000_000);
+      if (mSpoofingDetector.onNetworkPosition(lastNetworkLocation.getLatitude(), lastNetworkLocation.getLongitude(),
+                                              lastNetworkLocation.getAccuracy(),
+                                              lastNetworkLocation.getElapsedRealtimeNanos() / 1_000_000))
+        mNetworkLocation = lastNetworkLocation;
     }
     final LocationRequestCompat request = new LocationRequestCompat.Builder(INTERVAL_NETWORK_MS).build();
     LocationManagerCompat.requestLocationUpdates(locationManager, LocationManager.NETWORK_PROVIDER, request,

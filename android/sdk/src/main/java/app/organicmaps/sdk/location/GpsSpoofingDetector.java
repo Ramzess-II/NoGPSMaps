@@ -1,5 +1,8 @@
 package app.organicmaps.sdk.location;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Detects jammed/spoofed GNSS positions (e.g. electronic warfare moves the phone to another continent).
  * <p>
@@ -21,9 +24,16 @@ public class GpsSpoofingDetector
   static final int CONSISTENT_POSITIONS_TO_RECOVER = 5;
   // Without the network only the last trusted position is available, so be more careful.
   static final int CONSISTENT_POSITIONS_TO_RECOVER_WITHOUT_NETWORK = 10;
-  // A network position is sometimes kilometers away, e.g. from a Wi-Fi point that has moved. One contradicting the
-  // satellite position trusted just before is used when the next network position confirms it.
-  static final long TRUSTED_FRESH_MS = 5000;
+  // A network position is sometimes kilometers away, e.g. from a Wi-Fi point that has moved or a cell tower with a wrong
+  // location in the database. Such a cell tower gives the same point again and again, so a jump is used only when
+  // a network position at another point near it confirms it, or when nothing contradicts it for this long.
+  static final long JUMP_CONFIRM_MS = NETWORK_MAX_AGE_MS;
+  // Positions from the same cell tower or Wi-Fi point.
+  static final double SAME_POINT_M = 10;
+  // Points that jumped away and back, they are ignored until the app restarts.
+  static final int MAX_PHANTOMS = 16;
+  // A Wi-Fi position (tens of meters) is used at once after a coarse cell tower one (hundreds of meters).
+  static final double MORE_ACCURATE_FACTOR = 2;
 
   private static final double EARTH_RADIUS_M = 6_371_000;
 
@@ -40,8 +50,16 @@ public class GpsSpoofingDetector
 
   private boolean mSpoofed;
   private int mConsistentCount;
-  // The time of the last network position contradicting the trusted satellite position, 0 if it agreed.
-  private long mContradictedTimeMs;
+
+  // The first network position of a jump away from the last trusted one, waiting for a confirmation.
+  private boolean mHasJump;
+  private double mJumpLat;
+  private double mJumpLon;
+  private long mJumpTimeMs;
+  private final List<double[]> mPhantoms = new ArrayList<>();
+  // Several providers report the same network position.
+  private long mLastNetworkTimeMs = -1;
+  private boolean mLastNetworkAccepted;
 
   public boolean isSpoofed()
   {
@@ -50,24 +68,87 @@ public class GpsSpoofingDetector
 
   /**
    * @param timeMs monotonic time of the position, e.g. elapsed realtime.
+   * @return false if the position jumped away and is ignored.
    */
-  public void onNetworkPosition(double lat, double lon, double accuracyM, long timeMs)
+  public boolean onNetworkPosition(double lat, double lon, double accuracyM, long timeMs)
   {
-    final boolean contradicts =
-        !mSpoofed && mHasTrusted && timeMs - mTrustedTimeMs <= TRUSTED_FRESH_MS
-        && distance(lat, lon, mTrustedLat, mTrustedLon) > networkTolerance(accuracyM, timeMs - mTrustedTimeMs);
-    // Several providers report the same network position, it is not a confirmation.
-    if (contradicts && timeMs == mContradictedTimeMs)
-      return;
-    final boolean confirmed = mContradictedTimeMs != 0;
-    mContradictedTimeMs = contradicts ? timeMs : 0;
-    if (contradicts && !confirmed)
-      return;
-    mHasNetwork = true;
-    mNetworkLat = lat;
-    mNetworkLon = lon;
-    mNetworkAccuracy = accuracyM;
-    mNetworkTimeMs = timeMs;
+    if (timeMs == mLastNetworkTimeMs)
+      return mLastNetworkAccepted;
+    mLastNetworkTimeMs = timeMs;
+    mLastNetworkAccepted = acceptNetworkPosition(lat, lon, accuracyM, timeMs);
+    if (mLastNetworkAccepted)
+    {
+      mHasNetwork = true;
+      mNetworkLat = lat;
+      mNetworkLon = lon;
+      mNetworkAccuracy = accuracyM;
+      mNetworkTimeMs = timeMs;
+    }
+    return mLastNetworkAccepted;
+  }
+
+  private boolean acceptNetworkPosition(double lat, double lon, double accuracyM, long timeMs)
+  {
+    for (double[] phantom : mPhantoms)
+    {
+      if (distance(lat, lon, phantom[0], phantom[1]) <= SAME_POINT_M)
+        return false;
+    }
+
+    // The same point again proves nothing, while the time since the last trusted position makes any jump look possible.
+    if (mHasJump && distance(lat, lon, mJumpLat, mJumpLon) <= SAME_POINT_M)
+    {
+      if (timeMs - mJumpTimeMs < JUMP_CONFIRM_MS)
+        return false;
+      mHasJump = false;
+      return true;
+    }
+
+    // The most recent trusted position: satellite or network.
+    final boolean trustedIsLatest = mHasTrusted && (!mHasNetwork || mTrustedTimeMs >= mNetworkTimeMs);
+    if (!trustedIsLatest && !mHasNetwork)
+      return true;
+    final double refLat = trustedIsLatest ? mTrustedLat : mNetworkLat;
+    final double refLon = trustedIsLatest ? mTrustedLon : mNetworkLon;
+    final long refTimeMs = trustedIsLatest ? mTrustedTimeMs : mNetworkTimeMs;
+    final double refAccuracyM = trustedIsLatest ? 0 : mNetworkAccuracy;
+
+    if (distance(lat, lon, refLat, refLon)
+        <= networkTolerance(Math.max(accuracyM, refAccuracyM), timeMs - refTimeMs))
+    {
+      // Back from a jump soon: the jump point is wrong.
+      if (mHasJump && timeMs - mJumpTimeMs < JUMP_CONFIRM_MS && mPhantoms.size() < MAX_PHANTOMS)
+        mPhantoms.add(new double[] {mJumpLat, mJumpLon});
+      mHasJump = false;
+      return true;
+    }
+
+    if (accuracyM * MORE_ACCURATE_FACTOR < refAccuracyM)
+    {
+      mHasJump = false;
+      return true;
+    }
+
+    if (!mHasJump)
+    {
+      mHasJump = true;
+      mJumpLat = lat;
+      mJumpLon = lon;
+      mJumpTimeMs = timeMs;
+      return false;
+    }
+
+    final boolean confirmed =
+        distance(lat, lon, mJumpLat, mJumpLon) <= networkTolerance(accuracyM, timeMs - mJumpTimeMs);
+    if (confirmed || timeMs - mJumpTimeMs >= JUMP_CONFIRM_MS)
+    {
+      mHasJump = false;
+      return true;
+    }
+    // Another jump, but the time since the first one counts.
+    mJumpLat = lat;
+    mJumpLon = lon;
+    return false;
   }
 
   /**
