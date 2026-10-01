@@ -208,6 +208,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
   // The trusted position is saved not more often than this.
   private static final long SAVE_TRUSTED_INTERVAL_MS = 30_000;
   private long mSavedTrustedTimeMs;
+  // The manual mode is on because there was no position at all, the user hasn't placed the car yet.
+  private boolean mManualForNoPosition;
   // Elapsed realtime when the manual mode was left: GPS was ignored in it, so it is waited for anew.
   private long mManualLeftMs;
   // GPS positions off the roads in a row.
@@ -450,6 +452,12 @@ public class LocationHelper implements BaseLocationProvider.Listener
         mInertial.onGpsPosition(location);
     }
 
+    if (mManualMode && mManualForNoPosition && isNetwork && mManualLocation == null)
+    {
+      Logger.i(TAG, "The network position is back, leaving the manual mode, location = " + location);
+      setManualMode(false);
+    }
+
     if (mManualMode)
     {
       Logger.d(TAG, "Manual mode is on, ignoring location = " + location);
@@ -633,17 +641,28 @@ public class LocationHelper implements BaseLocationProvider.Listener
 
   /**
    * Turns the manual mode on when there is no GPS while navigating without the inertial navigation, which
-   * turns it on by itself. GPS may have been lost or never found since the start.
+   * turns it on by itself. GPS may have been lost or never found since the start. Without navigation the network
+   * position is enough, the manual mode is turned on only when there is none either.
    */
   private void checkGpsLost()
   {
-    if (mManualMode || !RoutingController.get().isNavigating())
+    if (mManualMode)
       return;
     final long now = SystemClock.elapsedRealtime();
-    final boolean lost = mLastTrustedGpsMs == 0 && mManualLeftMs == 0 ? now - mStartTimeMs > GPS_FIRST_FIX_MS
-                                                                      : getGpsSilenceMs() > GPS_LOST_MS;
-    if (lost)
+    final boolean lost = mSpoofingDetector.isSpoofed()
+                      || (mLastTrustedGpsMs == 0 && mManualLeftMs == 0 ? now - mStartTimeMs > GPS_FIRST_FIX_MS
+                                                                       : getGpsSilenceMs() > GPS_LOST_MS);
+    if (!lost)
+      return;
+    if (RoutingController.get().isNavigating())
+    {
       enterManualModeByItself("No GPS while navigating");
+    }
+    else if (getWorkingNetwork() == null && now - mStartTimeMs > GPS_FIRST_FIX_MS)
+    {
+      enterManualModeByItself("No GPS and no network position");
+      mManualForNoPosition = true;
+    }
   }
 
   @NonNull
@@ -1201,6 +1220,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
 
     Logger.i(TAG, "enabled = " + enabled);
     mManualMode = enabled;
+    mManualForNoPosition = false;
     if (!enabled)
       mManualLeftMs = SystemClock.elapsedRealtime();
     mManualLocation = null;
