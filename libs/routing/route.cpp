@@ -604,8 +604,9 @@ namespace
 // Returns the direction the car goes in, if it is known well enough to tell the street the car is on.
 std::optional<double> GetCarDirectionRad(location::GpsInfo const & info)
 {
-  // The GPS bearing of a slow car is noise. Positions without a speed (set by the user) have an exact one.
-  double constexpr kMinSpeedMpS = 3.0;
+  // The GPS bearing of a car standing still is noise, from ~1 m/s it is within a few degrees of the road.
+  // The inertial bearing comes from the gyroscope. Positions without a speed (set by the user) have an exact one.
+  double constexpr kMinSpeedMpS = 1.0;
   if (!info.HasBearing() || (info.HasSpeed() && info.m_speed < kMinSpeedMpS))
     return std::nullopt;
   return math::DegToRad(location::BearingToAngle(info.m_bearing));
