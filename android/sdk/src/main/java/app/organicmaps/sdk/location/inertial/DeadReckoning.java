@@ -9,7 +9,7 @@ package app.organicmaps.sdk.location.inertial;
 public class DeadReckoning
 {
   static final double BASE_ACCURACY_M = 15;
-  static final double ACCURACY_PER_METER = 0.05;
+  static final double ACCURACY_PER_METER = 0.02;
   // A road going in a different direction is not the road the car is on (or the car is turning).
   static final double MAX_SNAP_HEADING_DIFF_DEG = 30;
   // The heading is pulled to the road slowly and only when they nearly agree: it removes the slow gyroscope
