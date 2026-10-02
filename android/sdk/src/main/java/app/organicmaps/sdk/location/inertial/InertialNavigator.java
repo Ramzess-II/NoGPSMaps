@@ -571,8 +571,9 @@ public class InertialNavigator implements MotionSource.Listener
     mDeadReckoning.setSpeed(speedFresh ? mSpeedKmh / 3.6 * getSpeedScale(mSpeedKmh) : 0);
     // The car stands where it is while it maneuvers or after it has left the roads.
     final boolean stopped = mPaused || mRoadLost;
-    // A standing car can't turn, so the remaining gyroscope drift doesn't rotate the heading at stops.
-    if (mSource != null && mSource.isCalibrated() && speedFresh && mDeadReckoning.getSpeed() > MOVING_SPEED_MPS)
+    // A standing car can't turn, so the remaining gyroscope drift doesn't rotate the heading at stops. The car
+    // reports 0 km/h standing, and 1 km/h, which is below MOVING_SPEED_MPS, while it turns crawling in a jam.
+    if (mSource != null && mSource.isCalibrated() && speedFresh && mDeadReckoning.getSpeed() > 0)
     {
       if (!stopped)
         trackTurn(yawDeltaDeg, dt, timestampNs);
