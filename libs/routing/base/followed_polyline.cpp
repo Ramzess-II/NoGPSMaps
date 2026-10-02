@@ -134,28 +134,31 @@ Iter FollowedPolyline::GetBestProjection(m2::RectD const & posRect, DistanceFn c
   return GetClosestProjectionInInterval(posRect, distFn, hoppingBorderIdx, m_nextCheckpointIndex);
 }
 
-Iter FollowedPolyline::GetBestMatchingProjection(m2::RectD const & posRect,
-                                                std::optional<double> directionRad) const
+Iter FollowedPolyline::GetBestMatchingProjection(m2::RectD const & posRect, std::optional<double> directionRad,
+                                                double maxOvershootM) const
 {
   CHECK_EQUAL(m_segProj.size() + 1, m_poly.GetSize(), ());
   // At first trying to find a projection to two closest route segments of route which is close
   // enough to |posRect| center. If |m_current| is right before intermediate point we can get |iter|
   // right after intermediate point (in next subroute).
   size_t const hoppingBorderIdx = std::min(m_nextCheckpointIndex, std::min(m_segProj.size(), m_current.m_ind + 3));
-  auto const iter = GetClosestMatchingProjectionInInterval(posRect, m_current.m_ind, hoppingBorderIdx, directionRad);
+  auto const iter =
+      GetClosestMatchingProjectionInInterval(posRect, m_current.m_ind, hoppingBorderIdx, directionRad, maxOvershootM);
   if (iter.IsValid())
     return iter;
   // If a projection to the 3 closest route segments is not found tries to find projection to other route
   // segments of current subroute.
-  return GetClosestMatchingProjectionInInterval(posRect, hoppingBorderIdx, m_nextCheckpointIndex, directionRad);
+  return GetClosestMatchingProjectionInInterval(posRect, hoppingBorderIdx, m_nextCheckpointIndex, directionRad,
+                                                maxOvershootM);
 }
 
-bool FollowedPolyline::UpdateMatchingProjection(m2::RectD const & posRect, std::optional<double> directionRad)
+bool FollowedPolyline::UpdateMatchingProjection(m2::RectD const & posRect, std::optional<double> directionRad,
+                                                double maxOvershootM)
 {
   ASSERT(m_current.IsValid(), ());
   ASSERT_LESS(m_current.m_ind, m_poly.GetSize() - 1, ());
 
-  auto const iter = GetBestMatchingProjection(posRect, directionRad);
+  auto const iter = GetBestMatchingProjection(posRect, directionRad, maxOvershootM);
 
   if (iter.IsValid())
   {
@@ -215,7 +218,8 @@ void FollowedPolyline::GetCurrentDirectionPoint(m2::PointD & pt, double toleranc
 }
 
 Iter FollowedPolyline::GetClosestMatchingProjectionInInterval(m2::RectD const & posRect, size_t startIdx,
-                                                              size_t endIdx, std::optional<double> directionRad) const
+                                                              size_t endIdx, std::optional<double> directionRad,
+                                                              double maxOvershootM) const
 {
   // A car goes along the road, a segment going more aside is another street.
   double constexpr kMaxDirectionDiffRad = math::pi / 3.0;
@@ -244,6 +248,11 @@ Iter FollowedPolyline::GetClosestMatchingProjectionInInterval(m2::RectD const & 
     }
 
     double const dp = mercator::DistanceOnEarth(pt, currPos);
+    // The car going on straight past the point where the route turns has left the route. Otherwise it stays
+    // shown at the turn until it is farther than the matching threshold, 50 m for a car.
+    if (directionRad && pt == segEnd && i + 2 < m_poly.GetSize() && dp > maxOvershootM)
+      continue;
+
     if (dp >= minDist)
       continue;
 

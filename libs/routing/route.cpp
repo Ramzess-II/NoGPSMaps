@@ -610,6 +610,14 @@ std::optional<double> GetCarDirectionRad(location::GpsInfo const & info)
     return std::nullopt;
   return math::DegToRad(location::BearingToAngle(info.m_bearing));
 }
+
+// How far the car may be past the point where the route turns and still be on the route: more than the usual
+// GPS error. The lag of the inertial position along the road is in its accuracy.
+double GetMaxOvershootM(location::GpsInfo const & info)
+{
+  double constexpr kMinOvershootM = 20.0;
+  return std::max(kMinOvershootM, info.m_horizontalAccuracy);
+}
 }  // namespace
 
 bool Route::MoveIterator(location::GpsInfo const & info)
@@ -617,7 +625,7 @@ bool Route::MoveIterator(location::GpsInfo const & info)
   m2::RectD const rect = mercator::MetersToXY(
       info.m_longitude, info.m_latitude, std::max(m_routingSettings.m_matchingThresholdM, info.m_horizontalAccuracy));
 
-  return m_poly.UpdateMatchingProjection(rect, GetCarDirectionRad(info));
+  return m_poly.UpdateMatchingProjection(rect, GetCarDirectionRad(info), GetMaxOvershootM(info));
 }
 
 double Route::GetPolySegAngle(size_t ind) const
@@ -659,6 +667,11 @@ bool Route::MatchLocationToRoute(location::GpsInfo & location, location::RouteMa
   double constexpr kMaxDirectionDiffRad = math::pi / 3.0;
   if (carDirectionRad && std::fabs(ang::GetShortestDistance(
                              *carDirectionRad, math::DegToRad(GetPolySegAngle(iter.m_ind)))) > kMaxDirectionDiffRad)
+  {
+    return false;
+  }
+  if (carDirectionRad && distFromRouteM > GetMaxOvershootM(location) &&
+      iter.m_pt == m_poly.GetPolyline().GetPoint(iter.m_ind + 1))
   {
     return false;
   }
