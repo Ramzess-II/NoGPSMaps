@@ -88,4 +88,8 @@
   <string name="nogps_based_on">Based on Organic Maps</string>
   <string name="nogps_map_data">Map data © OpenStreetMap and Organic Maps</string>
   <string name="nogps_source_code">Source code on GitHub</string>
+  <!-- Shown instead of the speed while the car speed doesn't come. Very short: the place of two digits. -->
+  <string name="nogps_speed_no_data" translatable="false">NO</string>
+  <string name="nogps_speed_no_box" translatable="false">ESP32</string>
+  <string name="nogps_speed_no_elm" translatable="false">ELM</string>
 </resources>
