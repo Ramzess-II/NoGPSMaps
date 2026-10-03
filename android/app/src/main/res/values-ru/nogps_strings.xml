@@ -87,4 +87,5 @@
   <string name="nogps_based_on">На основе Organic Maps</string>
   <string name="nogps_map_data">Данные карт © OpenStreetMap и Organic Maps</string>
   <string name="nogps_source_code">Исходный код на GitHub</string>
+  <string name="nogps_delete_recent_query">Удалить из истории?</string>
 </resources>
