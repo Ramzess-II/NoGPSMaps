@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<!-- The sheet is taller than a phone screen with the car data of the sensor box, so it scrolls. -->
+<androidx.core.widget.NestedScrollView
   xmlns:android="http://schemas.android.com/apk/res/android"
   android:layout_width="match_parent"
   android:layout_height="wrap_content"
-  android:background="?cardBackground"
+  android:background="?cardBackground">
+<LinearLayout
+  android:layout_width="match_parent"
+  android:layout_height="wrap_content"
   android:orientation="vertical"
   android:paddingHorizontal="20dp"
   android:paddingTop="16dp"
@@ -172,3 +176,4 @@
     android:textColor="?android:textColorSecondary"
     android:textSize="14sp" />
 </LinearLayout>
+</androidx.core.widget.NestedScrollView>
