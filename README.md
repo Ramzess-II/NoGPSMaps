@@ -13,7 +13,7 @@ NoGPS Maps — Android-застосунок на основі [Organic Maps](htt
 *English summary: an Android fork of Organic Maps for driving under GPS jamming and spoofing. It
 detects spoofed positions, switches to a manual mode and keeps the car on the roads with dead
 reckoning from the phone gyroscope (or an external ESP32 sensor box) and the car speed from an OBD-II
-ELM327 adapter.*
+ELM327 adapter. The firmware of the sensor box: [ELMandIMU](https://github.com/Ramzess-II/ELMandIMU).*
 
 <p align="center">
   <img src="docs/nogps/inertial.png" width="260" alt="Інерціальна навігація в центрі Дніпра">
@@ -36,7 +36,8 @@ ELM327 adapter.*
 - **Телефон + ELM327:** гіроскоп телефона, закріпленого на панелі, і швидкість з OBD-II через
   Bluetooth-адаптер ELM327.
 - **Блок ESP32 (Wi-Fi):** зовнішній блок датчиків, жорстко закріплений у машині, передає поворот і
-  швидкість. Технічне завдання на прошивку і протокол: [`docs/nogps/esp32-firmware-spec.md`](docs/nogps/esp32-firmware-spec.md).
+  швидкість. Прошивка блоку — в окремому репозиторії [ELMandIMU](https://github.com/Ramzess-II/ELMandIMU),
+  технічне завдання на неї і протокол: [`docs/nogps/esp32-firmware-spec.md`](docs/nogps/esp32-firmware-spec.md).
 - Машина тримається доріг і маршруту: позиція прив'язується до дороги, поворот переноситься на
   перехрестя, де він справді був, а плавний вигин дороги поворотом не вважається.
 - Якщо розрахунок вивів машину з доріг, позначка зупиняється на дорозі й просить відмітитися.
@@ -104,7 +105,8 @@ cd NoGPSMaps/android
 - [x] Релізна збірка: підпис ключем із `app/secure.properties`, нативні бібліотеки вирівняні під 16 КБ.
 - [x] «Поділитися» надсилає посилання openstreetmap.org, нові скриншоти для магазину.
 - [ ] Закритий тест у Google Play (12 тестувальників, 14 днів).
-- [ ] Зовнішній блок датчиків ESP32: прошивка, корпус, кріплення.
+- [ ] Зовнішній блок датчиків ESP32: [прошивка](https://github.com/Ramzess-II/ELMandIMU) в роботі, корпус,
+      кріплення.
 - [ ] Перевірка в поїздках: кільця, розв'язки, розвилки, затори.
 - [ ] Збір звітів про збої без персональних даних.
 
