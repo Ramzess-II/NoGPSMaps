@@ -103,6 +103,45 @@ public class Esp32ProtocolTest
   }
 
   @Test
+  public void parsesCarInfo()
+  {
+    // Lines from the firmware with the engine, its speed and the voltage in the fields 17-19.
+    MotionSource.CarInfo car = Esp32Protocol.parseCarInfo(Esp32Protocol.parse(
+        "$NGS,1,0.2.0,ICM20602,500,OK,ISO 15765-4 (CAN 11/500),12,331,0,OK,0x12,NONE,38400,-386,9,RUN,812,14100*EA0D"));
+    assertNotNull(car);
+    assertEquals(Boolean.TRUE, car.engineRunning);
+    assertEquals(812, car.rpm);
+    assertEquals(14100, car.boxMillivolts);
+    assertEquals(-1, car.elmMillivolts);
+    assertFalse(car.voltageMismatch);
+
+    car = Esp32Protocol.parseCarInfo(
+        Esp32Protocol.parse("$NGS,1,0.2.0,ICM20602,500,SLEEP,,12,331,0,OK,0x12,NONE,38400,-386,14,OFF,,12480*3920"));
+    assertNotNull(car);
+    assertEquals(Boolean.FALSE, car.engineRunning);
+    assertEquals(-1, car.rpm);
+    assertEquals(12480, car.boxMillivolts);
+
+    // Nothing is known without ELM327: the last fields are empty.
+    car = Esp32Protocol.parseCarInfo(
+        Esp32Protocol.parse("$NGS,1,0.2.0,ICM20602,500,NO_ADAPTER,,,331,0,OK,0x12,NO_ADAPTER,0,-386,4,,,*D654"));
+    assertNotNull(car);
+    assertNull(car.engineRunning);
+    assertEquals(-1, car.boxMillivolts);
+
+    // The field 20 is the voltage from ELM327, the divider of the box is wrong if they differ by more than 1 V.
+    final String line = "NGS,1,0.2.0,ICM20602,500,OK,,12,331,0,OK,0x12,NONE,38400,-386,9,RUN,812,17200,12400";
+    car = Esp32Protocol.parseCarInfo(
+        Esp32Protocol.parse("$" + line + "*" + String.format("%04X", Esp32Protocol.crc16(line))));
+    assertNotNull(car);
+    assertEquals(12400, car.elmMillivolts);
+    assertTrue(car.voltageMismatch);
+
+    // A status of an older firmware and other lines tell nothing about the car.
+    assertNull(Esp32Protocol.parseCarInfo(Esp32Protocol.parse("$NGA,18,OK*461D")));
+  }
+
+  @Test
   public void parsesLinesOfFirmware()
   {
     // Lines from the firmware 0.2.0: ELM327 is off, the box stands still.

@@ -416,6 +416,12 @@ public class InertialNavigator implements MotionSource.Listener
     return location;
   }
 
+  @Nullable
+  public MotionSource.CarInfo getCarInfo()
+  {
+    return mSource != null ? mSource.getCarInfo() : null;
+  }
+
   @NonNull
   public MotionSource.State getSourceState()
   {

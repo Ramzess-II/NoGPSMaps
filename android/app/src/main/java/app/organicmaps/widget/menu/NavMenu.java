@@ -278,7 +278,8 @@ public class NavMenu implements DefaultLifecycleObserver
 
     // The part to look at: the box itself or the adapter in the car.
     final boolean noBox = locationHelper.isEsp32Source()
-                       && (state == MotionSource.State.DISCONNECTED || state == MotionSource.State.CONNECTING);
+                       && (state == MotionSource.State.DISCONNECTED || state == MotionSource.State.CONNECTING
+                           || state == MotionSource.State.BOX_SLEEPING);
     mSpeedValue.setText(R.string.nogps_speed_no_data);
     mSpeedValue.setTextColor(ContextCompat.getColor(mActivity, R.color.base_red));
     mSpeedUnits.setText(noBox ? R.string.nogps_speed_no_box : R.string.nogps_speed_no_elm);

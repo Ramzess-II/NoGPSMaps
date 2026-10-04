@@ -60,6 +60,8 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
   private SwitchCompat mSwitch;
   private TextView mAdapter;
   private TextView mSpeed;
+  private TextView mCar;
+  private TextView mVoltageMismatch;
   private TextView mScale;
   private TextView mGyro;
   private TextView mReadiness;
@@ -76,6 +78,8 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     mSwitch = view.findViewById(R.id.nogps_inertial_switch);
     mAdapter = view.findViewById(R.id.nogps_adapter);
     mSpeed = view.findViewById(R.id.nogps_speed);
+    mCar = view.findViewById(R.id.nogps_car);
+    mVoltageMismatch = view.findViewById(R.id.nogps_voltage_mismatch);
     mScale = view.findViewById(R.id.nogps_scale);
     view.findViewById(R.id.nogps_clear_speed).setOnClickListener(v -> confirmClearSpeed());
     mGyro = view.findViewById(R.id.nogps_gyro);
@@ -262,6 +266,8 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     mSpeed.setText(getString(R.string.nogps_sensors_speed, speed >= 0 ? getString(R.string.nogps_speed_kmh, speed)
                                                                        : getString(R.string.nogps_unknown)));
 
+    updateCar(enabled && esp32 ? inertial.getCarInfo() : null, speed);
+
     mScale.setText(getString(R.string.nogps_sensors_scale,
                              enabled ? String.format(Locale.US, "\u00D7%.2f", inertial.getSpeedScale())
                                      : getString(R.string.nogps_unknown),
@@ -304,6 +310,33 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     }
   }
 
+  /**
+   * Shows what the sensor box tells about the car: the engine and the voltage measured by the box and by ELM327.
+   */
+  private void updateCar(@Nullable MotionSource.CarInfo car, int speedKmh)
+  {
+    mCar.setVisibility(car != null ? View.VISIBLE : View.GONE);
+    mVoltageMismatch.setVisibility(car != null && car.voltageMismatch ? View.VISIBLE : View.GONE);
+    if (car == null)
+      return;
+
+    // The box asks the car for these only while it stands, not to delay the speed.
+    final String unknown = getString(speedKmh > 0 ? R.string.nogps_not_while_driving : R.string.nogps_unknown);
+    final String engine = getString(car.engineRunning == null ? R.string.nogps_unknown
+                                    : car.engineRunning ? R.string.nogps_engine_running
+                                                        : R.string.nogps_engine_stopped);
+    final String rpm = car.rpm >= 0 ? getString(R.string.nogps_rpm, car.rpm) : unknown;
+    final String boxVolts = car.boxMillivolts >= 0 ? formatVolts(car.boxMillivolts) : getString(R.string.nogps_unknown);
+    final String elmVolts = car.elmMillivolts >= 0 ? formatVolts(car.elmMillivolts) : unknown;
+    mCar.setText(getString(R.string.nogps_sensors_car, engine, rpm, boxVolts, elmVolts));
+  }
+
+  @NonNull
+  private String formatVolts(int millivolts)
+  {
+    return getString(R.string.nogps_volts, String.format(Locale.US, "%.1f", millivolts / 1000.0));
+  }
+
   private void confirmClearSpeed()
   {
     new MaterialAlertDialogBuilder(requireContext())
@@ -330,6 +363,8 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
       case OBD_CONNECTING -> R.string.nogps_box_obd_connecting;
       case OBD_ERROR -> R.string.nogps_elm_error;
       case NO_CAR_DATA -> R.string.nogps_elm_no_car;
+      case BOX_SLEEPING -> R.string.nogps_box_sleeping;
+      case OBD_SLEEPING -> R.string.nogps_box_obd_sleeping;
       case CONNECTED -> R.string.nogps_elm_connected;
     };
   }
@@ -343,7 +378,7 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
       case NO_ADAPTER, OBD_DISABLED -> R.string.nogps_elm_no_adapter;
       case OBD_CONNECTING -> R.string.nogps_elm_connecting;
       case OBD_ERROR -> R.string.nogps_elm_error;
-      case NO_CAR_DATA -> R.string.nogps_elm_no_car;
+      case NO_CAR_DATA, BOX_SLEEPING, OBD_SLEEPING -> R.string.nogps_elm_no_car;
       case CONNECTED -> R.string.nogps_elm_connected;
     };
   }

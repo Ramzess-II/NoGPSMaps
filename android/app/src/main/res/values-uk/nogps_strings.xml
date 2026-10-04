@@ -88,4 +88,13 @@
   <string name="nogps_map_data">Дані карт © OpenStreetMap і Organic Maps</string>
   <string name="nogps_source_code">Вихідний код на GitHub</string>
   <string name="nogps_delete_recent_query">Видалити з історії?</string>
+  <string name="nogps_box_sleeping">спить: двигун заглушено</string>
+  <string name="nogps_box_obd_sleeping">ELM327 спить: двигун заглушено</string>
+  <string name="nogps_sensors_car">Двигун: %1$s\nОберти: %2$s\nНапруга, АЦП блоку: %3$s\nНапруга, ELM327: %4$s</string>
+  <string name="nogps_engine_running">працює</string>
+  <string name="nogps_engine_stopped">заглушено</string>
+  <string name="nogps_rpm">%d об/хв</string>
+  <string name="nogps_volts">%s В</string>
+  <string name="nogps_not_while_driving">під час руху не запитується</string>
+  <string name="nogps_voltage_mismatch">АЦП блоку та ELM327 розходяться більше ніж на 1 В: перевірте дільник напруги блоку</string>
 </resources>

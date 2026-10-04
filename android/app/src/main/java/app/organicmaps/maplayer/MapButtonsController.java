@@ -404,6 +404,10 @@ public class MapButtonsController extends Fragment
       mMotionSourceWarnedMs = 0;
       return;
     }
+    // The box sleeps with the engine stopped: the car stands, nothing is lost.
+    final MotionSource.State state = inertial.getSourceState();
+    if (state == MotionSource.State.BOX_SLEEPING || state == MotionSource.State.OBD_SLEEPING)
+      return;
     final long now = SystemClock.elapsedRealtime();
     if (!mMotionSourceWorked || !locationHelper.isManualMode() || now - mMotionSourceWarnedMs < warningIntervalMs)
       return;

@@ -22,7 +22,39 @@ public interface MotionSource
     OBD_ERROR,
     // Connected, but the car doesn't tell its speed (ignition off, protocol search).
     NO_CAR_DATA,
+    // The sensor box has gone after the engine was stopped: it switches its Wi-Fi off to save the car battery.
+    BOX_SLEEPING,
+    // The sensor box is connected and doesn't talk to the car with the engine stopped.
+    OBD_SLEEPING,
     CONNECTED,
+  }
+
+  /**
+   * What the sensor box knows about the car besides its speed. The box asks the car for the engine speed and
+   * ELM327 for the voltage only while the car stands, not to delay the speed.
+   */
+  final class CarInfo
+  {
+    // null if unknown.
+    @Nullable
+    public final Boolean engineRunning;
+    // -1 if unknown.
+    public final int rpm;
+    // The voltage of the car measured by the box itself and by ELM327, -1 if unknown.
+    public final int boxMillivolts;
+    public final int elmMillivolts;
+    // The two voltages differ too much: the voltage divider of the box is wrong.
+    public final boolean voltageMismatch;
+
+    public CarInfo(@Nullable Boolean engineRunning, int rpm, int boxMillivolts, int elmMillivolts,
+                   boolean voltageMismatch)
+    {
+      this.engineRunning = engineRunning;
+      this.rpm = rpm;
+      this.boxMillivolts = boxMillivolts;
+      this.elmMillivolts = elmMillivolts;
+      this.voltageMismatch = voltageMismatch;
+    }
   }
 
   interface Listener
@@ -64,4 +96,13 @@ public interface MotionSource
    */
   @Nullable
   String getDeviceName();
+
+  /**
+   * @return null if the source doesn't tell it: the phone, or the box that is not connected.
+   */
+  @Nullable
+  default CarInfo getCarInfo()
+  {
+    return null;
+  }
 }

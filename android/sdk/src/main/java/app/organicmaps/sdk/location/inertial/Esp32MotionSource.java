@@ -75,6 +75,11 @@ public class Esp32MotionSource implements MotionSource
   private String mObdState;
   // The box hasn't found its ELM327: while it searches it again, the adapter is still missing.
   private boolean mObdAdapterMissing;
+  // The engine, its speed and the voltage of the car from the status of the box, null until it comes.
+  @Nullable
+  private CarInfo mCarInfo;
+  // The box has told that its voltage and the one of ELM327 differ. Kept until they come close again.
+  private boolean mVoltageMismatch;
   // The numbers of the events of the box written to the log.
   private final TreeSet<Long> mLoggedEvents = new TreeSet<>();
   private long mEventsRequestMs;
@@ -247,6 +252,13 @@ public class Esp32MotionSource implements MotionSource
     final String imuName = Esp32Protocol.parseImuName(fields);
     if (imuName != null)
       mImuName = imuName.isEmpty() ? null : imuName;
+    final CarInfo carInfo = Esp32Protocol.parseCarInfo(fields);
+    if (carInfo != null)
+    {
+      if (carInfo.boxMillivolts >= 0 && carInfo.elmMillivolts >= 0)
+        mVoltageMismatch = carInfo.voltageMismatch;
+      mCarInfo = carInfo;
+    }
     final String obdState = Esp32Protocol.parseObdState(fields);
     if (obdState != null && !obdState.equals(mObdState))
     {
@@ -297,6 +309,8 @@ public class Esp32MotionSource implements MotionSource
       Logger.i(TAG, message);
     else
       Logger.w(TAG, message);
+    if ("VOLT_MISMATCH".equals(event.code))
+      mVoltageMismatch = true;
     if (event.number > lastNumber + 1)
       requestLostEvents(lastNumber + 1);
   }
@@ -352,9 +366,11 @@ public class Esp32MotionSource implements MotionSource
     if (!mRunning)
       return State.DISCONNECTED;
     if (!isConnected())
-      return State.CONNECTING;
+      return isSleeping() ? State.BOX_SLEEPING : State.CONNECTING;
     if ((mFlags & Esp32Protocol.FLAG_OBD_OK) != 0)
       return State.CONNECTED;
+    if ("SLEEP".equals(mObdState))
+      return State.OBD_SLEEPING;
     // OBD_ABSENT is set also when ELM327 is off in the box, only the status tells one from another.
     if (mObdAdapterMissing)
       return State.NO_ADAPTER;
@@ -368,6 +384,27 @@ public class Esp32MotionSource implements MotionSource
       // NO_CAR and NO_DATA: the adapter answers, the car doesn't.
       default -> State.NO_CAR_DATA;
     };
+  }
+
+  /**
+   * The box switches its Wi-Fi off a minute after the engine is stopped, so a box that has gone after it has
+   * told about the stopped engine is not lost.
+   */
+  private boolean isSleeping()
+  {
+    if (mLastDataMs == 0)
+      return false;
+    return "SLEEP".equals(mObdState) || (mCarInfo != null && Boolean.FALSE.equals(mCarInfo.engineRunning));
+  }
+
+  @Nullable
+  @Override
+  public CarInfo getCarInfo()
+  {
+    if (!isConnected() || mCarInfo == null)
+      return null;
+    return new CarInfo(mCarInfo.engineRunning, mCarInfo.rpm, mCarInfo.boxMillivolts, mCarInfo.elmMillivolts,
+                       mVoltageMismatch);
   }
 
   @Override
