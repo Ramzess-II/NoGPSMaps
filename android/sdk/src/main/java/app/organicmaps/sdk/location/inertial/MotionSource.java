@@ -40,20 +40,32 @@ public interface MotionSource
     public final Boolean engineRunning;
     // -1 if unknown.
     public final int rpm;
-    // The voltage of the car measured by the box itself and by ELM327, -1 if unknown.
+    // The voltage of the car in millivolts, -1 if unknown. The box measures it by itself all the time, ELM327
+    // and the control unit of the car are asked while the car stands.
     public final int boxMillivolts;
     public final int elmMillivolts;
-    // The two voltages differ too much: the voltage divider of the box is wrong.
+    public final int ecuMillivolts;
+    // The voltage of the box differs too much from the car: the voltage divider of the box is wrong.
     public final boolean voltageMismatch;
 
     public CarInfo(@Nullable Boolean engineRunning, int rpm, int boxMillivolts, int elmMillivolts,
-                   boolean voltageMismatch)
+                   int ecuMillivolts, boolean voltageMismatch)
     {
       this.engineRunning = engineRunning;
       this.rpm = rpm;
       this.boxMillivolts = boxMillivolts;
       this.elmMillivolts = elmMillivolts;
+      this.ecuMillivolts = ecuMillivolts;
       this.voltageMismatch = voltageMismatch;
+    }
+
+    /**
+     * @return the voltage the box compares its own one with: of the control unit of the car, ELM327 clones
+     * show less. -1 if unknown.
+     */
+    public int getReferenceMillivolts()
+    {
+      return ecuMillivolts >= 0 ? ecuMillivolts : elmMillivolts;
     }
   }
 

@@ -26,7 +26,7 @@ public final class Esp32Protocol
   static final int FLAG_OBD_ABSENT = 1 << 9;
   static final int FLAG_ERROR = 1 << 10;
   // The box tells about a wrong voltage divider from the same difference.
-  static final int MAX_VOLTAGE_DIFF_MV = 1000;
+  static final int MAX_VOLTAGE_DIFF_PERCENT = 10;
 
   /**
    * A data line: the totals since the box has started, so a lost line loses nothing.
@@ -244,17 +244,20 @@ public final class Esp32Protocol
   @Nullable
   public static MotionSource.CarInfo parseCarInfo(@NonNull String[] fields)
   {
-    // Fields 17-20 of the status: engine, rpm, the voltage measured by the box and the one from ELM327. Older
-    // firmwares send less fields.
+    // Fields 17-21 of the status: engine, rpm, the voltage measured by the box, by ELM327 and by the control
+    // unit of the car. Older firmwares send less fields.
     if (fields.length < 17 || !"NGS".equals(fields[0]))
       return null;
     final String engine = fields[16];
     final Boolean running = "RUN".equals(engine) ? Boolean.TRUE : "OFF".equals(engine) ? Boolean.FALSE : null;
     final int boxMillivolts = parseOptionalInt(fields, 18);
     final int elmMillivolts = parseOptionalInt(fields, 19);
-    final boolean mismatch = boxMillivolts >= 0 && elmMillivolts >= 0
-                          && Math.abs(boxMillivolts - elmMillivolts) > MAX_VOLTAGE_DIFF_MV;
-    return new MotionSource.CarInfo(running, parseOptionalInt(fields, 17), boxMillivolts, elmMillivolts, mismatch);
+    final int ecuMillivolts = parseOptionalInt(fields, 20);
+    final int reference = ecuMillivolts >= 0 ? ecuMillivolts : elmMillivolts;
+    final boolean mismatch = boxMillivolts >= 0 && reference >= 0
+                          && Math.abs(boxMillivolts - reference) * 100 > reference * MAX_VOLTAGE_DIFF_PERCENT;
+    return new MotionSource.CarInfo(running, parseOptionalInt(fields, 17), boxMillivolts, elmMillivolts,
+                                    ecuMillivolts, mismatch);
   }
 
   private static int parseOptionalInt(@NonNull String[] fields, int index)

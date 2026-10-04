@@ -90,11 +90,11 @@
   <string name="nogps_delete_recent_query">Удалить из истории?</string>
   <string name="nogps_box_sleeping">спит: двигатель заглушен</string>
   <string name="nogps_box_obd_sleeping">ELM327 спит: двигатель заглушен</string>
-  <string name="nogps_sensors_car">Двигатель: %1$s\nОбороты: %2$s\nНапряжение, АЦП блока: %3$s\nНапряжение, ELM327: %4$s</string>
+  <string name="nogps_sensors_car">Двигатель: %1$s\nОбороты: %2$s\nНапряжение, АЦП блока: %3$s\nНапряжение, ELM327: %4$s\nНапряжение, блок управления машины: %5$s</string>
   <string name="nogps_engine_running">работает</string>
   <string name="nogps_engine_stopped">заглушен</string>
   <string name="nogps_rpm">%d об/мин</string>
   <string name="nogps_volts">%s В</string>
   <string name="nogps_not_while_driving">на ходу не запрашивается</string>
-  <string name="nogps_voltage_mismatch">АЦП блока и ELM327 расходятся больше чем на 1 В: проверьте делитель напряжения блока</string>
+  <string name="nogps_voltage_mismatch">Напряжение с АЦП блока расходится с машиной больше чем на 10 %: проверьте делитель напряжения блока</string>
 </resources>

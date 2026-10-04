@@ -320,7 +320,8 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     if (car == null)
       return;
 
-    // The box asks the car for these only while it stands, not to delay the speed.
+    // The box measures its own voltage all the time and asks the car for the rest only while it stands, not to
+    // delay the speed.
     final String unknown = getString(speedKmh > 0 ? R.string.nogps_not_while_driving : R.string.nogps_unknown);
     final String engine = getString(car.engineRunning == null ? R.string.nogps_unknown
                                     : car.engineRunning ? R.string.nogps_engine_running
@@ -328,7 +329,8 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     final String rpm = car.rpm >= 0 ? getString(R.string.nogps_rpm, car.rpm) : unknown;
     final String boxVolts = car.boxMillivolts >= 0 ? formatVolts(car.boxMillivolts) : getString(R.string.nogps_unknown);
     final String elmVolts = car.elmMillivolts >= 0 ? formatVolts(car.elmMillivolts) : unknown;
-    mCar.setText(getString(R.string.nogps_sensors_car, engine, rpm, boxVolts, elmVolts));
+    final String ecuVolts = car.ecuMillivolts >= 0 ? formatVolts(car.ecuMillivolts) : unknown;
+    mCar.setText(getString(R.string.nogps_sensors_car, engine, rpm, boxVolts, elmVolts, ecuVolts));
   }
 
   @NonNull

@@ -255,7 +255,7 @@ public class Esp32MotionSource implements MotionSource
     final CarInfo carInfo = Esp32Protocol.parseCarInfo(fields);
     if (carInfo != null)
     {
-      if (carInfo.boxMillivolts >= 0 && carInfo.elmMillivolts >= 0)
+      if (carInfo.boxMillivolts >= 0 && carInfo.getReferenceMillivolts() >= 0)
         mVoltageMismatch = carInfo.voltageMismatch;
       mCarInfo = carInfo;
     }
@@ -309,8 +309,11 @@ public class Esp32MotionSource implements MotionSource
       Logger.i(TAG, message);
     else
       Logger.w(TAG, message);
+    // The box compares the raw voltage, the status has the corrected one.
     if ("VOLT_MISMATCH".equals(event.code))
       mVoltageMismatch = true;
+    else if ("VOLT_CAL".equals(event.code))
+      mVoltageMismatch = false;
     if (event.number > lastNumber + 1)
       requestLostEvents(lastNumber + 1);
   }
@@ -404,7 +407,7 @@ public class Esp32MotionSource implements MotionSource
     if (!isConnected() || mCarInfo == null)
       return null;
     return new CarInfo(mCarInfo.engineRunning, mCarInfo.rpm, mCarInfo.boxMillivolts, mCarInfo.elmMillivolts,
-                       mVoltageMismatch);
+                       mCarInfo.ecuMillivolts, mVoltageMismatch);
   }
 
   @Override

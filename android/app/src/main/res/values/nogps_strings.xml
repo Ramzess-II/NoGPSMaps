@@ -95,11 +95,11 @@
   <string name="nogps_delete_recent_query">Delete from the history?</string>
   <string name="nogps_box_sleeping">sleeps: the engine is stopped</string>
   <string name="nogps_box_obd_sleeping">ELM327 sleeps: the engine is stopped</string>
-  <string name="nogps_sensors_car">Engine: %1$s\nEngine speed: %2$s\nVoltage, box ADC: %3$s\nVoltage, ELM327: %4$s</string>
+  <string name="nogps_sensors_car">Engine: %1$s\nEngine speed: %2$s\nVoltage, box ADC: %3$s\nVoltage, ELM327: %4$s\nVoltage, car control unit: %5$s</string>
   <string name="nogps_engine_running">running</string>
   <string name="nogps_engine_stopped">stopped</string>
   <string name="nogps_rpm">%d rpm</string>
   <string name="nogps_volts">%s V</string>
   <string name="nogps_not_while_driving">not asked while driving</string>
-  <string name="nogps_voltage_mismatch">The box ADC and ELM327 differ by more than 1 V: check the voltage divider of the box</string>
+  <string name="nogps_voltage_mismatch">The voltage measured by the box differs from the car by more than 10%: check the voltage divider of the box</string>
 </resources>

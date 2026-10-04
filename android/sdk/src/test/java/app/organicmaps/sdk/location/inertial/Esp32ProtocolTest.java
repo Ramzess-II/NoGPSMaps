@@ -129,12 +129,38 @@ public class Esp32ProtocolTest
     assertNull(car.engineRunning);
     assertEquals(-1, car.boxMillivolts);
 
-    // The field 20 is the voltage from ELM327, the divider of the box is wrong if they differ by more than 1 V.
-    final String line = "NGS,1,0.2.0,ICM20602,500,OK,,12,331,0,OK,0x12,NONE,38400,-386,9,RUN,812,17200,12400";
+    // Lines of the firmware with 21 fields: the voltage from ELM327 and from the control unit of the car.
+    car = Esp32Protocol.parseCarInfo(Esp32Protocol.parse(
+        "$NGS,1,0.2.0,ICM20602,500,OK,ISO 15765-4 (CAN 11/500),12,331,0,OK,0x12,NONE,38400,-386,9,RUN,812,14100,13800,14080*AF2F"));
+    assertNotNull(car);
+    assertEquals(14100, car.boxMillivolts);
+    assertEquals(13800, car.elmMillivolts);
+    assertEquals(14080, car.ecuMillivolts);
+    assertEquals(14080, car.getReferenceMillivolts());
+    assertFalse(car.voltageMismatch);
+
+    // The car drives: only the voltage measured by the box comes.
+    car = Esp32Protocol.parseCarInfo(Esp32Protocol.parse(
+        "$NGS,1,0.2.0,ICM20602,500,OK,ISO 15765-4 (CAN 11/500),3,335,0,OK,0x12,NONE,38400,-380,9,RUN,,14230,,*3483"));
+    assertNotNull(car);
+    assertEquals(-1, car.rpm);
+    assertEquals(14230, car.boxMillivolts);
+    assertEquals(-1, car.elmMillivolts);
+    assertEquals(-1, car.ecuMillivolts);
+
+    // No divider in the box, the car doesn't tell its voltage.
+    car = Esp32Protocol.parseCarInfo(Esp32Protocol.parse(
+        "$NGS,1,0.2.0,ICM20602,500,OK,ISO 15765-4 (CAN 11/500),12,331,0,OK,0x12,NONE,38400,-386,9,RUN,790,,13800,*9680"));
+    assertNotNull(car);
+    assertEquals(-1, car.boxMillivolts);
+    assertEquals(13800, car.getReferenceMillivolts());
+    assertFalse(car.voltageMismatch);
+
+    // The divider of the box is wrong if its voltage differs from the car by more than 10%.
+    final String line = "NGS,1,0.2.0,ICM20602,500,OK,,12,331,0,OK,0x12,NONE,38400,-386,9,RUN,812,17200,12400,";
     car = Esp32Protocol.parseCarInfo(
         Esp32Protocol.parse("$" + line + "*" + String.format("%04X", Esp32Protocol.crc16(line))));
     assertNotNull(car);
-    assertEquals(12400, car.elmMillivolts);
     assertTrue(car.voltageMismatch);
 
     // A status of an older firmware and other lines tell nothing about the car.
