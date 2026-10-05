@@ -33,8 +33,11 @@ public class InertialNavigator implements MotionSource.Listener
   // A longer pause of the source is a lost connection, the car could do anything meanwhile.
   private static final double MAX_MOTION_DT_SEC = 1;
   private static final long SNAP_INTERVAL_MS = 1000;
-  // Don't look for roads too far: a wrong road is worse than none.
-  private static final double MIN_SNAP_RADIUS_M = 20;
+  // A road farther aside is another street: the car doesn't jump to it, however inaccurate the position is.
+  // It did at the end of a street with the position ahead of the car, and between the ramps of a junction.
+  // Off the roads the car is stopped (LOST_ROAD_M) until the user marks it.
+  private static final double SNAP_RADIUS_M = 20;
+  // The road the car is put on when the user marks it or the movement resumes may be farther.
   private static final double MAX_SNAP_RADIUS_M = 60;
   // A turn at a crossing rotates the car faster than a bend of a road.
   private static final double TURN_START_RATE_DEG = 10;
@@ -617,8 +620,7 @@ public class InertialNavigator implements MotionSource.Listener
 
   private void snapToRoad()
   {
-    final double radius =
-        Math.min(MAX_SNAP_RADIUS_M, Math.max(MIN_SNAP_RADIUS_M, mDeadReckoning.getAccuracy()));
+    final double radius = SNAP_RADIUS_M;
     final double lat = mDeadReckoning.getLat();
     final double lon = mDeadReckoning.getLon();
     final double[] snapped = mRoads.snap(lat, lon, mDeadReckoning.getHeading(), radius);
