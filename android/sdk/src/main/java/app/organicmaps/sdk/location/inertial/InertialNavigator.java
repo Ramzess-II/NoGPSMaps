@@ -39,6 +39,14 @@ public class InertialNavigator implements MotionSource.Listener
   private static final double SNAP_RADIUS_M = 20;
   // The road the car is put on when the user marks it or the movement resumes may be farther.
   private static final double MAX_SNAP_RADIUS_M = 60;
+  // The bends of the road are compared with the rotation of the car this often: it takes tens of road lookups.
+  private static final long BEND_MATCH_INTERVAL_MS = 2000;
+  // The position is searched this far along the road at least, and never farther than the maximum: a longer
+  // road may have a similar bend.
+  private static final double MIN_BEND_SEARCH_M = 30;
+  private static final double MAX_BEND_SHIFT_M = 60;
+  // Smaller errors are within the accuracy of the bends on the map.
+  private static final double MIN_BEND_SHIFT_M = 8;
   // A turn at a crossing rotates the car faster than a bend of a road.
   private static final double TURN_START_RATE_DEG = 10;
   // The turn is over when the car goes straight for a while.
@@ -129,6 +137,9 @@ public class InertialNavigator implements MotionSource.Listener
   private final SpeedScale mSpeedScale = new SpeedScale();
   @NonNull
   private TurnSignChecker mTurnSignChecker = new TurnSignChecker();
+  @NonNull
+  private BendMatcher mBendMatcher = new BendMatcher();
+  private long mLastBendMatchMs;
   // The speed errors measured by trusted GPS at different speeds.
   private final SpeedTable mSpeedTable = new SpeedTable();
   // The last GPS position the speed errors were measured by, 0 if there is none.
@@ -177,6 +188,7 @@ public class InertialNavigator implements MotionSource.Listener
     mSpeedScale.set(Config.getNoGpsSpeedScale());
     // The source may have changed: a sensor box with another gyroscope or the phone.
     mTurnSignChecker = new TurnSignChecker();
+    mBendMatcher = new BendMatcher();
     mSource = Config.isNoGpsEsp32Source()
                 ? new Esp32MotionSource(mContext, Config.getNoGpsEsp32Address(), this)
                 : new PhoneMotionSource(mContext, Config.getElm327Address(), this);
@@ -582,7 +594,8 @@ public class InertialNavigator implements MotionSource.Listener
     final boolean stopped = mPaused || mRoadLost;
     // A standing car can't turn, so the remaining gyroscope drift doesn't rotate the heading at stops. The car
     // reports 0 km/h standing, and 1 km/h, which is below MOVING_SPEED_MPS, while it turns crawling in a jam.
-    if (mSource != null && mSource.isCalibrated() && speedFresh && mDeadReckoning.getSpeed() > 0)
+    final boolean rotates = mSource != null && mSource.isCalibrated() && speedFresh && mDeadReckoning.getSpeed() > 0;
+    if (rotates)
     {
       if (!stopped)
         trackTurn(yawDeltaDeg, dt, timestampNs);
@@ -592,6 +605,7 @@ public class InertialNavigator implements MotionSource.Listener
     if (speedFresh && !stopped)
     {
       mDeadReckoning.advance(dt);
+      mBendMatcher.onMotion(rotates ? yawDeltaDeg : 0, mDeadReckoning.getSpeed() * dt);
       mSpeedScale.onDistance(mDeadReckoning.getSpeed() * dt);
       if (isReady())
         trackOffRoad(mDeadReckoning.getSpeed() * dt);
@@ -608,6 +622,11 @@ public class InertialNavigator implements MotionSource.Listener
     {
       mLastSnapMs = now;
       snapToRoad();
+      if (mOnRoad && !mTurning && now - mLastBendMatchMs >= BEND_MATCH_INTERVAL_MS)
+      {
+        mLastBendMatchMs = now;
+        matchBend();
+      }
     }
     if (isReady() && now - mLastOutputMs >= OUTPUT_INTERVAL_MS)
     {
@@ -642,6 +661,36 @@ public class InertialNavigator implements MotionSource.Listener
       mRoadLon = snapped[1];
       mOffRoadM = 0;
     }
+  }
+
+  /**
+   * Moves the car along the road to where the bends of the road fit its rotation: the calculated distance is
+   * wrong by tens of meters, and the road bends more often than the car turns at a crossing.
+   */
+  private void matchBend()
+  {
+    final double lat = mDeadReckoning.getLat();
+    final double lon = mDeadReckoning.getLon();
+    final double heading = mDeadReckoning.getHeading();
+    final double maxShiftM =
+        Math.min(MAX_BEND_SHIFT_M, Math.max(MIN_BEND_SEARCH_M, mDeadReckoning.getAccuracy()));
+    final double aheadM = mBendMatcher.match(mRoads, lat, lon, heading, maxShiftM);
+    if (Double.isNaN(aheadM))
+      return;
+    if (Math.abs(aheadM) < MIN_BEND_SHIFT_M)
+    {
+      Logger.i(TAG, "Bend: the position fits the road, ahead by " + Math.round(aheadM) + " m");
+      return;
+    }
+    final double[] walked = RoadWalker.walk(mRoads, lat, lon, heading, -aheadM);
+    // A crossing on the way: the road after it may be another one.
+    if (walked == null || Math.abs(walked[3] + aheadM) > 1)
+    {
+      Logger.i(TAG, "Bend: ahead by " + Math.round(aheadM) + " m, but the road is not followed that far");
+      return;
+    }
+    Logger.i(TAG, "Bend: moved along the road by " + Math.round(-aheadM) + " m");
+    setRoadPosition(walked[0], walked[1], walked[2]);
   }
 
   /**
