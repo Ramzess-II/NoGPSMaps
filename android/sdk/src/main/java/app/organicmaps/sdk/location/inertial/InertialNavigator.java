@@ -680,6 +680,8 @@ public class InertialNavigator implements MotionSource.Listener
     if (Math.abs(aheadM) < MIN_BEND_SHIFT_M)
     {
       Logger.i(TAG, "Bend: the position fits the road, ahead by " + Math.round(aheadM) + " m");
+      // The place along the road is confirmed: the distance error is gone as after a move.
+      mDeadReckoning.setPosition(lat, lon);
       return;
     }
     final double[] walked = RoadWalker.walk(mRoads, lat, lon, heading, -aheadM);
