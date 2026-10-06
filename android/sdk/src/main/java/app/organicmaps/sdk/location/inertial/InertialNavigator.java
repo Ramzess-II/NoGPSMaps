@@ -47,6 +47,8 @@ public class InertialNavigator implements MotionSource.Listener
   private static final double MAX_BEND_SHIFT_M = 60;
   // Smaller errors are within the accuracy of the bends on the map.
   private static final double MIN_BEND_SHIFT_M = 8;
+  // A slow car weaves around holes and parked cars, that looks like a bend of the road.
+  private static final double MIN_BEND_MOVE_SPEED_MPS = 25 / 3.6;
   // A turn at a crossing rotates the car faster than a bend of a road.
   private static final double TURN_START_RATE_DEG = 10;
   // The turn is over when the car goes straight for a while.
@@ -682,6 +684,11 @@ public class InertialNavigator implements MotionSource.Listener
       Logger.i(TAG, "Bend: the position fits the road, ahead by " + Math.round(aheadM) + " m");
       // The place along the road is confirmed: the distance error is gone as after a move.
       mDeadReckoning.setPosition(lat, lon);
+      return;
+    }
+    if (mDeadReckoning.getSpeed() < MIN_BEND_MOVE_SPEED_MPS)
+    {
+      Logger.i(TAG, "Bend: ahead by " + Math.round(aheadM) + " m, but the car is too slow to trust it");
       return;
     }
     final double[] walked = RoadWalker.walk(mRoads, lat, lon, heading, -aheadM);
