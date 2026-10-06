@@ -46,6 +46,7 @@ public final class Config
   private static final String KEY_NOGPS_SHIFT_BUTTONS = "NoGpsShiftButtons";
   private static final String KEY_NOGPS_SPEED_SCALE = "NoGpsSpeedScale";
   private static final String KEY_NOGPS_SPEED_TABLE = "NoGpsSpeedTable";
+  private static final String KEY_NOGPS_SPEED_LAG = "NoGpsSpeedLag";
   private static final String KEY_NOGPS_WRONG_NETWORK_POINTS = "NoGpsWrongNetworkPoints";
   private static final String KEY_NOGPS_LAST_TRUSTED = "NoGpsLastTrusted";
   private static final String KEY_NOGPS_ESP32_SOURCE = "NoGpsEsp32Source";
@@ -279,6 +280,20 @@ public final class Config
   public static void setNoGpsSpeedTable(@NonNull String table)
   {
     setString(KEY_NOGPS_SPEED_TABLE, table);
+  }
+
+  /**
+   * @return the measurements of the car speed lag made by GPS, see SpeedLag, empty if there are none.
+   */
+  @NonNull
+  public static String getNoGpsSpeedLag()
+  {
+    return getString(KEY_NOGPS_SPEED_LAG, "");
+  }
+
+  public static void setNoGpsSpeedLag(@NonNull String lag)
+  {
+    setString(KEY_NOGPS_SPEED_LAG, lag);
   }
 
   /**

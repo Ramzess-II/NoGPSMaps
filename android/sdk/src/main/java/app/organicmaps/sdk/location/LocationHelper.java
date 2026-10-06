@@ -1080,6 +1080,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
       line.append(" obd=").append(mInertial.getSourceState()).append(" speed=").append(mInertial.getSpeedKmh());
       line.append(String.format(Locale.US, " scale=%.3f", mInertial.getSpeedScale()));
       line.append(" table=").append(mInertial.getSpeedTableRanges());
+      line.append(String.format(Locale.US, " lag=%.2f%s", mInertial.getSpeedLag(),
+                                mInertial.isSpeedLagMeasured() ? "" : "/DEFAULT"));
       line.append(" gyro=").append(mInertial.getCalibrationState());
       line.append(String.format(Locale.US, " turn=%.0f", mInertial.getLastTurnShiftM()));
       final double heading = mInertial.getHeading();

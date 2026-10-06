@@ -84,7 +84,17 @@ public class DeadReckoning
     if (!isReady() || dtSec <= 0)
       return;
 
-    final double distance = mSpeedMps * dtSec;
+    advanceBy(mSpeedMps * dtSec);
+  }
+
+  /**
+   * Moves the position forward by the distance.
+   */
+  public void advanceBy(double distance)
+  {
+    if (!isReady() || distance <= 0)
+      return;
+
     final double[] moved = move(mLat, mLon, mHeadingDeg, distance);
     mLat = moved[0];
     mLon = moved[1];

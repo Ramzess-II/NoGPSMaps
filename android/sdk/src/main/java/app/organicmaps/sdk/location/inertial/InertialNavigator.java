@@ -144,6 +144,11 @@ public class InertialNavigator implements MotionSource.Listener
   private long mLastBendMatchMs;
   // The speed errors measured by trusted GPS at different speeds.
   private final SpeedTable mSpeedTable = new SpeedTable();
+  private final SpeedLag mSpeedLag = new SpeedLag();
+  // The speed the lag is compensated up to, negative if the car didn't move the position.
+  private double mLagSpeedMps = -1;
+  // The position is to be moved back by this distance yet: it is not moved back, it waits.
+  private double mLagPendingM;
   // The last GPS position the speed errors were measured by, 0 if there is none.
   private long mSpeedTableGpsMs;
   private double mSpeedTableGpsSpeedMps;
@@ -176,6 +181,7 @@ public class InertialNavigator implements MotionSource.Listener
     mListener = listener;
     mRoads = roads;
     mSpeedTable.deserialize(Config.getNoGpsSpeedTable());
+    mSpeedLag.deserialize(Config.getNoGpsSpeedLag());
   }
 
   /**
@@ -322,6 +328,7 @@ public class InertialNavigator implements MotionSource.Listener
     // Several providers give the same position.
     if (timeMs <= mSpeedTableGpsMs)
       return;
+    mSpeedLag.onGpsSpeed(timeMs, gps.getSpeed());
     if (mSpeedTableGpsMs != 0)
     {
       final double dt = (timeMs - mSpeedTableGpsMs) / 1000.0;
@@ -337,6 +344,20 @@ public class InertialNavigator implements MotionSource.Listener
   {
     mUnsavedSpeedSamples = 0;
     Config.setNoGpsSpeedTable(mSpeedTable.serialize());
+    Config.setNoGpsSpeedLag(mSpeedLag.serialize());
+  }
+
+  /**
+   * @return how late the car reports its speed, seconds: measured by GPS, or the usual one until then.
+   */
+  public double getSpeedLag()
+  {
+    return mSpeedLag.get();
+  }
+
+  public boolean isSpeedLagMeasured()
+  {
+    return mSpeedLag.isMeasured();
   }
 
   /**
@@ -363,6 +384,7 @@ public class InertialNavigator implements MotionSource.Listener
   {
     Logger.i(TAG, "Speed table was " + mSpeedTable);
     mSpeedTable.clear();
+    mSpeedLag.clear();
     saveSpeedTable();
     mSpeedScale.reset();
     Config.setNoGpsSpeedScale(1);
@@ -573,6 +595,8 @@ public class InertialNavigator implements MotionSource.Listener
   {
     mSpeedKmh = speedKmh;
     mSpeedTimeMs = elapsedRealtimeMs;
+    // The time the position is calculated with this speed since, not the time the car measured it at.
+    mSpeedLag.onCarSpeed(SystemClock.elapsedRealtime(), speedKmh / 3.6 * getSpeedScale(speedKmh));
     if (mPaused)
     {
       if (speedKmh < AUTO_RESUME_SPEED_KMH)
@@ -606,11 +630,17 @@ public class InertialNavigator implements MotionSource.Listener
     }
     if (speedFresh && !stopped)
     {
-      mDeadReckoning.advance(dt);
-      mBendMatcher.onMotion(rotates ? yawDeltaDeg : 0, mDeadReckoning.getSpeed() * dt);
+      final double distance = distanceWithLag(dt);
+      mDeadReckoning.advanceBy(distance);
+      mBendMatcher.onMotion(rotates ? yawDeltaDeg : 0, distance);
       mSpeedScale.onDistance(mDeadReckoning.getSpeed() * dt);
       if (isReady())
         trackOffRoad(mDeadReckoning.getSpeed() * dt);
+    }
+    else
+    {
+      mLagSpeedMps = -1;
+      mLagPendingM = 0;
     }
 
     final long now = SystemClock.elapsedRealtime();
@@ -637,6 +667,21 @@ public class InertialNavigator implements MotionSource.Listener
       if (location != null)
         mListener.onInertialLocation(location);
     }
+  }
+
+  /**
+   * @return how far the car has driven during dt. The car reports its speed late: by the time the speed
+   * has changed, the car has already driven with the new one for the time of the lag.
+   */
+  private double distanceWithLag(double dt)
+  {
+    final double speed = mDeadReckoning.getSpeed();
+    if (mLagSpeedMps >= 0)
+      mLagPendingM += mSpeedLag.get() * (speed - mLagSpeedMps);
+    mLagSpeedMps = speed;
+    final double distance = speed * dt + mLagPendingM;
+    mLagPendingM = Math.min(0, distance);
+    return Math.max(0, distance);
   }
 
   private void snapToRoad()

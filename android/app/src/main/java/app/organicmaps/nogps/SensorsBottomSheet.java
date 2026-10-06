@@ -268,10 +268,17 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
 
     updateCar(enabled && esp32 ? inertial.getCarInfo() : null, speed);
 
-    mScale.setText(getString(R.string.nogps_sensors_scale,
+    String scale = getString(R.string.nogps_sensors_scale,
                              enabled ? String.format(Locale.US, "\u00D7%.2f", inertial.getSpeedScale())
                                      : getString(R.string.nogps_unknown),
-                             enabled ? inertial.getSpeedTableRanges() : 0));
+                             enabled ? inertial.getSpeedTableRanges() : 0);
+    if (enabled)
+    {
+      scale += "\n" + getString(inertial.isSpeedLagMeasured() ? R.string.nogps_sensors_lag_measured
+                                                              : R.string.nogps_sensors_lag_usual,
+                                String.format(Locale.US, "%.1f", inertial.getSpeedLag()));
+    }
+    mScale.setText(scale);
 
     final InertialNavigator.CalibrationState calibration =
         enabled ? inertial.getCalibrationState() : InertialNavigator.CalibrationState.NONE;
