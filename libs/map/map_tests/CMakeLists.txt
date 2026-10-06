@@ -17,6 +17,14 @@ set(SRC
   gps_track_test.cpp
   kmz_unarchive_test.cpp
   mwm_url_tests.cpp
+  nogps_bend_matcher_tests.cpp
+  nogps_esp32_protocol_tests.cpp
+  nogps_gps_detectors_tests.cpp
+  nogps_inertial_tests.cpp
+  nogps_roads_tests.cpp
+  nogps_speed_tests.cpp
+  nogps_test_roads.hpp
+  nogps_turn_sign_checker_tests.cpp
   power_manager_tests.cpp
   road_warning_tests.cpp
   share_tests.cpp

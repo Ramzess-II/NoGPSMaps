@@ -37,6 +37,38 @@ set(SRC
   isolines_manager.hpp
   mwm_url.cpp
   mwm_url.hpp
+  nogps/accel_log.cpp
+  nogps/accel_log.hpp
+  nogps/bend_matcher.cpp
+  nogps/bend_matcher.hpp
+  nogps/dead_reckoning.cpp
+  nogps/dead_reckoning.hpp
+  nogps/elm327_parser.cpp
+  nogps/elm327_parser.hpp
+  nogps/esp32_protocol.cpp
+  nogps/esp32_protocol.hpp
+  nogps/geo.cpp
+  nogps/geo.hpp
+  nogps/gps_return_detector.cpp
+  nogps/gps_return_detector.hpp
+  nogps/gps_spoofing_detector.cpp
+  nogps/gps_spoofing_detector.hpp
+  nogps/gyro_calibrator.cpp
+  nogps/gyro_calibrator.hpp
+  nogps/motion_source.hpp
+  nogps/road_walker.cpp
+  nogps/road_walker.hpp
+  nogps/roads.hpp
+  nogps/speed_lag.cpp
+  nogps/speed_lag.hpp
+  nogps/speed_scale.cpp
+  nogps/speed_scale.hpp
+  nogps/speed_table.cpp
+  nogps/speed_table.hpp
+  nogps/turn_matcher.cpp
+  nogps/turn_matcher.hpp
+  nogps/turn_sign_checker.cpp
+  nogps/turn_sign_checker.hpp
   place_page_info.cpp
   place_page_info.hpp
   share.cpp
