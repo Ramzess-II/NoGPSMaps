@@ -145,6 +145,8 @@ public class InertialNavigator implements MotionSource.Listener
   // The speed errors measured by trusted GPS at different speeds.
   private final SpeedTable mSpeedTable = new SpeedTable();
   private final SpeedLag mSpeedLag = new SpeedLag();
+  @Nullable
+  private AccelRecorder mAccelRecorder;
   // The speed the lag is compensated up to, negative if the car didn't move the position.
   private double mLagSpeedMps = -1;
   // The position is to be moved back by this distance yet: it is not moved back, it waits.
@@ -201,6 +203,9 @@ public class InertialNavigator implements MotionSource.Listener
                 ? new Esp32MotionSource(mContext, Config.getNoGpsEsp32Address(), this)
                 : new PhoneMotionSource(mContext, Config.getElm327Address(), this);
     mSource.start();
+    if (mAccelRecorder == null)
+      mAccelRecorder = new AccelRecorder(mContext);
+    mAccelRecorder.start();
   }
 
   public void stop()
@@ -211,6 +216,8 @@ public class InertialNavigator implements MotionSource.Listener
     if (mSource != null)
       mSource.stop();
     mSource = null;
+    if (mAccelRecorder != null)
+      mAccelRecorder.stop();
     mSpeedKmh = -1;
     saveSpeedTable();
   }
@@ -597,6 +604,8 @@ public class InertialNavigator implements MotionSource.Listener
     mSpeedTimeMs = elapsedRealtimeMs;
     // The time the position is calculated with this speed since, not the time the car measured it at.
     mSpeedLag.onCarSpeed(SystemClock.elapsedRealtime(), speedKmh / 3.6 * getSpeedScale(speedKmh));
+    if (mAccelRecorder != null)
+      mAccelRecorder.setMoving(speedKmh > 0);
     if (mPaused)
     {
       if (speedKmh < AUTO_RESUME_SPEED_KMH)
