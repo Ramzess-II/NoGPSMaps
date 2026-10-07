@@ -65,9 +65,9 @@ import app.organicmaps.intent.Factory;
 import app.organicmaps.intent.IntentProcessor;
 import app.organicmaps.location.TrackRecordingService;
 import app.organicmaps.maplayer.MapButtonsController;
-import app.organicmaps.nogps.SensorsBottomSheet;
 import app.organicmaps.maplayer.MapButtonsViewModel;
 import app.organicmaps.maplayer.ToggleMapLayerFragment;
+import app.organicmaps.nogps.SensorsBottomSheet;
 import app.organicmaps.routing.NavigationController;
 import app.organicmaps.routing.NavigationService;
 import app.organicmaps.routing.RoutingErrorDialogFragment;
@@ -77,7 +77,6 @@ import app.organicmaps.routing.RoutingPlanViewModel;
 import app.organicmaps.sdk.ChoosePositionMode;
 import app.organicmaps.sdk.Framework;
 import app.organicmaps.sdk.Map;
-import app.organicmaps.sdk.MapView;
 import app.organicmaps.sdk.MapController;
 import app.organicmaps.sdk.MapRenderingListener;
 import app.organicmaps.sdk.PlacePageActivationListener;
@@ -96,6 +95,7 @@ import app.organicmaps.sdk.location.LocationHelper;
 import app.organicmaps.sdk.location.LocationListener;
 import app.organicmaps.sdk.location.LocationState;
 import app.organicmaps.sdk.location.LocationUtils;
+import app.organicmaps.sdk.location.NoGps;
 import app.organicmaps.sdk.location.SensorListener;
 import app.organicmaps.sdk.location.TrackRecorder;
 import app.organicmaps.sdk.maplayer.isolines.IsolinesState;
@@ -201,38 +201,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
   @SuppressWarnings("NotNullFieldNotInitialized")
   @NonNull
   private DisplayManager mDisplayManager;
-  private final LocationHelper.ManualModeListener mManualModeListener = new LocationHelper.ManualModeListener() {
-    @Override
-    public void onManualModeChanged(boolean enabled)
-    {
-      MwmActivity.this.onManualModeChanged(enabled);
-    }
-
-    @Override
-    public void onGpsBack()
-    {
-      Toast.makeText(MwmActivity.this, R.string.nogps_gps_back_auto, Toast.LENGTH_LONG).show();
-    }
-
-    @Override
-    public void onGpsLost()
-    {
-      Toast.makeText(MwmActivity.this, R.string.nogps_gps_lost_auto, Toast.LENGTH_LONG).show();
-    }
-
-    @Override
-    public void onRoadLost()
-    {
-      Toast.makeText(MwmActivity.this, R.string.nogps_road_lost, Toast.LENGTH_LONG).show();
-    }
-
-    @Override
-    public void onTurnsReversed()
-    {
-      Toast.makeText(MwmActivity.this, R.string.nogps_turns_reversed, Toast.LENGTH_LONG).show();
-    }
-  };
-  private final LocationHelper.GpsSpoofingListener mGpsSpoofingListener = this::onGpsSpoofingChanged;
+  private final LocationHelper.NoGpsListener mNoGpsListener = this::onNoGpsEvent;
 
   private boolean mRemoveDisplayListener = true;
   private static int mLastUiMode = Configuration.UI_MODE_TYPE_UNDEFINED;
@@ -806,29 +775,31 @@ public class MwmActivity extends BaseMwmFragmentActivity
     case trackRecordingStatus -> toggleTrackRecordingPP();
     case manualPosition -> toggleManualPositionMode();
     case positionStatus -> new SensorsBottomSheet().show(getSupportFragmentManager(), SensorsBottomSheet.TAG);
-    case shiftPositionForward -> shiftPosition(Config.getPositionShiftStepM());
-    case shiftPositionBack -> shiftPosition(-Config.getPositionShiftStepM());
-    case reverseDirection -> MwmApplication.from(this).getLocationHelper().reverseDirection();
-    case pauseMovement -> MwmApplication.from(this).getLocationHelper().togglePause();
+    case shiftPositionForward -> shiftPosition(true /* forward */);
+    case shiftPositionBack -> shiftPosition(false /* forward */);
+    case reverseDirection -> NoGps.nativeReverseDirection();
+    case pauseMovement -> NoGps.nativeTogglePause();
     }
   }
 
   /**
    * Moves the position along the road when it lags behind the car or has run ahead of it.
-   * @param distanceM meters to move forward, negative to move back.
+   * @param forward true to move it forward by the chosen step, false to move it back.
    */
-  private void shiftPosition(int distanceM)
+  private void shiftPosition(boolean forward)
   {
-    final LocationHelper locationHelper = MwmApplication.from(this).getLocationHelper();
+    final NoGps.Status status = NoGps.getStatus();
+    final int distanceM = forward ? status.shiftStepM : -status.shiftStepM;
     // The position stands at a crossing, it is moved that way after the car passes it.
-    if (locationHelper.isShiftBlocked(distanceM > 0))
+    if (forward ? status.shiftForwardBlocked : status.shiftBackBlocked)
     {
       Toast.makeText(this, R.string.nogps_shift_at_turn, Toast.LENGTH_SHORT).show();
       return;
     }
 
-    final double applied = locationHelper.shiftPosition(distanceM);
-    if (applied == 0 && locationHelper.isShiftBlocked(distanceM > 0))
+    final double applied = NoGps.nativeShiftPosition(distanceM);
+    final NoGps.Status after = NoGps.getStatus();
+    if (applied == 0 && (forward ? after.shiftForwardBlocked : after.shiftBackBlocked))
     {
       Toast.makeText(this, R.string.nogps_shift_at_turn, Toast.LENGTH_SHORT).show();
       return;
@@ -838,40 +809,42 @@ public class MwmActivity extends BaseMwmFragmentActivity
     if (appliedM >= Math.abs(distanceM))
       return;
     Toast
-        .makeText(this,
-                  appliedM == 0 ? getString(R.string.nogps_shift_failed)
-                                : getString(R.string.nogps_shift_limited, appliedM),
-                  Toast.LENGTH_SHORT)
+        .makeText(
+            this,
+            appliedM == 0 ? getString(R.string.nogps_shift_failed) : getString(R.string.nogps_shift_limited, appliedM),
+            Toast.LENGTH_SHORT)
         .show();
   }
 
   private void toggleManualPositionMode()
   {
-    final LocationHelper locationHelper = MwmApplication.from(this).getLocationHelper();
-    final boolean enable = !locationHelper.isManualMode();
-    locationHelper.setManualMode(enable);
+    final boolean enable = !NoGps.nativeIsManualMode();
+    NoGps.nativeSetManualMode(enable);
     Toast.makeText(this, enable ? R.string.nogps_manual_mode_on : R.string.nogps_manual_mode_off, Toast.LENGTH_LONG)
         .show();
   }
 
-  private void onGpsSpoofingChanged(boolean spoofed)
+  private void onNoGpsEvent(@NonNull NoGps.Event event)
   {
-    Toast.makeText(this, spoofed ? R.string.nogps_gps_spoofed : R.string.nogps_gps_restored, Toast.LENGTH_LONG).show();
+    final int message = switch (event)
+    {
+      // The buttons show the mode, they are updated every second.
+      case MANUAL_MODE_CHANGED -> 0;
+      case GPS_BACK -> R.string.nogps_gps_back_auto;
+      case GPS_LOST -> R.string.nogps_gps_lost_auto;
+      case GPS_SPOOFED -> R.string.nogps_gps_spoofed;
+      case GPS_RESTORED -> R.string.nogps_gps_restored;
+      case ROAD_LOST -> R.string.nogps_road_lost;
+      case TURNS_REVERSED -> R.string.nogps_turns_reversed;
+      // The part to look at: the box itself or the adapter in the car.
+      case MOTION_SOURCE_STOPPED ->
+        NoGps.getStatus().esp32Source ? R.string.nogps_box_stopped : R.string.nogps_obd_stopped;
+      // The car is always on a road.
+      case MARK_NO_ROAD -> R.string.nogps_mark_no_road;
+    };
+    if (message != 0)
+      Toast.makeText(this, message, event == NoGps.Event.MARK_NO_ROAD ? Toast.LENGTH_SHORT : Toast.LENGTH_LONG).show();
   }
-
-  private void onManualModeChanged(boolean enabled)
-  {
-    final LocationHelper locationHelper = MwmApplication.from(this).getLocationHelper();
-    MapView.setTapInterceptor(enabled ? this::setManualLocationFromScreen : null);
-  }
-
-  private void setManualLocationFromScreen(float x, float y)
-  {
-    // The car is always on a road.
-    if (!MwmApplication.from(this).getLocationHelper().setManualLocationFromScreen(x, y))
-      Toast.makeText(this, R.string.nogps_mark_no_road, Toast.LENGTH_SHORT).show();
-  }
-
 
   private boolean closeBottomSheet(String id)
   {
@@ -1090,9 +1063,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
     updateDrivingOptionCount();
     LocationState.nativeSetListener(this);
     MwmApplication.from(this).getLocationHelper().addListener(this);
-    MwmApplication.from(this).getLocationHelper().addManualModeListener(mManualModeListener);
-    MwmApplication.from(this).getLocationHelper().addGpsSpoofingListener(mGpsSpoofingListener);
-    onManualModeChanged(MwmApplication.from(this).getLocationHelper().isManualMode());
+    MwmApplication.from(this).getLocationHelper().addNoGpsListener(mNoGpsListener);
     Utils.keepScreenOn(Config.isKeepScreenOnEnabled() || RoutingController.get().isNavigating(), getWindow());
   }
 
@@ -1104,9 +1075,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
     Framework.nativeRemovePlacePageActivationListener(this);
     BookmarkManager.INSTANCE.removeLoadingListener(this);
     MwmApplication.from(this).getLocationHelper().removeListener(this);
-    MwmApplication.from(this).getLocationHelper().removeManualModeListener(mManualModeListener);
-    MwmApplication.from(this).getLocationHelper().removeGpsSpoofingListener(mGpsSpoofingListener);
-    MapView.setTapInterceptor(null);
+    MwmApplication.from(this).getLocationHelper().removeNoGpsListener(mNoGpsListener);
     if (mDisplayManager.isDeviceDisplayUsed() && !RoutingController.get().isNavigating())
       LocationState.nativeRemoveListener();
     // Attached unconditionally in onStart()
@@ -1263,8 +1232,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
     mMapController.updateCompassOffset(offsetX, offsetY);
 
     final double north = MwmApplication.from(this).getSensorHelper().getSavedNorth();
-    // The car direction is shown instead of the compass.
-    if (!Double.isNaN(north) && !MwmApplication.from(this).getLocationHelper().isCarHeadingShown())
+    if (!Double.isNaN(north))
       Map.onCompassUpdated(north, true);
   }
 
@@ -1679,9 +1647,6 @@ public class MwmActivity extends BaseMwmFragmentActivity
   @UiThread
   public void onCompassUpdated(double north)
   {
-    // The car direction is shown instead.
-    if (MwmApplication.from(this).getLocationHelper().isCarHeadingShown())
-      return;
     Map.onCompassUpdated(north, false);
   }
 
