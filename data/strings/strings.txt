@@ -45303,3 +45303,616 @@ uk = Зупинити та зберегти
 vi = Dừng và lưu
 zh-Hans = 停止并保存
 zh-Hant = 停止並儲存
+
+[[NoGPS Maps]]
+
+[nogps_manual_position]
+tags = android-app,apple-maps
+en = Set my position manually
+ru = Указать своё местоположение вручную
+uk = Вказати своє місцезнаходження вручну
+
+[nogps_manual_mode_on]
+tags = android-app,apple-maps
+en = GPS is ignored. Tap the map where you are.
+ru = GPS отключён. Нажмите на карту там, где вы находитесь.
+uk = GPS вимкнено. Торкніться карти там, де ви знаходитеся.
+
+[nogps_manual_mode_off]
+tags = android-app,apple-maps
+en = GPS is on again
+ru = GPS снова включён
+uk = GPS знову увімкнено
+
+[nogps_gps_spoofed]
+tags = android-app,apple-maps
+en = GPS is spoofed! Using cell towers and Wi-Fi. You can also set your position manually.
+ru = GPS подменён! Используем вышки и Wi-Fi. Можно также указать позицию вручную.
+uk = GPS підмінено! Використовуємо вежі та Wi-Fi. Також можна вказати позицію вручну.
+
+[nogps_gps_restored]
+tags = android-app,apple-maps
+en = GPS is fine again
+ru = GPS снова в норме
+uk = GPS знову в нормі
+
+[nogps_status_gps]
+tags = android-app,apple-maps
+en = GPS
+
+[nogps_status_network_spoofed]
+tags = android-app,apple-maps
+en = GPS spoofed · towers ±%@
+ru = GPS подменён · вышки ±%@
+uk = GPS підмінено · вежі ±%@
+
+[nogps_status_network_no_gps]
+tags = android-app,apple-maps
+en = No GPS · towers ±%@
+ru = Нет GPS · вышки ±%@
+uk = Немає GPS · вежі ±%@
+
+[nogps_status_manual_just_now]
+tags = android-app,apple-maps
+en = Manual · just now
+ru = Ручной режим · только что
+uk = Ручний режим · щойно
+
+[nogps_status_manual_minutes]
+tags = android-app,apple-maps
+en = Manual · %d min ago
+ru = Ручной режим · %d мин назад
+uk = Ручний режим · %d хв тому
+
+[nogps_status_none]
+tags = android-app,apple-maps
+en = No position
+ru = Нет позиции
+uk = Немає позиції
+
+[nogps_meters]
+tags = android-app,apple-maps
+en = %d m
+ru = %d м
+uk = %d м
+
+[nogps_kilometers]
+tags = android-app,apple-maps
+en = %.1f km
+ru = %.1f км
+uk = %.1f км
+
+[nogps_status_inertial]
+tags = android-app,apple-maps
+en = Inertial · ±%@
+ru = Инерциально · ±%@
+uk = Інерціально · ±%@
+
+[nogps_sensors_title]
+tags = android-app,apple-maps
+en = Inertial navigation
+ru = Инерциальная навигация
+uk = Інерціальна навігація
+
+[nogps_sensors_enable]
+tags = android-app,apple-maps
+en = Enabled
+ru = Включена
+uk = Увімкнено
+
+[nogps_sensors_hint]
+tags = android-app,apple-maps
+en = Fix the phone so it doesn't move. Zero the gyroscope while the car stands still.
+ru = Закрепите телефон неподвижно. Обнуляйте гироскоп, когда машина стоит.
+uk = Закріпіть телефон нерухомо. Обнуляйте гіроскоп, коли машина стоїть.
+
+[nogps_sensors_adapter]
+tags = android-app,apple-maps
+en = Adapter: %1$@
+ru = Адаптер: %1$@
+uk = Адаптер: %1$@
+
+[nogps_sensors_adapter_none]
+tags = android-app,apple-maps
+en = not chosen
+ru = не выбран
+uk = не вибрано
+
+[nogps_sensors_choose]
+tags = android-app,apple-maps
+en = Choose
+ru = Выбрать
+uk = Вибрати
+
+[nogps_elm_disconnected]
+tags = android-app,apple-maps
+en = no connection
+ru = нет связи
+uk = немає зв'язку
+
+[nogps_elm_connecting]
+tags = android-app,apple-maps
+en = connecting…
+ru = подключение…
+uk = підключення…
+
+[nogps_elm_no_adapter]
+tags = android-app,apple-maps
+en = ELM327 doesn't answer
+ru = ELM327 не отвечает
+uk = ELM327 не відповідає
+
+[nogps_box_obd_disabled]
+tags = android-app,apple-maps
+en = ELM327 is off in the box
+ru = ELM327 выключен в блоке
+uk = ELM327 вимкнено в блоці
+
+[nogps_box_obd_connecting]
+tags = android-app,apple-maps
+en = ELM327 connects…
+ru = ELM327 подключается…
+uk = ELM327 підключається…
+
+[nogps_elm_error]
+tags = android-app,apple-maps
+en = ELM327 error
+ru = ошибка ELM327
+uk = помилка ELM327
+
+[nogps_elm_no_car]
+tags = android-app,apple-maps
+en = the car doesn't answer
+ru = машина не отвечает
+uk = машина не відповідає
+
+[nogps_elm_connected]
+tags = android-app,apple-maps
+en = connected
+ru = подключён
+uk = підключено
+
+[nogps_sensors_speed]
+tags = android-app,apple-maps
+en = Speed: %@
+ru = Скорость: %@
+uk = Швидкість: %@
+
+[nogps_speed_kmh]
+tags = android-app,apple-maps
+en = %d km/h
+ru = %d км/ч
+uk = %d км/год
+
+[nogps_unknown]
+tags = android-app,apple-maps
+en = —
+ru = —
+uk = —
+
+[nogps_sensors_gyro]
+tags = android-app,apple-maps
+en = Gyroscope: %@
+ru = Гироскоп: %@
+uk = Гіроскоп: %@
+
+[nogps_gyro_none]
+tags = android-app,apple-maps
+en = not zeroed
+ru = не обнулён
+uk = не обнулено
+
+[nogps_gyro_calibrating]
+tags = android-app,apple-maps
+en = zeroing… %d%%
+ru = обнуление… %d%%
+uk = обнулення… %d%%
+
+[nogps_gyro_done]
+tags = android-app,apple-maps
+en = zeroed
+ru = обнулён
+uk = обнулено
+
+[nogps_gyro_failed]
+tags = android-app,apple-maps
+en = failed, the phone or the car moved
+ru = не вышло, телефон или машина двигались
+uk = не вийшло, телефон або машина рухалися
+
+[nogps_sensors_calibrate]
+tags = android-app,apple-maps
+en = Zero
+ru = Обнулить
+uk = Обнулити
+
+[nogps_sensors_ready]
+tags = android-app,apple-maps
+en = Ready
+ru = Готово к работе
+uk = Готово до роботи
+
+[nogps_sensors_not_ready]
+tags = android-app,apple-maps
+en = Not ready: %@
+ru = Не готово: %@
+uk = Не готово: %@
+
+[nogps_missing_speed]
+tags = android-app,apple-maps
+en = no speed
+ru = нет скорости
+uk = немає швидкості
+
+[nogps_missing_gyro]
+tags = android-app,apple-maps
+en = zero the gyroscope
+ru = обнулите гироскоп
+uk = обнуліть гіроскоп
+
+[nogps_missing_position]
+tags = android-app,apple-maps
+en = no start position
+ru = нет стартовой точки
+uk = немає стартової точки
+
+[nogps_choose_adapter]
+tags = android-app,apple-maps
+en = Choose the OBD adapter
+ru = Выберите OBD-адаптер
+uk = Виберіть OBD-адаптер
+
+[nogps_no_paired]
+tags = android-app,apple-maps
+en = No paired Bluetooth devices. Pair ELM327 in the Bluetooth settings (PIN is usually 1234).
+ru = Нет сопряжённых Bluetooth-устройств. Сопрягите ELM327 в настройках Bluetooth (PIN обычно 1234).
+uk = Немає спарених Bluetooth-пристроїв. Спарте ELM327 у налаштуваннях Bluetooth (PIN зазвичай 1234).
+
+[nogps_bt_permission_denied]
+tags = android-app,apple-maps
+en = The adapter can't be used without Bluetooth access
+ru = Без доступа к Bluetooth адаптер не подключить
+uk = Без доступу до Bluetooth адаптер не підключити
+
+[nogps_shift_forward]
+tags = android-app,apple-maps
+en = Move the position forward along the road
+ru = Перенести позицию вперёд по дороге
+uk = Перенести позицію вперед по дорозі
+
+[nogps_shift_back]
+tags = android-app,apple-maps
+en = Move the position back along the road
+ru = Перенести позицию назад по дороге
+uk = Перенести позицію назад по дорозі
+
+[nogps_shift_step]
+tags = android-app,apple-maps
+en = Distance to move the position by
+ru = На сколько переносить позицию
+uk = На скільки переносити позицію
+
+[nogps_shift_limited]
+tags = android-app,apple-maps
+en = Moved by %1$d m, up to the crossing
+ru = Перенос на %1$d м, до перекрёстка
+uk = Перенесення на %1$d м, до перехрестя
+
+[nogps_shift_failed]
+tags = android-app,apple-maps
+en = There is nowhere to move the position
+ru = Позицию некуда переносить
+uk = Позицію нікуди переносити
+
+[nogps_sensors_scale]
+tags = android-app,apple-maps
+en = Speed correction: %1$@ · measured ranges: %2$d
+ru = Поправка скорости: %1$@ · диапазонов измерено: %2$d
+uk = Поправка швидкості: %1$@ · діапазонів виміряно: %2$d
+
+[nogps_sensors_lag_measured]
+tags = android-app,apple-maps
+en = Speed delay: %@ s (measured by GPS)
+ru = Опоздание скорости: %@ с (измерено по GPS)
+uk = Запізнення швидкості: %@ с (виміряно за GPS)
+
+[nogps_sensors_lag_usual]
+tags = android-app,apple-maps
+en = Speed delay: %@ s (usual, not measured by GPS yet)
+ru = Опоздание скорости: %@ с (обычное, GPS ещё не измерил)
+uk = Запізнення швидкості: %@ с (звичайне, GPS ще не виміряв)
+
+[nogps_shift_at_turn]
+tags = android-app,apple-maps
+en = The position is at a crossing, it can not be moved further
+ru = Позиция у перекрёстка, дальше переносить нельзя
+uk = Позиція біля перехрестя, далі переносити не можна
+
+[nogps_status_gps_back]
+tags = android-app,apple-maps
+en = GPS is back ±%@
+ru = GPS снова есть ±%@
+uk = GPS знову є ±%@
+
+[nogps_status_gps_spoofed]
+tags = android-app,apple-maps
+en = GPS spoofed
+ru = GPS подменён
+uk = GPS підмінено
+
+[nogps_status_no_gps]
+tags = android-app,apple-maps
+en = No GPS
+ru = Нет GPS
+uk = Немає GPS
+
+[nogps_status_towers]
+tags = android-app,apple-maps
+en = towers ±%@
+ru = вышки ±%@
+uk = вежі ±%@
+
+[nogps_gps_back_auto]
+tags = android-app,apple-maps
+en = GPS is trusted again, the manual mode is off
+ru = GPS снова надёжный, ручной режим выключен
+uk = GPS знову надійний, ручний режим вимкнено
+
+[nogps_reverse_direction]
+tags = android-app,apple-maps
+en = Turn the car around on the road
+ru = Развернуть машину на дороге
+uk = Розвернути машину на дорозі
+
+[nogps_mark_no_road]
+tags = android-app,apple-maps
+en = There is no road here, set the mark on a road
+ru = Здесь нет дороги, поставьте метку на дорогу
+uk = Тут немає дороги, поставте мітку на дорогу
+
+[nogps_gps_lost_auto]
+tags = android-app,apple-maps
+en = GPS is lost or wrong, the manual mode is on
+ru = GPS пропал или сбился, включён ручной режим
+uk = GPS зник або збився, увімкнено ручний режим
+
+[nogps_disable_gps]
+tags = android-app,apple-maps
+en = Disable GPS
+ru = Отключить GPS
+uk = Вимкнути GPS
+
+[nogps_disable_gps_hint]
+tags = android-app,apple-maps
+en = For testing: the app ignores GPS as if it were jammed, the rest of the location works. It is turned off when the app restarts.
+ru = Для проверки: приложение не видит GPS, как при глушении, остальная геолокация работает. Выключается при перезапуске приложения.
+uk = Для перевірки: застосунок не бачить GPS, як під час глушіння, решта геолокації працює. Вимикається під час перезапуску застосунку.
+
+[nogps_pause]
+tags = android-app,apple-maps
+en = Pause: the car maneuvers
+ru = Пауза: машина маневрирует
+uk = Пауза: машина маневрує
+
+[nogps_resume]
+tags = android-app,apple-maps
+en = Resume the movement
+ru = Продолжить движение
+uk = Продовжити рух
+
+[nogps_status_paused]
+tags = android-app,apple-maps
+en = Pause
+ru = Пауза
+uk = Пауза
+
+[nogps_source_phone]
+tags = android-app,apple-maps
+en = Phone + ELM327 (Bluetooth)
+ru = Телефон + ELM327 (Bluetooth)
+uk = Телефон + ELM327 (Bluetooth)
+
+[nogps_source_esp32]
+tags = android-app,apple-maps
+en = ESP32 sensor box (Wi-Fi)
+ru = Блок ESP32 (Wi-Fi)
+uk = Блок ESP32 (Wi-Fi)
+
+[nogps_sensors_box]
+tags = android-app,apple-maps
+en = Box: %1$@
+ru = Блок: %1$@
+uk = Блок: %1$@
+
+[nogps_box_connecting]
+tags = android-app,apple-maps
+en = searching, connect to the NoGPS Wi-Fi
+ru = ищу блок, подключитесь к Wi-Fi NoGPS
+uk = шукаю блок, підключіться до Wi-Fi NoGPS
+
+[nogps_sensors_calibrate_box]
+tags = android-app,apple-maps
+en = Calibrate
+ru = Калибровать
+uk = Калібрувати
+
+[nogps_gyro_mount_moved]
+tags = android-app,apple-maps
+en = the box has been moved, calibrate it
+ru = блок сдвинули, откалибруйте
+uk = блок зсунули, відкалібруйте
+
+[nogps_sensors_hint_box]
+tags = android-app,apple-maps
+en = Fix the box firmly. Calibrate it once while the car stands on a level place, the box zeroes the gyroscope on every stop by itself.
+ru = Закрепите блок неподвижно. Откалибруйте его один раз, когда машина стоит на ровном месте, дальше блок сам обнуляет гироскоп на каждой остановке.
+uk = Закріпіть блок нерухомо. Відкалібруйте його один раз, коли машина стоїть на рівному місці, далі блок сам обнуляє гіроскоп на кожній зупинці.
+
+[nogps_turns_reversed]
+tags = android-app,apple-maps
+en = The gyroscope turns the car the other way than GPS. Check the axes of the sensor driver: without GPS the car would turn wrong
+ru = Гироскоп поворачивает машину не в ту сторону, что GPS. Проверьте оси в драйвере датчика: без GPS машина будет поворачивать неправильно
+uk = Гіроскоп повертає машину не в той бік, що GPS. Перевірте осі в драйвері датчика: без GPS машина повертатиме неправильно
+
+[nogps_road_lost]
+tags = android-app,apple-maps
+en = The road is lost, the car is stopped. Mark yourself on the map
+ru = Дорога потеряна, машина остановлена. Отметьте себя на карте
+uk = Дорогу втрачено, машину зупинено. Позначте себе на мапі
+
+[nogps_shift_buttons]
+tags = android-app,apple-maps
+en = Calibration
+ru = Калибровка
+uk = Калібрування
+
+[nogps_shift_buttons_hint]
+tags = android-app,apple-maps
+en = Shows the buttons moving the car along the road by 10 m. Moving it where the car really is corrects the speed of the car.
+ru = Показывает кнопки сдвига машины вдоль дороги на 10 м. Сдвигая её туда, где машина на самом деле, вы уточняете скорость машины.
+uk = Показує кнопки зсуву машини вздовж дороги на 10 м. Зсуваючи її туди, де машина насправді, ви уточнюєте швидкість машини.
+
+[nogps_obd_stopped]
+tags = android-app,apple-maps
+en = No speed from the OBD adapter, the car stands still on the map. Check the adapter or mark yourself
+ru = Нет скорости от OBD-адаптера, машина на карте стоит. Проверьте адаптер или отметьте себя
+uk = Немає швидкості від OBD-адаптера, машина на мапі стоїть. Перевірте адаптер або позначте себе
+
+[nogps_box_stopped]
+tags = android-app,apple-maps
+en = No data from the sensor box, the car stands still on the map. Check the box or mark yourself
+ru = Нет данных от блока датчиков, машина на карте стоит. Проверьте блок или отметьте себя
+uk = Немає даних від блока датчиків, машина на мапі стоїть. Перевірте блок або позначте себе
+
+[nogps_clear_speed]
+tags = android-app,apple-maps
+en = Reset
+ru = Сбросить
+uk = Скинути
+
+[nogps_clear_speed_title]
+tags = android-app,apple-maps
+en = Reset the speed calibration?
+ru = Сбросить калибровку скорости?
+uk = Скинути калібрування швидкості?
+
+[nogps_clear_speed_message]
+tags = android-app,apple-maps
+en = The speed corrections learned from GPS at different speeds and from your corrections will be forgotten. Do it after new tyres or another car. They are learned anew while GPS works.
+ru = Поправки скорости, измеренные по GPS на разных скоростях и по вашим сдвигам, будут забыты. Делайте это после смены шин или машины. Пока работает GPS, они измеряются заново.
+uk = Поправки швидкості, виміряні за GPS на різних швидкостях і за вашими зсувами, буде забуто. Робіть це після заміни шин або машини. Поки працює GPS, вони вимірюються наново.
+
+[nogps_about_title]
+tags = android-app,apple-maps
+en = About NoGPS Maps
+ru = О NoGPS Maps
+uk = Про NoGPS Maps
+
+[nogps_about_menu]
+tags = android-app,apple-maps
+en = About · Organic Maps
+ru = О приложении · Organic Maps
+uk = Про застосунок · Organic Maps
+
+[nogps_about_headline]
+tags = android-app,apple-maps
+en = Navigation when GPS is jammed or spoofed
+ru = Навигация, когда GPS глушат или подменяют
+uk = Навігація, коли GPS глушать або підміняють
+
+[nogps_about_description]
+tags = android-app,apple-maps
+en = Without GPS the car is driven by the inertial navigation: the turns come from the gyroscope, the distance from the car speed via OBD-II. The car is kept on the roads of the offline map.
+ru = Без GPS машину ведёт инерциальная навигация: повороты — по гироскопу, расстояние — по скорости автомобиля из OBD-II. Машина держится дорог офлайн-карты.
+uk = Без GPS машину веде інерціальна навігація: повороти — за гіроскопом, відстань — за швидкістю автомобіля з OBD-II. Машина тримається доріг офлайн-карти.
+
+[nogps_based_on]
+tags = android-app,apple-maps
+en = Based on Organic Maps
+ru = На основе Organic Maps
+uk = На основі Organic Maps
+
+[nogps_map_data]
+tags = android-app,apple-maps
+en = Map data © OpenStreetMap and Organic Maps
+ru = Данные карт © OpenStreetMap и Organic Maps
+uk = Дані карт © OpenStreetMap і Organic Maps
+
+[nogps_source_code]
+tags = android-app,apple-maps
+en = Source code on GitHub
+ru = Исходный код на GitHub
+uk = Вихідний код на GitHub
+
+[nogps_speed_no_data]
+tags = android-app,apple-maps
+en = NO
+
+[nogps_speed_no_box]
+tags = android-app,apple-maps
+en = ESP32
+
+[nogps_speed_no_elm]
+tags = android-app,apple-maps
+en = ELM
+
+[nogps_delete_recent_query]
+tags = android-app,apple-maps
+en = Delete from the history?
+ru = Удалить из истории?
+uk = Видалити з історії?
+
+[nogps_box_sleeping]
+tags = android-app,apple-maps
+en = sleeps: the engine is stopped
+ru = спит: двигатель заглушен
+uk = спить: двигун заглушено
+
+[nogps_box_obd_sleeping]
+tags = android-app,apple-maps
+en = ELM327 sleeps: the engine is stopped
+ru = ELM327 спит: двигатель заглушен
+uk = ELM327 спить: двигун заглушено
+
+[nogps_sensors_car]
+tags = android-app,apple-maps
+en = Engine: %1$@\nEngine speed: %2$@\nVoltage, box ADC: %3$@\nVoltage, ELM327: %4$@\nVoltage, car control unit: %5$@
+ru = Двигатель: %1$@\nОбороты: %2$@\nНапряжение, АЦП блока: %3$@\nНапряжение, ELM327: %4$@\nНапряжение, блок управления машины: %5$@
+uk = Двигун: %1$@\nОберти: %2$@\nНапруга, АЦП блоку: %3$@\nНапруга, ELM327: %4$@\nНапруга, блок керування машини: %5$@
+
+[nogps_engine_running]
+tags = android-app,apple-maps
+en = running
+ru = работает
+uk = працює
+
+[nogps_engine_stopped]
+tags = android-app,apple-maps
+en = stopped
+ru = заглушен
+uk = заглушено
+
+[nogps_rpm]
+tags = android-app,apple-maps
+en = %d rpm
+ru = %d об/мин
+uk = %d об/хв
+
+[nogps_volts]
+tags = android-app,apple-maps
+en = %@ V
+ru = %@ В
+uk = %@ В
+
+[nogps_not_while_driving]
+tags = android-app,apple-maps
+en = not asked while driving
+ru = на ходу не запрашивается
+uk = під час руху не запитується
+
+[nogps_voltage_mismatch]
+tags = android-app,apple-maps
+en = The voltage measured by the box differs from the car by more than 10%: check the voltage divider of the box
+ru = Напряжение с АЦП блока расходится с машиной больше чем на 10 %: проверьте делитель напряжения блока
+uk = Напруга з АЦП блоку розходиться з машиною більше ніж на 10 %: перевірте дільник напруги блоку
+
