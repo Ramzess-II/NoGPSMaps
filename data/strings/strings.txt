@@ -44452,6 +44452,13 @@ vi = Xác định vị trí hiện tại được sử dụng trong các tùy ch
 zh-Hans = 定义当前位置在跟随路线和保存您的最近行进路径的选项中被使用。
 zh-Hant = 判定您目前的位置會用於導航與儲存您最近走過的軌跡。
 
+[NSLocalNetworkUsageDescription]
+comment = Needed to explain why we require access to the local network: the sensor box of the car is on its own Wi-Fi network.
+tags = apple-infoplist
+en = The sensor box in the car gives the turns and the speed of the car over its own Wi-Fi network.
+ru = Блок датчиков в машине передаёт повороты и скорость машины по своей сети Wi-Fi.
+uk = Блок датчиків у машині передає повороти та швидкість машини своєю мережею Wi-Fi.
+
 [login_osm_credentials]
 comment = Login to OSM button text
 tags = android-app,android-sdk,apple-chart,apple-infoplist,apple-maps
