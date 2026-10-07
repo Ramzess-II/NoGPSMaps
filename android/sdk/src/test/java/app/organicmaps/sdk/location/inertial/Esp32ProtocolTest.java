@@ -192,4 +192,27 @@ public class Esp32ProtocolTest
     assertEquals("CAL_AUTO", event.code);
     assertEquals("-386", event.text);
   }
+
+  @Test
+  public void parsesAccel()
+  {
+    // The lines of the firmware agent.
+    Esp32Protocol.Data data = Esp32Protocol.parseData(
+        Esp32Protocol.parse("$NGD,1,5022,945253,-21882,-2100,812584,43,100,1F,-180,95,2350,6800*47CA"));
+    assertNotNull(data);
+    assertTrue(data.hasAccel);
+    assertEquals(-0.18, data.accelH1, 1e-9);
+    assertEquals(0.095, data.accelH2, 1e-9);
+    assertEquals(2.35, data.accelUp, 1e-9);
+    assertEquals(6.8, data.jolt, 1e-9);
+    assertEquals(43, data.speedKmh);
+    // The vertical is not calibrated.
+    data = Esp32Protocol.parseData(Esp32Protocol.parse("$NGD,1,77,12345,0,0,0,-1,-1,223,,,,*9174"));
+    assertNotNull(data);
+    assertFalse(data.hasAccel);
+    // An older box.
+    data = Esp32Protocol.parseData(Esp32Protocol.parse("$NGD,1,1234,845213,-15300,0,0,-1,-1,227*AEEE"));
+    assertNotNull(data);
+    assertFalse(data.hasAccel);
+  }
 }

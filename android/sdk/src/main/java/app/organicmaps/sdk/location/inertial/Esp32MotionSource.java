@@ -271,6 +271,8 @@ public class Esp32MotionSource implements MotionSource
     }
   }
 
+  private final AccelLog mAccelLog = new AccelLog();
+
   private void onData(@NonNull Esp32Protocol.Data data)
   {
     final long now = SystemClock.elapsedRealtime();
@@ -279,6 +281,14 @@ public class Esp32MotionSource implements MotionSource
     mFlags = data.flags;
     if (data.speedKmh >= 0)
       mListener.onSpeed(data.speedKmh, now - data.speedAgeMs);
+    // For the trip log only, see AccelLog.
+    if (data.hasAccel)
+    {
+      final String line =
+          mAccelLog.onSample(data.timeMs * 1_000_000, data.accelH1, data.accelH2, data.accelUp, data.jolt);
+      if (line != null && data.speedKmh > 0)
+        Logger.i(TAG, "ACCB " + line);
+    }
 
     // The box sends the totals: a lost line loses nothing, the next one has the rotation.
     if (mHasLast && fresh)

@@ -42,6 +42,14 @@ public final class Esp32Protocol
     // -1 if the car doesn't tell it.
     public int speedKmh;
     public int speedAgeMs;
+    // The acceleration of the box during the line, m/s²: along two horizontal axes and up without the
+    // gravity, and the largest deviation of the vertical one. Not sent by older boxes and before the
+    // calibration.
+    public boolean hasAccel;
+    public double accelH1;
+    public double accelH2;
+    public double accelUp;
+    public double jolt;
     public int flags;
   }
 
@@ -139,6 +147,14 @@ public final class Esp32Protocol
       data.speedKmh = Integer.parseInt(fields[7]);
       data.speedAgeMs = Integer.parseInt(fields[8]);
       data.flags = Integer.parseInt(fields[9], 16);
+      if (fields.length >= 14 && !fields[10].isEmpty())
+      {
+        data.accelH1 = Integer.parseInt(fields[10]) / 1000.0;
+        data.accelH2 = Integer.parseInt(fields[11]) / 1000.0;
+        data.accelUp = Integer.parseInt(fields[12]) / 1000.0;
+        data.jolt = Integer.parseInt(fields[13]) / 1000.0;
+        data.hasAccel = true;
+      }
       return data;
     }
     catch (NumberFormatException e)

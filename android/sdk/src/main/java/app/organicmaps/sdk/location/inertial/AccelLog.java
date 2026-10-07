@@ -21,6 +21,7 @@ public final class AccelLog
   private final double[] mSum = new double[3];
   private final double[] mMin = new double[3];
   private final double[] mMax = new double[3];
+  private double mJolt;
 
   /**
    * @param x, y, z the acceleration, m/s².
@@ -28,6 +29,15 @@ public final class AccelLog
    */
   @Nullable
   public String onSample(long timestampNs, float x, float y, float z)
+  {
+    return onSample(timestampNs, x, y, z, 0);
+  }
+
+  /**
+   * @param jolt the jolt during the sample measured by the sensor itself, which reads faster.
+   */
+  @Nullable
+  public String onSample(long timestampNs, double x, double y, double z, double jolt)
   {
     String line = null;
     // A break of the sensor starts everything anew.
@@ -45,7 +55,8 @@ public final class AccelLog
     }
     if (mCount == 0)
       mSliceStartNs = timestampNs;
-    final float[] sample = {x, y, z};
+    final double[] sample = {x, y, z};
+    mJolt = mCount == 0 ? jolt : Math.max(mJolt, jolt);
     for (int i = 0; i < 3; i++)
     {
       mSum[i] += sample[i];
@@ -72,7 +83,7 @@ public final class AccelLog
 
   private void endSlice()
   {
-    double jolt = 0;
+    double jolt = mJolt;
     for (int i = 0; i < 3; i++)
     {
       final double mean = mSum[i] / mCount;
