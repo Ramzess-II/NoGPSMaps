@@ -81,15 +81,26 @@ ELM327 adapter. The firmware of the sensor box: [ELMandIMU](https://github.com/R
 git clone --recurse-submodules https://github.com/Ramzess-II/NoGPSMaps.git
 cd NoGPSMaps/android
 ./gradlew assembleFdroidDebug -Parm64     # APK: app/build/outputs/apk/fdroid/debug/
-./gradlew sdk:testDebug                   # модульні тести навігації
 ```
 
-Карти завантажуються в самому застосунку. Код навігації без GPS:
-- [`sdk/.../location/`](android/sdk/src/main/java/app/organicmaps/sdk/location/) — детектор підміни,
-  повернення до GPS, ручний режим;
-- [`sdk/.../location/inertial/`](android/sdk/src/main/java/app/organicmaps/sdk/location/inertial/) —
-  інерціальна навігація, калібрування, ELM327, ESP32;
-- [`libs/routing`](libs/routing), [`libs/map`](libs/map) — прив'язка до доріг і маршруту в ядрі C++.
+Модульні тести навігації — у ядрі C++, разом із тестами Organic Maps:
+
+```bash
+cmake --preset debug -B build
+cmake --build build --target map_tests
+QT_QPA_PLATFORM=offscreen ./build/map_tests --filter=NoGps_
+```
+
+iOS збирається з `xcode/omim.xcworkspace`, схема `OMaps` (див. [iphone/CLAUDE.md](iphone/CLAUDE.md)). На iOS
+рух машини береться тільки з блоку ESP32: iOS не дає застосункам Bluetooth SPP для адаптерів ELM327.
+
+Карти завантажуються в самому застосунку. Код навігації без GPS спільний для Android та iOS:
+- [`libs/map/nogps`](libs/map/nogps) — детектор підміни, повернення до GPS, ручний режим, інерціальна
+  навігація, калібрування, протоколи ELM327 та ESP32;
+- [`libs/routing`](libs/routing), [`libs/map`](libs/map) — прив'язка до доріг і маршруту;
+- [`android/sdk/.../location/`](android/sdk/src/main/java/app/organicmaps/sdk/location/) та
+  [`iphone/Maps/Core/NoGps/`](iphone/Maps/Core/NoGps/) — те, що залежить від платформи: позиції, датчики,
+  з'єднання з адаптером і блоком.
 
 ---
 
