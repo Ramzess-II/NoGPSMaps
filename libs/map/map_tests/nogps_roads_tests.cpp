@@ -1,0 +1,174 @@
+#include "testing/testing.hpp"
+
+#include "map/map_tests/nogps_test_roads.hpp"
+
+#include "map/nogps/geo.hpp"
+#include "map/nogps/road_walker.hpp"
+#include "map/nogps/turn_matcher.hpp"
+
+#include "base/math.hpp"
+
+#include <cmath>
+
+namespace nogps_roads_tests
+{
+using namespace nogps;
+using namespace nogps_test;
+
+void TestAt(double eastM, double northM, ms::LatLon const & position)
+{
+  TEST_ALMOST_EQUAL_ABS(East(position), eastM, 0.5, (position));
+  TEST_ALMOST_EQUAL_ABS(North(position), northM, 0.5, (position));
+}
+
+UNIT_TEST(NoGps_RoadWalker_WalksAlongRoad)
+{
+  GridRoads grid;
+  auto const walked = RoadWalker::Walk(grid, At(10, 0), 90, 50);
+  TEST(walked, ());
+  TestAt(60, 0, walked->m_position);
+  TEST_ALMOST_EQUAL_ABS(walked->m_bearingDeg, 90.0, 1.0, ());
+  TEST_ALMOST_EQUAL_ABS(walked->m_appliedM, 50.0, 0.5, ());
+  TEST(!walked->m_atCrossing, ());
+}
+
+UNIT_TEST(NoGps_RoadWalker_SnapsToRoadAxis)
+{
+  GridRoads grid;
+  auto const walked = RoadWalker::Walk(grid, At(10, 4), 90, 20);
+  TEST(walked, ());
+  TestAt(30, 0, walked->m_position);
+}
+
+UNIT_TEST(NoGps_RoadWalker_StopsAtCrossing)
+{
+  GridRoads grid;
+  auto const walked = RoadWalker::Walk(grid, At(60, 0), 90, 100);
+  TEST(walked, ());
+  TestAt(100, 0, walked->m_position);
+  TEST_ALMOST_EQUAL_ABS(walked->m_appliedM, 40.0, 0.5, ());
+  TEST(walked->m_atCrossing, ());
+}
+
+UNIT_TEST(NoGps_RoadWalker_WalksBackKeepingDirection)
+{
+  GridRoads grid;
+  auto const walked = RoadWalker::Walk(grid, At(60, 0), 90, -100);
+  TEST(walked, ());
+  TestAt(0, 0, walked->m_position);
+  TEST_ALMOST_EQUAL_ABS(walked->m_bearingDeg, 90.0, 1.0, ());
+  TEST_ALMOST_EQUAL_ABS(walked->m_appliedM, -60.0, 0.5, ());
+  TEST(walked->m_atCrossing, ());
+}
+
+UNIT_TEST(NoGps_RoadWalker_LeavesCrossingItStandsAt)
+{
+  GridRoads grid;
+  auto const walked = RoadWalker::Walk(grid, At(100, 0), 90, 30);
+  TEST(walked, ());
+  TestAt(130, 0, walked->m_position);
+  TEST(!walked->m_atCrossing, ());
+}
+
+UNIT_TEST(NoGps_RoadWalker_FollowsRoadTheCarLooksAlong)
+{
+  // The car looks north on the north street, the east one crossing it is ignored.
+  GridRoads grid;
+  auto const walked = RoadWalker::Walk(grid, At(0, 10), 0, 50);
+  TEST(walked, ());
+  TestAt(0, 60, walked->m_position);
+  TEST_ALMOST_EQUAL_ABS(walked->m_bearingDeg, 0.0, 1.0, ());
+}
+
+UNIT_TEST(NoGps_RoadWalker_StopsAtRoadEnd)
+{
+  GridRoads grid;
+  auto const walked = RoadWalker::Walk(grid, At(490, 0), 90, 50);
+  TEST(walked, ());
+  TEST_ALMOST_EQUAL_ABS(walked->m_appliedM, 10.0, 5.1, ());
+}
+
+UNIT_TEST(NoGps_RoadWalker_NoRoad)
+{
+  GridRoads grid;
+  TEST(!RoadWalker::Walk(grid, At(50, 50), 90, 50), ());
+}
+
+UNIT_TEST(NoGps_Geo_OrientsRoadTheCarWay)
+{
+  TEST_EQUAL(Orient(90, 250), 270, ());
+  TEST_EQUAL(Orient(90, 100), 90, ());
+  TEST_EQUAL(Orient(270, 100), 90, ());
+  TEST_EQUAL(Orient(90, {}), 90, ());
+}
+
+UNIT_TEST(NoGps_TurnMatcher_MatchesTurnBeforeCrossing)
+{
+  // The calculated distance lags: the car turned left at 200 m, but it is at 160 m by the calculation.
+  GridRoads grid;
+  auto const crossing = TurnMatcher::FindCrossing(grid, At(160, 0), 90, 0, 20);
+  TEST(crossing, ());
+  TestAt(200, 0, *crossing);
+}
+
+UNIT_TEST(NoGps_TurnMatcher_MatchesTurnAfterCrossing)
+{
+  GridRoads grid;
+  auto const crossing = TurnMatcher::FindCrossing(grid, At(240, 0), 90, 180, 20);
+  TEST(crossing, ());
+  TestAt(200, 0, *crossing);
+}
+
+UNIT_TEST(NoGps_TurnMatcher_IgnoresBends)
+{
+  GridRoads grid;
+  TEST(!TurnMatcher::FindCrossing(grid, At(200, 0), 90, 70, 20), ());
+}
+
+UNIT_TEST(NoGps_TurnMatcher_IgnoresTurnsAround)
+{
+  GridRoads grid;
+  TEST(!TurnMatcher::FindCrossing(grid, At(200, 0), 90, 270, 20), ());
+}
+
+UNIT_TEST(NoGps_TurnMatcher_IgnoresParallelStreets)
+{
+  // A crossing 30 m aside is on a parallel street, not on the street the car has driven along.
+  GridRoads grid;
+  TEST(!TurnMatcher::FindCrossing(grid, At(190, 30), 90, 0, 20), ());
+}
+
+UNIT_TEST(NoGps_TurnMatcher_NoCrossingOutsideRoads)
+{
+  GridRoads grid;
+  TEST(!TurnMatcher::FindCrossing(grid, At(700, 0), 90, 0, 20), ());
+}
+
+UNIT_TEST(NoGps_TurnMatcher_IgnoresBendWithSideStreet)
+{
+  // The road going east bends to the south-east by 40 degrees, a side street leaves it 30 m before the bend the
+  // same way. The car has followed the road.
+  double const side = math::DegToRad(140.0);
+  double const bend = math::DegToRad(110.0);
+  double const after = math::DegToRad(130.0);
+  PieceRoads roads(
+      {
+          {-200, 0, 0, 0},
+          {0, 0, 40 * std::sin(bend), 40 * std::cos(bend)},
+          {37.6, -13.7, 37.6 + 100 * std::sin(after), -13.7 + 100 * std::cos(after)},
+          {-30, 0, -30 + 100 * std::sin(side), 100 * std::cos(side)},
+      },
+      {{-30, 0}});
+  TEST(!TurnMatcher::FindCrossing(roads, At(0, 0), 90, 130, 20), ());
+  // The car has turned to the side street: the road it was on goes on east.
+  PieceRoads straight(
+      {
+          {-200, 0, 200, 0},
+          {-30, 0, -30 + 100 * std::sin(side), 100 * std::cos(side)},
+      },
+      {{-30, 0}});
+  auto const crossing = TurnMatcher::FindCrossing(straight, At(0, 0), 90, 135, 20);
+  TEST(crossing, ());
+  TestAt(-30, 0, *crossing);
+}
+}  // namespace nogps_roads_tests

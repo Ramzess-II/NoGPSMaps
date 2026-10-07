@@ -21,12 +21,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.content.ContextCompat;
-import app.organicmaps.MwmApplication;
 import app.organicmaps.R;
-import app.organicmaps.sdk.location.LocationHelper;
-import app.organicmaps.sdk.location.inertial.InertialNavigator;
-import app.organicmaps.sdk.location.inertial.MotionSource;
-import app.organicmaps.sdk.util.Config;
+import app.organicmaps.sdk.location.NoGps;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import java.util.ArrayList;
@@ -89,24 +85,21 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     mCalibrate = view.findViewById(R.id.nogps_calibrate);
 
     final RadioGroup source = view.findViewById(R.id.nogps_source);
-    source.check(getLocationHelper().isEsp32Source() ? R.id.nogps_source_esp32 : R.id.nogps_source_phone);
+    final NoGps.Status status = NoGps.getStatus();
+    source.check(status.esp32Source ? R.id.nogps_source_esp32 : R.id.nogps_source_phone);
     source.setOnCheckedChangeListener((group, checkedId) -> onSourceChosen(checkedId == R.id.nogps_source_esp32));
 
-    mSwitch.setChecked(getLocationHelper().isInertialNavigationEnabled());
+    mSwitch.setChecked(status.inertialEnabled);
     mSwitch.setOnCheckedChangeListener((v, isChecked) -> onSwitch(isChecked));
     final SwitchCompat shiftButtons = view.findViewById(R.id.nogps_shift_buttons_switch);
-    shiftButtons.setChecked(Config.isNoGpsShiftButtonsShown());
-    shiftButtons.setOnCheckedChangeListener((v, isChecked) -> Config.setNoGpsShiftButtonsShown(isChecked));
+    shiftButtons.setChecked(status.shiftButtonsShown);
+    shiftButtons.setOnCheckedChangeListener((v, isChecked) -> NoGps.nativeSetShiftButtonsShown(isChecked));
 
     final SwitchCompat disableGps = view.findViewById(R.id.nogps_disable_gps_switch);
-    disableGps.setChecked(getLocationHelper().isGpsDisabled());
-    disableGps.setOnCheckedChangeListener((v, isChecked) -> getLocationHelper().setGpsDisabled(isChecked));
+    disableGps.setChecked(status.gpsDisabled);
+    disableGps.setOnCheckedChangeListener((v, isChecked) -> NoGps.nativeSetGpsDisabled(isChecked));
     mChooseAdapter.setOnClickListener(v -> withBluetoothPermission(this::chooseAdapter));
-    mCalibrate.setOnClickListener(v -> {
-      final InertialNavigator inertial = getLocationHelper().getInertialNavigator();
-      if (inertial != null)
-        inertial.calibrate();
-    });
+    mCalibrate.setOnClickListener(v -> NoGps.nativeCalibrate());
     return view;
   }
 
@@ -124,23 +117,17 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     mHandler.removeCallbacks(mUpdater);
   }
 
-  @NonNull
-  private LocationHelper getLocationHelper()
-  {
-    return MwmApplication.from(requireContext()).getLocationHelper();
-  }
-
   private void onSourceChosen(boolean esp32)
   {
     if (esp32)
     {
-      getLocationHelper().setEsp32Source(true);
+      NoGps.nativeSetEsp32Source(true);
       update();
       return;
     }
     withBluetoothPermission(() -> {
-      getLocationHelper().setEsp32Source(false);
-      if (Config.getElm327Address() == null && getLocationHelper().isInertialNavigationEnabled())
+      NoGps.nativeSetEsp32Source(false);
+      if (NoGps.getStatus().elm327Address.isEmpty() && NoGps.getStatus().inertialEnabled)
         chooseAdapter();
       update();
     });
@@ -149,15 +136,15 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
   private void onSwitch(boolean enabled)
   {
     // The sensor box is on Wi-Fi, Bluetooth is not needed for it.
-    if (!enabled || getLocationHelper().isEsp32Source())
+    if (!enabled || NoGps.getStatus().esp32Source)
     {
-      getLocationHelper().setInertialNavigationEnabled(enabled);
+      NoGps.nativeSetInertialNavigationEnabled(enabled);
       update();
       return;
     }
     withBluetoothPermission(() -> {
-      getLocationHelper().setInertialNavigationEnabled(true);
-      if (Config.getElm327Address() == null)
+      NoGps.nativeSetInertialNavigationEnabled(true);
+      if (NoGps.getStatus().elm327Address.isEmpty())
         chooseAdapter();
       update();
     });
@@ -186,7 +173,7 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
       return;
     }
     Toast.makeText(requireContext(), R.string.nogps_bt_permission_denied, Toast.LENGTH_LONG).show();
-    mSwitch.setChecked(getLocationHelper().isInertialNavigationEnabled());
+    mSwitch.setChecked(NoGps.getStatus().inertialEnabled);
   }
 
   @SuppressLint("MissingPermission") // Checked in withBluetoothPermission().
@@ -208,7 +195,7 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     }
     new MaterialAlertDialogBuilder(requireContext())
         .setTitle(R.string.nogps_choose_adapter)
-        .setItems(names, (dialog, which) -> getLocationHelper().setElm327Address(devices.get(which).getAddress()))
+        .setItems(names, (dialog, which) -> NoGps.nativeSetElm327Address(devices.get(which).getAddress()))
         .show();
   }
 
@@ -216,8 +203,8 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
   @NonNull
   private String adapterName()
   {
-    final String address = Config.getElm327Address();
-    if (address == null)
+    final String address = NoGps.getStatus().elm327Address;
+    if (address.isEmpty())
       return getString(R.string.nogps_sensors_adapter_none);
     final BluetoothAdapter bluetooth = BluetoothAdapter.getDefaultAdapter();
     try
@@ -240,58 +227,56 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
   {
     if (getContext() == null)
       return;
-    final LocationHelper locationHelper = getLocationHelper();
-    final InertialNavigator inertial = locationHelper.getInertialNavigator();
-    final boolean enabled = locationHelper.isInertialNavigationEnabled() && inertial != null;
+    final NoGps.Status status = NoGps.getStatus();
+    final boolean enabled = status.inertialStarted;
 
-    final boolean esp32 = locationHelper.isEsp32Source();
+    final boolean esp32 = status.esp32Source;
     mHint.setText(esp32 ? R.string.nogps_sensors_hint_box : R.string.nogps_sensors_hint);
     mChooseAdapter.setVisibility(esp32 ? View.GONE : View.VISIBLE);
     mCalibrate.setText(esp32 ? R.string.nogps_sensors_calibrate_box : R.string.nogps_sensors_calibrate);
     if (esp32)
     {
-      final String name = enabled && inertial.getDeviceName() != null ? inertial.getDeviceName() : "ESP32";
-      final String box = enabled ? name + " · " + getString(boxStateText(inertial.getSourceState())) : name;
+      final String name = enabled && !status.deviceName.isEmpty() ? status.deviceName : "ESP32";
+      final String box = enabled ? name + " · " + getString(boxStateText(status.getSourceState())) : name;
       mAdapter.setText(getString(R.string.nogps_sensors_box, box));
     }
     else
     {
       String adapter = adapterName();
       if (enabled)
-        adapter += " · " + getString(elmStateText(inertial.getSourceState()));
+        adapter += " · " + getString(elmStateText(status.getSourceState()));
       mAdapter.setText(getString(R.string.nogps_sensors_adapter, adapter));
     }
 
-    final int speed = enabled ? inertial.getSpeedKmh() : -1;
+    final int speed = enabled ? status.speedKmh : -1;
     mSpeed.setText(getString(R.string.nogps_sensors_speed, speed >= 0 ? getString(R.string.nogps_speed_kmh, speed)
-                                                                       : getString(R.string.nogps_unknown)));
+                                                                      : getString(R.string.nogps_unknown)));
 
-    updateCar(enabled && esp32 ? inertial.getCarInfo() : null, speed);
+    updateCar(enabled && esp32 && status.hasCarInfo ? status : null, speed);
 
-    String scale = getString(R.string.nogps_sensors_scale,
-                             enabled ? String.format(Locale.US, "\u00D7%.2f", inertial.getSpeedScale())
-                                     : getString(R.string.nogps_unknown),
-                             enabled ? inertial.getSpeedTableRanges() : 0);
+    String scale = getString(
+        R.string.nogps_sensors_scale,
+        enabled ? String.format(Locale.US, "\u00D7%.2f", status.speedScale) : getString(R.string.nogps_unknown),
+        enabled ? status.speedTableRanges : 0);
     if (enabled)
     {
-      scale += "\n" + getString(inertial.isSpeedLagMeasured() ? R.string.nogps_sensors_lag_measured
-                                                              : R.string.nogps_sensors_lag_usual,
-                                String.format(Locale.US, "%.1f", inertial.getSpeedLag()));
+      scale +=
+          "\n"
+          + getString(status.speedLagMeasured ? R.string.nogps_sensors_lag_measured : R.string.nogps_sensors_lag_usual,
+                      String.format(Locale.US, "%.1f", status.speedLagSec));
     }
     mScale.setText(scale);
 
-    final InertialNavigator.CalibrationState calibration =
-        enabled ? inertial.getCalibrationState() : InertialNavigator.CalibrationState.NONE;
+    final NoGps.CalibrationState calibration = enabled ? status.getCalibration() : NoGps.CalibrationState.NONE;
     final String gyro = switch (calibration)
     {
       case NONE -> getString(R.string.nogps_gyro_none);
-      case CALIBRATING -> getString(R.string.nogps_gyro_calibrating, inertial.getCalibrationProgressPercent());
+      case CALIBRATING -> getString(R.string.nogps_gyro_calibrating, status.calibrationProgress);
       case DONE -> getString(R.string.nogps_gyro_done);
       case FAILED_MOVING -> getString(R.string.nogps_gyro_failed);
       case MOUNT_MOVED -> getString(R.string.nogps_gyro_mount_moved);
     };
     mGyro.setText(getString(R.string.nogps_sensors_gyro, gyro));
-
 
     if (!enabled)
     {
@@ -301,9 +286,9 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     final List<String> missing = new ArrayList<>();
     if (speed < 0)
       missing.add(getString(R.string.nogps_missing_speed));
-    if (calibration != InertialNavigator.CalibrationState.DONE)
+    if (calibration != NoGps.CalibrationState.DONE)
       missing.add(getString(R.string.nogps_missing_gyro));
-    if (!inertial.hasPosition())
+    if (!status.hasInertialPosition)
       missing.add(getString(R.string.nogps_missing_position));
     if (missing.isEmpty())
     {
@@ -319,8 +304,9 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
 
   /**
    * Shows what the sensor box tells about the car: the engine and the voltage measured by the box and by ELM327.
+   * @param car the status with the car data, null if the box tells nothing.
    */
-  private void updateCar(@Nullable MotionSource.CarInfo car, int speedKmh)
+  private void updateCar(@Nullable NoGps.Status car, int speedKmh)
   {
     mCar.setVisibility(car != null ? View.VISIBLE : View.GONE);
     mVoltageMismatch.setVisibility(car != null && car.voltageMismatch ? View.VISIBLE : View.GONE);
@@ -330,9 +316,9 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     // The box measures its own voltage all the time and asks the car for the rest only while it stands, not to
     // delay the speed.
     final String unknown = getString(speedKmh > 0 ? R.string.nogps_not_while_driving : R.string.nogps_unknown);
-    final String engine = getString(car.engineRunning == null ? R.string.nogps_unknown
-                                    : car.engineRunning ? R.string.nogps_engine_running
-                                                        : R.string.nogps_engine_stopped);
+    final String engine = getString(car.engineRunning < 0   ? R.string.nogps_unknown
+                                    : car.engineRunning > 0 ? R.string.nogps_engine_running
+                                                            : R.string.nogps_engine_stopped);
     final String rpm = car.rpm >= 0 ? getString(R.string.nogps_rpm, car.rpm) : unknown;
     final String boxVolts = car.boxMillivolts >= 0 ? formatVolts(car.boxMillivolts) : getString(R.string.nogps_unknown);
     final String elmVolts = car.elmMillivolts >= 0 ? formatVolts(car.elmMillivolts) : unknown;
@@ -351,17 +337,16 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     new MaterialAlertDialogBuilder(requireContext())
         .setTitle(R.string.nogps_clear_speed_title)
         .setMessage(R.string.nogps_clear_speed_message)
-        .setPositiveButton(R.string.nogps_clear_speed, (dialog, which) -> {
-          final InertialNavigator inertial = getLocationHelper().getInertialNavigator();
-          if (inertial != null)
-            inertial.clearSpeedCalibration();
-          update();
-        })
+        .setPositiveButton(R.string.nogps_clear_speed,
+                           (dialog, which) -> {
+                             NoGps.nativeClearSpeedCalibration();
+                             update();
+                           })
         .setNegativeButton(R.string.cancel, null)
         .show();
   }
 
-  private static int boxStateText(@NonNull MotionSource.State state)
+  private static int boxStateText(@NonNull NoGps.SourceState state)
   {
     return switch (state)
     {
@@ -378,7 +363,7 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     };
   }
 
-  private static int elmStateText(@NonNull MotionSource.State state)
+  private static int elmStateText(@NonNull NoGps.SourceState state)
   {
     return switch (state)
     {
