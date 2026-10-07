@@ -1,0 +1,72 @@
+#pragma once
+
+#include "map/nogps/clock.hpp"
+#include "map/nogps/engine.hpp"
+#include "map/nogps/map_api.hpp"
+#include "map/nogps/roads.hpp"
+#include "map/nogps/scheduler.hpp"
+#include "map/nogps/storage.hpp"
+
+#include <functional>
+
+class RoutingManager;
+
+namespace nogps
+{
+/// The roads and the route of the core.
+class RoutingMapApi : public MapApi
+{
+public:
+  using ShowCarHeadingFn = std::function<void(double bearingDeg)>;
+
+  RoutingMapApi(RoutingManager & routing, Clock const & clock, ShowCarHeadingFn && showCarHeading);
+
+  // MapApi overrides:
+  bool IsNavigating() const override;
+  Roads & GetRoads(bool matchRoute) override { return matchRoute ? m_routeRoads : m_roads; }
+  void RebuildRouteIfOffRoute(Fix const & fix, double offRouteDistanceM, std::optional<double> bearingDeg) override;
+  std::optional<RoadPoint> ProjectToRoute(ms::LatLon const & position, double radiusM) override;
+  std::optional<RoadWalker::Result> ShiftAlongRoute(ms::LatLon const & position, std::optional<double> bearingDeg,
+                                                    double distanceM) override;
+  std::optional<RoadPoint> SnapToMainRoad(ms::LatLon const & position, double radiusM) override;
+  std::string GetDistanceLeft() const override;
+  void ShowCarHeading(double bearingDeg) override { m_showCarHeading(bearingDeg); }
+
+private:
+  class RoutingRoads : public Roads
+  {
+  public:
+    RoutingRoads(RoutingManager & routing, bool matchRoute) : m_routing(routing), m_matchRoute(matchRoute) {}
+
+    std::optional<RoadPoint> Snap(ms::LatLon const & point, std::optional<double> bearingDeg, double radiusM) override;
+    std::vector<ms::LatLon> FindCrossings(ms::LatLon const & center, double radiusM) override;
+
+  private:
+    RoutingManager & m_routing;
+    bool const m_matchRoute;
+  };
+
+  RoutingManager & m_routing;
+  Clock const & m_clock;
+  ShowCarHeadingFn m_showCarHeading;
+  RoutingRoads m_roads;
+  RoutingRoads m_routeRoads;
+};
+
+/// The navigation without GPS with everything it takes from the core.
+class Service
+{
+public:
+  Service(Delegate & delegate, RoutingManager & routing, RoutingMapApi::ShowCarHeadingFn && showCarHeading);
+
+  Engine & GetEngine() { return m_engine; }
+  Clock const & GetClock() const { return m_clock; }
+
+private:
+  SystemClock m_clock;
+  PlatformScheduler m_scheduler;
+  SettingsStorage m_storage;
+  RoutingMapApi m_map;
+  Engine m_engine;
+};
+}  // namespace nogps

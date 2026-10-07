@@ -1,0 +1,271 @@
+#pragma once
+
+#include "map/nogps/accel_log.hpp"
+#include "map/nogps/bend_matcher.hpp"
+#include "map/nogps/dead_reckoning.hpp"
+#include "map/nogps/delegate.hpp"
+#include "map/nogps/gyro_calibrator.hpp"
+#include "map/nogps/motion_source.hpp"
+#include "map/nogps/speed_lag.hpp"
+#include "map/nogps/speed_scale.hpp"
+#include "map/nogps/speed_table.hpp"
+#include "map/nogps/turn_sign_checker.hpp"
+
+#include "geometry/latlon.hpp"
+
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <string>
+#include <string_view>
+
+namespace nogps
+{
+class Clock;
+class Elm327Session;
+class Esp32Source;
+class PhoneMotion;
+class Roads;
+class Scheduler;
+class Storage;
+
+/// Inertial navigation: the car speed and turns come from a MotionSource, the phone fixed on the dashboard with
+/// an ELM327 OBD-II adapter or the ESP32 sensor box.
+/// It needs a reference position and heading (from GPS while it was trusted, manual marks or the user) and
+/// a calibrated gyroscope.
+class InertialNavigator : private MotionSource::Listener
+{
+public:
+  enum class HeadingSource
+  {
+    None,
+    Gps,
+    // The direction of the road the car is on, the user has chosen one of its two ways.
+    Road,
+  };
+
+  class Listener
+  {
+  public:
+    virtual ~Listener() = default;
+    virtual void OnInertialLocation(Fix const & fix) = 0;
+    /// The car has left the roads, it is stopped where it was on a road the last time.
+    virtual void OnRoadLost() = 0;
+    /// The gyroscope turns the car the other way than GPS: the axes of its driver are wrong.
+    virtual void OnTurnsReversed() = 0;
+  };
+
+  // Without fresh speed the position can't be calculated.
+  static int64_t constexpr kSpeedStaleMs = 2000;
+  static int64_t constexpr kOutputIntervalMs = 200;
+  static double constexpr kMovingSpeedMps = 0.5;
+  // GPS bearing is noisy at low speeds, unless GPS tells it is accurate: it is so from a walking speed on.
+  static double constexpr kMinGpsHeadingSpeedMps = 3;
+  static double constexpr kMinAccurateGpsHeadingSpeedMps = 1;
+  static double constexpr kMaxGpsHeadingErrorDeg = 10;
+  // A longer pause of the source is a lost connection, the car could do anything meanwhile.
+  static double constexpr kMaxMotionDtSec = 1;
+  static int64_t constexpr kSnapIntervalMs = 1000;
+  // A road farther aside is another street: the car doesn't jump to it, however inaccurate the position is.
+  // It did at the end of a street with the position ahead of the car, and between the ramps of a junction.
+  // Off the roads the car is stopped (kLostRoadM) until the user marks it.
+  static double constexpr kSnapRadiusM = 20;
+  // The road the car is put on when the user marks it or the movement resumes may be farther.
+  static double constexpr kMaxSnapRadiusM = 60;
+  // The bends of the road are compared with the rotation of the car this often: it takes tens of road lookups.
+  static int64_t constexpr kBendMatchIntervalMs = 2000;
+  // The position is searched this far along the road at least, and never farther than the maximum: a longer
+  // road may have a similar bend.
+  static double constexpr kMinBendSearchM = 30;
+  static double constexpr kMaxBendShiftM = 60;
+  // Smaller errors are within the accuracy of the bends on the map.
+  static double constexpr kMinBendShiftM = 8;
+  // A slow car weaves around holes and parked cars, that looks like a bend of the road.
+  static double constexpr kMinBendMoveSpeedMps = 25 / 3.6;
+  // A turn at a crossing rotates the car faster than a bend of a road.
+  static double constexpr kTurnStartRateDeg = 10;
+  // The turn is over when the car goes straight for a while.
+  static double constexpr kTurnEndRateDeg = 4;
+  static int64_t constexpr kTurnEndCalmNs = 1'000'000'000;
+  // The car starts turning a few meters before the middle of the crossing.
+  static double constexpr kTurnCornerAheadM = 5;
+  // The car is moved to the new road found this close to the moved position.
+  static double constexpr kTurnSnapRadiusM = 20;
+  // A car turning at a crossing rotates one way. Rotating much more than it has turned, it has driven around
+  // a roundabout or along a winding road, and the turn is not at the crossing where it has started.
+  static double constexpr kMaxExtraTurnRotationDeg = 60;
+  // The pause is over when the car drives this fast for a while: nobody drives so fast backwards.
+  static int constexpr kAutoResumeSpeedKmh = 15;
+  static int64_t constexpr kAutoResumeMs = 3000;
+  // A car drives this far off the roads only in a yard or a parking lot missing on the map, or the calculation
+  // has gone wrong, e.g. with a wrong heading. The car is stopped on the road then until the user marks it.
+  static double constexpr kLostRoadM = 30;
+  // The user is reminded to mark the car while it drives with the position stopped, e.g. on the next trip.
+  static int64_t constexpr kRoadLostReminderMs = 30'000;
+  // The speed table is saved once in a while, not on every position.
+  static int constexpr kSpeedTableSaveSamples = 30;
+
+  /// \param roads the roads and the followed route, the car is kept on them.
+  InertialNavigator(Delegate & delegate, Scheduler & scheduler, Clock const & clock, Storage & storage, Roads & roads,
+                    Listener & listener);
+  ~InertialNavigator() override;
+
+  /// Starts the motion source chosen in the settings.
+  void Start();
+  void Stop();
+
+  /// Starts the gyroscope calibration. The gyroscope must be fixed and the car must stand still for ~3 s.
+  void Calibrate();
+
+  /// A trusted GPS position. The inertial navigation continues from it.
+  void OnGpsPosition(Fix const & gps);
+  /// The position is on a road: its direction is more reliable than the calculated one.
+  /// \param bearingDeg direction of the road in the direction of the movement.
+  void SetRoadPosition(ms::LatLon const & position, double bearingDeg);
+  /// The user has corrected the lag of the calculated position along the road.
+  /// \param appliedM the distance the position was moved by, negative if it was moved back.
+  void OnPositionCorrected(ms::LatLon const & position, double bearingDeg, double appliedM);
+  /// Trusted GPS measures the real speed of the car: the car speed errors at different speeds are learned
+  /// from it. It works in the manual mode and when GPS is disabled for tests too.
+  void OnSpeedTableGps(Fix const & gps);
+  /// Forgets the car speed errors measured by GPS and corrected by the user, e.g. after new tyres.
+  void ClearSpeedCalibration();
+  /// Moves the position without changing the heading, e.g. to the shown position while the inertial
+  /// navigation doesn't work yet.
+  void SetPosition(ms::LatLon const & position);
+  /// \param headingDeg the direction the car looks at, clockwise from the north.
+  void SetHeading(double headingDeg, HeadingSource source);
+  /// Pauses the movement of the car while it maneuvers, or resumes it: the car is put on the road where it
+  /// stands, looking the way it has turned to during the pause.
+  void SetPaused(bool paused);
+
+  // The platform events, passed to the source they are for.
+  void OnGyro(int64_t timestampNs, Vec3 const & gyro);
+  void OnAccel(int64_t timestampNs, Vec3 const & accel);
+  void OnElm327Connected();
+  void OnElm327Bytes(std::string_view data);
+  void OnElm327Closed(std::string const & reason);
+  void OnEsp32Datagram(std::string_view text);
+
+  bool IsReady() const;
+  bool HasPosition() const { return m_deadReckoning.HasPosition(); }
+  std::optional<Fix> GetLocation() const;
+  /// \returns the car direction, clockwise from the north.
+  std::optional<double> GetHeading() const;
+  HeadingSource GetHeadingSource() const { return m_headingSource; }
+  /// \returns the ratio the current speed from the car is multiplied by, 1 if it is not corrected yet.
+  double GetSpeedScale() const;
+  /// \returns how late the car reports its speed, seconds: measured by GPS, or the usual one until then.
+  double GetSpeedLag() const { return m_speedLag.Get(); }
+  bool IsSpeedLagMeasured() const { return m_speedLag.IsMeasured(); }
+  /// \returns how many speed ranges of the table are measured by GPS.
+  int GetSpeedTableRanges() const { return m_speedTable.GetKnownRanges(); }
+  std::string GetSpeedTableDescription() const { return m_speedTable.ToString(); }
+  std::optional<CarInfo> GetCarInfo() const;
+  SourceState GetSourceState() const;
+  /// \returns the name of the sensor device to show, empty for the phone.
+  std::string GetDeviceName() const;
+  /// \returns the last speed in km/h, or -1 if it is unknown or stale.
+  int GetSpeedKmh() const;
+  CalibrationState GetCalibrationState();
+  int GetCalibrationProgressPercent() const;
+  /// \returns how far the last turn has moved the car to its crossing.
+  std::optional<double> GetLastTurnShiftM() const { return m_lastTurnShiftM; }
+  double GetDistanceSinceFix() const { return m_deadReckoning.GetDistanceSinceFix(); }
+  bool IsPaused() const { return m_paused; }
+  /// \returns true if the car has left the roads and stands where it was on a road the last time.
+  bool IsRoadLost() const { return m_roadLost; }
+  /// \returns true if the last position was snapped to a road or the route.
+  bool IsOnRoad() const { return m_onRoad; }
+  /// \returns how far the closest road was from the calculated position.
+  std::optional<double> GetLastSnapShiftM() const { return m_lastSnapShiftM; }
+
+private:
+  // MotionSource::Listener overrides:
+  void OnSpeed(int speedKmh, int64_t timeMs) override;
+  void OnMotion(double yawDeltaDeg, double dtSec, int64_t timestampNs) override;
+
+  void CheckTurnSign(Fix const & gps);
+  double GetSpeedScale(int speedKmh) const;
+  void SaveSpeedTable();
+  bool IsSpeedFresh() const;
+  void SetRoadPoint(ms::LatLon const & position);
+  void TrackOffRoad(double distanceM);
+  void NotifyRoadLost();
+  double DistanceWithLag(double dtSec);
+  void SnapToRoad();
+  void MatchBend();
+  void TrackTurn(double yawDeltaDeg, double dtSec, int64_t timestampNs);
+  void MatchTurn();
+
+  Delegate & m_delegate;
+  Scheduler & m_scheduler;
+  Clock const & m_clock;
+  Storage & m_storage;
+  Roads & m_roads;
+  Listener & m_listener;
+
+  std::unique_ptr<MotionSource> m_source;
+  // The same source as m_source if it is of this type, to pass the platform events to it.
+  PhoneMotion * m_phone = nullptr;
+  Esp32Source * m_esp32 = nullptr;
+  bool m_started = false;
+
+  int64_t m_lastSnapMs = 0;
+  bool m_onRoad = false;
+  std::optional<double> m_lastSnapShiftM;
+  // Where the car was on a road or at a known position the last time, and the distance driven off the roads
+  // since then.
+  std::optional<ms::LatLon> m_roadPoint;
+  double m_offRoadM = 0;
+  // The car has left the roads and stands at the last road point until it is marked or GPS comes back.
+  bool m_roadLost = false;
+  int64_t m_roadLostNotifiedMs = 0;
+
+  DeadReckoning m_deadReckoning;
+  HeadingSource m_headingSource = HeadingSource::None;
+  int64_t m_lastOutputMs = 0;
+  int m_speedKmh = -1;
+  int64_t m_speedTimeMs = 0;
+
+  // The speed error estimated from the corrections of the user, used until GPS measures it.
+  SpeedScale m_speedScale;
+  TurnSignChecker m_turnSignChecker;
+  BendMatcher m_bendMatcher;
+  int64_t m_lastBendMatchMs = 0;
+  // The speed errors measured by trusted GPS at different speeds.
+  SpeedTable m_speedTable;
+  SpeedLag m_speedLag;
+  // The accelerometer for the trip log, nothing depends on it yet.
+  AccelLog m_accelLog;
+  bool m_moving = false;
+  // The speed the lag is compensated up to, nothing if the car didn't move the position.
+  std::optional<double> m_lagSpeedMps;
+  // The position is to be moved back by this distance yet: it is not moved back, it waits.
+  double m_lagPendingM = 0;
+  // The last GPS position the speed errors were measured by.
+  std::optional<int64_t> m_speedTableGpsMs;
+  double m_speedTableGpsSpeedMps = 0;
+  int m_unsavedSpeedSamples = 0;
+
+  // The turn the car is making now: where it has started and where the car looked before it.
+  bool m_turning = false;
+  double m_turnFromBearing = 0;
+  ms::LatLon m_turnStart;
+  // The turn has been calm since then: the car goes straight.
+  std::optional<int64_t> m_turnCalmSinceNs;
+  // The rotation of the turn both ways together.
+  double m_turnRotationDeg = 0;
+  // How far the last turn has moved the car to its crossing, for the log of a drive.
+  std::optional<double> m_lastTurnShiftM;
+
+  // While the car maneuvers, e.g. parks or turns around in several moves, the speed from the car is always
+  // positive and would move the car forward. The car stays where it is then, the gyroscope still follows
+  // its rotation.
+  bool m_paused = false;
+  // Since when the car drives fast enough to end the pause.
+  std::optional<int64_t> m_fastSinceMs;
+};
+
+std::string DebugPrint(InertialNavigator::HeadingSource source);
+}  // namespace nogps
