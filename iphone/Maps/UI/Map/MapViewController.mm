@@ -87,6 +87,7 @@ NSString * const kCategorySelectorSegue = @"MapToCategorySelectorSegue";
 @property(nonatomic, readwrite) MWMMapViewControlsManager * controlsManager;
 @property(nonatomic, readwrite) SearchOnMapManager * searchManager;
 @property(nonatomic, readwrite) TrackRecordingManager * trackRecordingManager;
+@property(nonatomic) NoGpsControls * noGpsControls;
 
 @property(nonatomic) BOOL disableStandbyOnLocationStateMode;
 
@@ -529,6 +530,8 @@ NSString * const kCategorySelectorSegue = @"MapToCategorySelectorSegue";
 
   if (self.trackRecordingManager.isActive)
     [self showTrackRecordingPlacePage];
+
+  self.noGpsControls = [[NoGpsControls alloc] initWithOwner:self];
 
   /// @todo: Uncomment update dialog when will be ready to handle big traffic bursts.
   /*
