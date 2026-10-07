@@ -1,6 +1,7 @@
 #pragma once
 
 #include "map/nogps/accel_log.hpp"
+#include "map/nogps/accel_speed.hpp"
 #include "map/nogps/bend_matcher.hpp"
 #include "map/nogps/dead_reckoning.hpp"
 #include "map/nogps/delegate.hpp"
@@ -82,6 +83,8 @@ public:
   static double constexpr kMinBendShiftM = 8;
   // A slow car weaves around holes and parked cars, that looks like a bend of the road.
   static double constexpr kMinBendMoveSpeedMps = 25 / 3.6;
+  // What the accelerometer has added to the position fades away in this time.
+  static double constexpr kAccelFadeSec = 10;
   // A turn at a crossing rotates the car faster than a bend of a road.
   static double constexpr kTurnStartRateDeg = 10;
   // The turn is over when the car goes straight for a while.
@@ -158,6 +161,15 @@ public:
   /// \returns how late the car reports its speed, seconds: measured by GPS, or the usual one until then.
   double GetSpeedLag() const { return m_speedLag.Get(); }
   bool IsSpeedLagMeasured() const { return m_speedLag.IsMeasured(); }
+  /// \returns true if the accelerometer of the box tells the speed changes before the car does.
+  bool IsBoxAccelUsed() const { return m_boxAccelSpeed.IsUsable(); }
+  /// \returns how well the accelerometer of the box follows the car, 1 is the best.
+  double GetBoxAccelCorrelation() const { return m_boxAccelSpeed.GetCorrelation(); }
+  /// \returns how far the position is ahead of where the car speed alone would put it, meters.
+  double GetAccelAheadM() const { return m_accelAheadM; }
+  /// The same of the phone accelerometer, which is only watched: nothing if it doesn't follow the car now.
+  double GetPhoneAccelCorrelation() const { return m_phoneAccelSpeed.GetCorrelation(); }
+  std::optional<double> GetPhoneAccelAheadM() const;
   /// \returns how many speed ranges of the table are measured by GPS.
   int GetSpeedTableRanges() const { return m_speedTable.GetKnownRanges(); }
   std::string GetSpeedTableDescription() const { return m_speedTable.ToString(); }
@@ -184,6 +196,7 @@ private:
   // MotionSource::Listener overrides:
   void OnSpeed(int speedKmh, int64_t timeMs) override;
   void OnMotion(double yawDeltaDeg, double dtSec, int64_t timestampNs) override;
+  void OnSourceAccel(std::array<double, 3> const & accel) override;
 
   void CheckTurnSign(Fix const & gps);
   double GetSpeedScale(int speedKmh) const;
@@ -243,6 +256,16 @@ private:
   std::optional<double> m_lagSpeedMps;
   // The position is to be moved back by this distance yet: it is not moved back, it waits.
   double m_lagPendingM = 0;
+  // An accelerometer feels the car speeding up and braking before it reports the speed. The one of the box
+  // is fixed in the car and is used. The phone one is only watched and written to the trip log: on the trips
+  // checked it added centimeters, and a phone taken from its holder would move the position by meters.
+  AccelSpeed m_boxAccelSpeed;
+  AccelSpeed m_phoneAccelSpeed;
+  // How far the accelerometer has put the position ahead of where the changes of the car speed would. It
+  // fades away: both tell the same distance in the end, so an error of the accelerometer doesn't stay.
+  double m_accelAheadM = 0;
+  // The same the phone accelerometer would do.
+  double m_phoneAheadM = 0;
   // The last GPS position the speed errors were measured by.
   std::optional<int64_t> m_speedTableGpsMs;
   double m_speedTableGpsSpeedMps = 0;

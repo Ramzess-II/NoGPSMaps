@@ -66,6 +66,11 @@ void InertialNavigator::Start()
   m_source->Start();
   // The accelerometer goes to the trip log with any source.
   m_accelLog.Reset();
+  // The phone may be put into the holder another way, the box may be another one.
+  m_boxAccelSpeed.Reset();
+  m_phoneAccelSpeed.Reset();
+  m_accelAheadM = 0;
+  m_phoneAheadM = 0;
   m_delegate.StartMotionSensors(!esp32 /* gyroscope */);
 }
 
@@ -329,6 +334,8 @@ void InertialNavigator::OnAccel(int64_t timestampNs, Vec3 const & accel)
     return;
   if (m_phone)
     m_phone->OnAccel(accel);
+  // The time of the car speed, not of the sensor: they are compared.
+  m_phoneAccelSpeed.OnAccel(m_clock.NowMs(), accel);
   // The log is to check on real trips what the accelerometer can tell.
   auto const line = m_accelLog.OnSample(timestampNs, accel[0], accel[1], accel[2]);
   if (line && m_moving)
@@ -364,7 +371,14 @@ void InertialNavigator::OnSpeed(int speedKmh, int64_t timeMs)
   m_speedKmh = speedKmh;
   m_speedTimeMs = timeMs;
   // The time the position is calculated with this speed since, not the time the car measured it at.
-  m_speedLag.OnCarSpeed(m_clock.NowMs(), speedKmh / 3.6 * GetSpeedScale(speedKmh));
+  int64_t const now = m_clock.NowMs();
+  double const speedMps = speedKmh / 3.6 * GetSpeedScale(speedKmh);
+  m_speedLag.OnCarSpeed(now, speedMps);
+  for (AccelSpeed * accelSpeed : {&m_boxAccelSpeed, &m_phoneAccelSpeed})
+  {
+    accelSpeed->SetLag(m_speedLag.Get());
+    accelSpeed->OnCarSpeed(now, speedMps);
+  }
   m_moving = speedKmh > 0;
   if (!m_paused)
     return;
@@ -408,6 +422,8 @@ void InertialNavigator::OnMotion(double yawDeltaDeg, double dtSec, int64_t times
   {
     m_lagSpeedMps.reset();
     m_lagPendingM = 0;
+    m_accelAheadM = 0;
+    m_phoneAheadM = 0;
   }
 
   int64_t const now = m_clock.NowMs();
@@ -436,12 +452,39 @@ double InertialNavigator::DistanceWithLag(double dtSec)
   // The car reports its speed late: by the time the speed has changed, the car has already driven with the new one
   // for the time of the lag.
   double const speed = m_deadReckoning.GetSpeed();
-  if (m_lagSpeedMps)
-    m_lagPendingM += m_speedLag.Get() * (speed - *m_lagSpeedMps);
+  double const bySpeed = m_lagSpeedMps ? m_speedLag.Get() * (speed - *m_lagSpeedMps) : 0;
   m_lagSpeedMps = speed;
+  // The accelerometer of the box knows how much faster the car is now than it reports. Without it the same
+  // distance is added when the car reports the new speed at last.
+  int64_t const now = m_clock.NowMs();
+  double const fadePart = std::min(1.0, dtSec / kAccelFadeSec);
+  double ahead = bySpeed;
+  if (auto const gain = m_boxAccelSpeed.GetGain(now))
+  {
+    ahead = *gain * dtSec;
+    m_accelAheadM += ahead - bySpeed;
+  }
+  double const fade = m_accelAheadM * fadePart;
+  m_accelAheadM -= fade;
+  m_lagPendingM += ahead - fade;
+  if (auto const gain = m_phoneAccelSpeed.GetGain(now))
+    m_phoneAheadM += *gain * dtSec - bySpeed;
+  m_phoneAheadM -= m_phoneAheadM * fadePart;
   double const distance = speed * dtSec + m_lagPendingM;
   m_lagPendingM = std::min(0.0, distance);
   return std::max(0.0, distance);
+}
+
+void InertialNavigator::OnSourceAccel(std::array<double, 3> const & accel)
+{
+  m_boxAccelSpeed.OnAccel(m_clock.NowMs(), accel);
+}
+
+std::optional<double> InertialNavigator::GetPhoneAccelAheadM() const
+{
+  if (!m_phoneAccelSpeed.IsUsable())
+    return {};
+  return m_phoneAheadM;
 }
 
 void InertialNavigator::SnapToRoad()

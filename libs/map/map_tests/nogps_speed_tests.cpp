@@ -1,8 +1,10 @@
 #include "testing/testing.hpp"
 
+#include "map/nogps/accel_speed.hpp"
 #include "map/nogps/speed_lag.hpp"
 #include "map/nogps/speed_table.hpp"
 
+#include <algorithm>
 #include <cmath>
 
 namespace nogps_speed_tests
@@ -159,5 +161,124 @@ UNIT_TEST(NoGps_SpeedTable_KeepsBetweenTrips)
 
   restored.Deserialize("broken");
   TEST_EQUAL(restored.GetKnownRanges(), 0, ());
+}
+// An accelerometer fixed in a car somehow: its axes are turned against the car, the gravity is in it.
+struct CarAccelerometer
+{
+  // The direction along the car and the vertical in the axes of the sensor.
+  AccelSpeed::Vec3 m_forward = {0.8, -0.48, 0.36};
+  AccelSpeed::Vec3 m_up = {0, 0.6, 0.8};
+  // The part of the gravity along the car on a slope, m/s².
+  double m_slope = 0;
+  double m_lagSec = 1.2;
+  int m_ms = 0;
+  // How many times the accelerometer told the speed gain, and its largest error, m/s.
+  int m_gains = 0;
+  double m_maxError = 0;
+
+  // Drives for the time: the sensor is read 50 times a second, the car reports its speed 5 times a second,
+  // rounded to 1 km/h and late by the lag.
+  void Drive(AccelSpeed & accel, int seconds)
+  {
+    m_gains = 0;
+    m_maxError = 0;
+    accel.SetLag(m_lagSec);
+    for (int const end = m_ms + seconds * 1000; m_ms < end; m_ms += 20)
+    {
+      double const t = m_ms / 1000.0;
+      double const along = (TrueSpeed(t + 0.01) - TrueSpeed(t - 0.01)) / 0.02 + m_slope;
+      AccelSpeed::Vec3 a;
+      for (size_t i = 0; i < 3; ++i)
+        a[i] = m_forward[i] * along + m_up[i] * 9.81;
+      accel.OnAccel(m_ms, a);
+      if (m_ms % 200 == 0)
+        accel.OnCarSpeed(m_ms, std::floor(TrueSpeed(t - m_lagSec) * 3.6) / 3.6);
+      if (auto const gain = accel.GetGain(m_ms))
+      {
+        ++m_gains;
+        m_maxError = std::max(m_maxError, std::fabs(*gain - (TrueSpeed(t) - TrueSpeed(t - m_lagSec))));
+      }
+    }
+  }
+};
+
+UNIT_TEST(NoGps_AccelSpeed_NothingUntilLearned)
+{
+  AccelSpeed accel;
+  CarAccelerometer car;
+  TEST(!accel.IsUsable(), ());
+  TEST(!accel.GetGain(0), ());
+  // The car has sped up once: too little to know where the sensor looks.
+  car.Drive(accel, 20);
+  TEST(!accel.IsUsable(), ());
+  TEST_EQUAL(car.m_gains, 0, ());
+}
+
+UNIT_TEST(NoGps_AccelSpeed_TellsSpeedGain)
+{
+  AccelSpeed accel;
+  CarAccelerometer car;
+  car.Drive(accel, 200);
+  TEST(accel.IsUsable(), ());
+  TEST_GREATER(accel.GetCorrelation(), 0.95, ());
+  // Learned: the car gains 1.8 m/s during the lag while it speeds up, the accelerometer tells that.
+  car.Drive(accel, 200);
+  TEST_GREATER(car.m_gains, 9000, ());
+  TEST_LESS(car.m_maxError, 0.25, ());
+}
+
+UNIT_TEST(NoGps_AccelSpeed_SlopeDoesNotMatter)
+{
+  AccelSpeed accel;
+  CarAccelerometer car;
+  // A hill of 5 degrees all the way.
+  car.m_slope = 0.85;
+  car.Drive(accel, 200);
+  TEST(accel.IsUsable(), ());
+  car.Drive(accel, 200);
+  TEST_GREATER(car.m_gains, 9000, ());
+  TEST_LESS(car.m_maxError, 0.25, ());
+  // The hill ends: the slope is forgotten in several seconds.
+  car.m_slope = 0;
+  car.Drive(accel, 20);
+  car.Drive(accel, 200);
+  TEST_LESS(car.m_maxError, 0.25, ());
+}
+
+UNIT_TEST(NoGps_AccelSpeed_MovedSensorIsLearnedAnew)
+{
+  AccelSpeed accel;
+  CarAccelerometer car;
+  car.Drive(accel, 200);
+  TEST(accel.IsUsable(), ());
+  // The phone is turned in its holder: what was forward is to the left now.
+  car.m_forward = {0.6, 0.64, -0.48};
+  bool lost = false;
+  for (int i = 0; i < 40 && !lost; ++i)
+  {
+    car.Drive(accel, 1);
+    lost = !accel.IsUsable();
+  }
+  TEST(lost, ());
+  car.Drive(accel, 200);
+  TEST(accel.IsUsable(), ());
+  car.Drive(accel, 200);
+  TEST_GREATER(car.m_gains, 9000, ());
+  TEST_LESS(car.m_maxError, 0.25, ());
+}
+
+UNIT_TEST(NoGps_AccelSpeed_SilentSensorTellsNothing)
+{
+  AccelSpeed accel;
+  CarAccelerometer car;
+  car.Drive(accel, 200);
+  TEST(accel.GetGain(car.m_ms - 20), ());
+  // The sensor is silent for 2 s, the car reports its speed.
+  for (int i = 0; i < 10; ++i)
+  {
+    car.m_ms += 200;
+    accel.OnCarSpeed(car.m_ms, 10);
+  }
+  TEST(!accel.GetGain(car.m_ms), ());
 }
 }  // namespace nogps_speed_tests

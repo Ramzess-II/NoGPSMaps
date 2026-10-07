@@ -113,6 +113,7 @@ void Esp32Source::OnData(esp32::Data const & data)
         m_accelLog.OnSample(data.m_timeMs * 1'000'000, data.m_accelH1, data.m_accelH2, data.m_accelUp, data.m_jolt);
     if (line && data.m_speedKmh > 0)
       LOG(LINFO, ("ACCB", *line));
+    m_listener.OnSourceAccel({data.m_accelH1, data.m_accelH2, data.m_accelUp});
   }
 
   // The box sends the totals: a lost line loses nothing, the next one has the rotation.

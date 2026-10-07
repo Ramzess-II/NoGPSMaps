@@ -39,6 +39,8 @@ set(SRC
   mwm_url.hpp
   nogps/accel_log.cpp
   nogps/accel_log.hpp
+  nogps/accel_speed.cpp
+  nogps/accel_speed.hpp
   nogps/bend_matcher.cpp
   nogps/bend_matcher.hpp
   nogps/clock.cpp

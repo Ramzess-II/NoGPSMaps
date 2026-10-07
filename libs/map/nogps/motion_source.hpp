@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -75,6 +76,10 @@ public:
     /// \param yawDeltaDeg the clockwise rotation of the car during |dtSec|, 0 while the source is not calibrated.
     /// \param timestampNs monotonic time of the end of the interval.
     virtual void OnMotion(double yawDeltaDeg, double dtSec, int64_t timestampNs) = 0;
+
+    /// \param accel the acceleration of the source itself along its three fixed axes, m/s², if it has an
+    /// accelerometer fixed in the car.
+    virtual void OnSourceAccel(std::array<double, 3> const & /* accel */) {}
   };
 
   virtual ~MotionSource() = default;

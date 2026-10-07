@@ -1026,6 +1026,22 @@ void Engine::LogTrip()
                   m_inertial->GetSpeedTableRanges(), m_inertial->GetSpeedLag(),
                   m_inertial->IsSpeedLagMeasured() ? "" : "/DEFAULT");
     line += buf;
+    // The accelerometers against the car speed: how well each follows it, and how far ahead of the car speed
+    // alone the box one has put the position and the phone one would, "-" if it doesn't follow the car.
+    std::snprintf(buf, sizeof(buf), " boxacc=%.2f/", m_inertial->GetBoxAccelCorrelation());
+    line += buf;
+    if (m_inertial->IsBoxAccelUsed())
+      std::snprintf(buf, sizeof(buf), "%+.1f", m_inertial->GetAccelAheadM());
+    else
+      std::snprintf(buf, sizeof(buf), "-");
+    line += buf;
+    std::snprintf(buf, sizeof(buf), " phoneacc=%.2f/", m_inertial->GetPhoneAccelCorrelation());
+    line += buf;
+    if (auto const phoneAhead = m_inertial->GetPhoneAccelAheadM())
+      std::snprintf(buf, sizeof(buf), "%+.1f", *phoneAhead);
+    else
+      std::snprintf(buf, sizeof(buf), "-");
+    line += buf;
     line += " gyro=" + DebugPrint(m_inertial->GetCalibrationState());
     auto const turn = m_inertial->GetLastTurnShiftM();
     line += " turn=" + (turn ? std::to_string(std::lround(*turn)) : std::string("NaN"));

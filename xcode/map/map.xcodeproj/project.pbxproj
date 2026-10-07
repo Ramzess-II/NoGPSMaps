@@ -141,7 +141,9 @@
 		A9E74AED1C87A0EA776EE5CE /* road_walker.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 4242C5E46B517BBC884777EF /* road_walker.hpp */; };
 		DD01704E41A0A7BDCC814FA3 /* roads.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 8364534503AB5BAB69FBC273 /* roads.hpp */; };
 		9091BF969B1D021845CA8C37 /* speed_lag.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0F6D64E365296ED11316D4C1 /* speed_lag.cpp */; };
+		A5C3E1D07B2F4A6C9D8E0F11 /* accel_speed.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A5C3E1D07B2F4A6C9D8E0F12 /* accel_speed.cpp */; };
 		020CC1351768B3E0D57A9F7A /* speed_lag.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 25FE8A0CFD0C586255CE1919 /* speed_lag.hpp */; };
+		A5C3E1D07B2F4A6C9D8E0F13 /* accel_speed.hpp in Headers */ = {isa = PBXBuildFile; fileRef = A5C3E1D07B2F4A6C9D8E0F14 /* accel_speed.hpp */; };
 		A7EE0A780B205A4338E83DB3 /* speed_scale.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0C2D6863CE7B7993D3CD36F0 /* speed_scale.cpp */; };
 		2A4F0ED3B9BA4DCD1D021BD2 /* speed_scale.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 84E5685CF48337457CEAFDD5 /* speed_scale.hpp */; };
 		F0FC65A90BEB258C6BA1DEFC /* speed_table.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DB66C7892568C94468ECBE34 /* speed_table.cpp */; };
@@ -342,7 +344,9 @@
 		4242C5E46B517BBC884777EF /* road_walker.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = road_walker.hpp; sourceTree = "<group>"; };
 		8364534503AB5BAB69FBC273 /* roads.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = roads.hpp; sourceTree = "<group>"; };
 		0F6D64E365296ED11316D4C1 /* speed_lag.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = speed_lag.cpp; sourceTree = "<group>"; };
+		A5C3E1D07B2F4A6C9D8E0F12 /* accel_speed.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = accel_speed.cpp; sourceTree = "<group>"; };
 		25FE8A0CFD0C586255CE1919 /* speed_lag.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = speed_lag.hpp; sourceTree = "<group>"; };
+		A5C3E1D07B2F4A6C9D8E0F14 /* accel_speed.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = accel_speed.hpp; sourceTree = "<group>"; };
 		0C2D6863CE7B7993D3CD36F0 /* speed_scale.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = speed_scale.cpp; sourceTree = "<group>"; };
 		84E5685CF48337457CEAFDD5 /* speed_scale.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = speed_scale.hpp; sourceTree = "<group>"; };
 		DB66C7892568C94468ECBE34 /* speed_table.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = speed_table.cpp; sourceTree = "<group>"; };
@@ -636,7 +640,9 @@
 				4242C5E46B517BBC884777EF /* road_walker.hpp */,
 				8364534503AB5BAB69FBC273 /* roads.hpp */,
 				0F6D64E365296ED11316D4C1 /* speed_lag.cpp */,
+				A5C3E1D07B2F4A6C9D8E0F12 /* accel_speed.cpp */,
 				25FE8A0CFD0C586255CE1919 /* speed_lag.hpp */,
+				A5C3E1D07B2F4A6C9D8E0F14 /* accel_speed.hpp */,
 				0C2D6863CE7B7993D3CD36F0 /* speed_scale.cpp */,
 				84E5685CF48337457CEAFDD5 /* speed_scale.hpp */,
 				DB66C7892568C94468ECBE34 /* speed_table.cpp */,
@@ -680,6 +686,7 @@
 				A9E74AED1C87A0EA776EE5CE /* road_walker.hpp in Headers */,
 				DD01704E41A0A7BDCC814FA3 /* roads.hpp in Headers */,
 				020CC1351768B3E0D57A9F7A /* speed_lag.hpp in Headers */,
+				A5C3E1D07B2F4A6C9D8E0F13 /* accel_speed.hpp in Headers */,
 				2A4F0ED3B9BA4DCD1D021BD2 /* speed_scale.hpp in Headers */,
 				B42CFD0375AD5867BD532C42 /* speed_table.hpp in Headers */,
 				88A572F8B0B013C7B52DA7C7 /* turn_matcher.hpp in Headers */,
@@ -899,6 +906,7 @@
 				2409603079E79F8B6BBF7304 /* gyro_calibrator.cpp in Sources */,
 				B7734FC13841017184B2D519 /* road_walker.cpp in Sources */,
 				9091BF969B1D021845CA8C37 /* speed_lag.cpp in Sources */,
+				A5C3E1D07B2F4A6C9D8E0F11 /* accel_speed.cpp in Sources */,
 				A7EE0A780B205A4338E83DB3 /* speed_scale.cpp in Sources */,
 				F0FC65A90BEB258C6BA1DEFC /* speed_table.cpp in Sources */,
 				EE696953E78EF779665CE7CC /* turn_matcher.cpp in Sources */,
