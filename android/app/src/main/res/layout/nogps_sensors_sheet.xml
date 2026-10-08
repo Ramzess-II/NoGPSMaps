@@ -57,7 +57,8 @@
 
   <LinearLayout
     android:layout_width="match_parent"
-    android:layout_height="52dp"
+    android:layout_height="wrap_content"
+    android:minHeight="52dp"
     android:gravity="center_vertical"
     android:orientation="horizontal">
     <TextView
@@ -102,7 +103,8 @@
 
   <LinearLayout
     android:layout_width="match_parent"
-    android:layout_height="52dp"
+    android:layout_height="wrap_content"
+    android:minHeight="52dp"
     android:gravity="center_vertical"
     android:orientation="horizontal">
     <TextView
@@ -119,9 +121,18 @@
       android:text="@string/nogps_clear_speed" />
   </LinearLayout>
 
+  <TextView
+    android:id="@+id/nogps_lag"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingBottom="8dp"
+    android:textSize="16sp"
+    android:visibility="gone" />
+
   <LinearLayout
     android:layout_width="match_parent"
-    android:layout_height="52dp"
+    android:layout_height="wrap_content"
+    android:minHeight="52dp"
     android:gravity="center_vertical"
     android:orientation="horizontal">
     <TextView

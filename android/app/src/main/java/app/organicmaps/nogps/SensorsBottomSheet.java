@@ -59,6 +59,7 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
   private TextView mCar;
   private TextView mVoltageMismatch;
   private TextView mScale;
+  private TextView mLag;
   private TextView mGyro;
   private TextView mReadiness;
   private TextView mHint;
@@ -77,6 +78,7 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     mCar = view.findViewById(R.id.nogps_car);
     mVoltageMismatch = view.findViewById(R.id.nogps_voltage_mismatch);
     mScale = view.findViewById(R.id.nogps_scale);
+    mLag = view.findViewById(R.id.nogps_lag);
     view.findViewById(R.id.nogps_clear_speed).setOnClickListener(v -> confirmClearSpeed());
     mGyro = view.findViewById(R.id.nogps_gyro);
     mReadiness = view.findViewById(R.id.nogps_readiness);
@@ -258,14 +260,15 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
         R.string.nogps_sensors_scale,
         enabled ? String.format(Locale.US, "\u00D7%.2f", status.speedScale) : getString(R.string.nogps_unknown),
         enabled ? status.speedTableRanges : 0);
+    mScale.setText(scale);
+    // On its own line: next to the button it took four lines of the two the row has room for.
+    mLag.setVisibility(enabled ? View.VISIBLE : View.GONE);
     if (enabled)
     {
-      scale +=
-          "\n"
-          + getString(status.speedLagMeasured ? R.string.nogps_sensors_lag_measured : R.string.nogps_sensors_lag_usual,
-                      String.format(Locale.US, "%.1f", status.speedLagSec));
+      mLag.setText(
+          getString(status.speedLagMeasured ? R.string.nogps_sensors_lag_measured : R.string.nogps_sensors_lag_usual,
+                    String.format(Locale.US, "%.1f", status.speedLagSec)));
     }
-    mScale.setText(scale);
 
     final NoGps.CalibrationState calibration = enabled ? status.getCalibration() : NoGps.CalibrationState.NONE;
     final String gyro = switch (calibration)
