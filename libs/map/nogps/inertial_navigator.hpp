@@ -94,6 +94,11 @@ public:
   static double constexpr kTurnCornerAheadM = 5;
   // The car is moved to the new road found this close to the moved position.
   static double constexpr kTurnSnapRadiusM = 20;
+  // A car that was on a road before the turn and is on a road going the new way after it has followed the
+  // roads through the turn. A crossing moving it farther than this is another one: the right one is not a
+  // crossing for the map, e.g. a road branching off at a small angle. On the trips checked such a move brought
+  // the car closer to GPS in 2 of 18 and farther from it in 13.
+  static double constexpr kMaxFollowedTurnMoveM = 5;
   // A car turning at a crossing rotates one way. Rotating much more than it has turned, it has driven around
   // a roundabout or along a winding road, and the turn is not at the crossing where it has started.
   static double constexpr kMaxExtraTurnRotationDeg = 60;
@@ -275,6 +280,8 @@ private:
   bool m_turning = false;
   double m_turnFromBearing = 0;
   ms::LatLon m_turnStart;
+  // The car was on a road when the turn has started.
+  bool m_turnFromRoad = false;
   // The turn has been calm since then: the car goes straight.
   std::optional<int64_t> m_turnCalmSinceNs;
   // The rotation of the turn both ways together.

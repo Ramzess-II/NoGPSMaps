@@ -23,8 +23,11 @@ int constexpr kCalibratedFlags = esp32::kFlagImuOk | esp32::kFlagBiasOk | esp32:
 class Env
 {
 public:
-  explicit Env(bool inertial)
+  /// \param roads the roads instead of the grid of streets.
+  explicit Env(bool inertial, Roads * roads = nullptr)
   {
+    // The inertial navigation takes the roads when it starts.
+    m_map.m_roads = roads;
     if (inertial)
     {
       m_storage.Set(Storage::kInertialEnabled, true);
@@ -175,6 +178,33 @@ UNIT_TEST(NoGps_Engine_InertialTurnIsMovedToCrossing)
   TestAlmostEqualAbs(East(env.Last().m_position), 200, 1);
   TEST_GREATER(North(env.Last().m_position), 20, ());
   TestAlmostEqualAbs(AngleDiff(*env.Last().m_bearingDeg, 0), 0, 3);
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), ());
+}
+
+UNIT_TEST(NoGps_Engine_TurnAlongBranchIsNotMovedToNextCrossing)
+{
+  // A road branches off the street going east to the north-east at 100 m, and a street goes the same way from
+  // the crossing at 115 m, 13 m aside of the branch. The branch leaves the street not at a crossing of the map.
+  double const sin30 = 0.5;
+  double const cos30 = std::sqrt(0.75);
+  PieceRoads roads({{-300, 0, 500, 0},
+                    {100, 0, 100 + 300 * sin30, 300 * cos30},
+                    {115, 0, 115 + 300 * sin30, 300 * cos30}},
+                   {{115, 0}});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 0);
+  // 10 m/s east, then the car takes the branch, 60 degrees to the left: the turn of 19 m radius starts 11 m
+  // before the branch.
+  env.Drive(7700, 36, 0);
+  TEST_EQUAL(env.Last().m_provider, Provider::Inertial, ());
+  TestAlmostEqualAbs(East(env.Last().m_position), 89, 3);
+  env.Drive(2000, 36, -30);
+  env.Drive(4000, 36, 0);
+  // The car is on the branch, not on the street going the same way from the crossing.
+  auto const & position = env.Last().m_position;
+  double const fromBranchM = (East(position) - 100) * cos30 - North(position) * sin30;
+  TestAlmostEqualAbs(fromBranchM, 0, 3);
+  TEST_GREATER(North(position), 30, ());
   TEST(!env.m_delegate.HasEvent(Event::RoadLost), ());
 }
 

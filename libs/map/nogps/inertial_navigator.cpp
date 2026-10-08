@@ -555,6 +555,7 @@ void InertialNavigator::TrackTurn(double yawDeltaDeg, double dtSec, int64_t time
     m_turning = true;
     m_turnFromBearing = m_deadReckoning.GetHeading();
     m_turnStart = m_deadReckoning.GetPosition();
+    m_turnFromRoad = m_onRoad;
     m_turnCalmSinceNs.reset();
     m_turnRotationDeg = 0;
     return;
@@ -605,6 +606,21 @@ void InertialNavigator::MatchTurn()
   {
     LOG(LINFO, ("No road after the turn at the crossing", *crossing));
     return;
+  }
+  if (m_turnFromRoad)
+  {
+    // The road the regular snapping keeps the car on, or takes it to in a moment.
+    auto const here = m_roads.Snap(position, toBearing, kSnapRadiusM);
+    if (here && Distance(position, here->m_point) <= kSnapRadiusM &&
+        std::fabs(AngleDiff(Orient(here->m_bearingDeg, toBearing), toBearing)) <=
+            DeadReckoning::kMaxSnapHeadingDiffDeg &&
+        Distance(here->m_point, road->m_point) > kMaxFollowedTurnMoveM)
+    {
+      LOG(LINFO, ("Turn from", std::round(m_turnFromBearing), "to", std::round(toBearing),
+                  "has followed the roads, the crossing", std::round(Distance(corner, *crossing)),
+                  "m away would move the car by", std::round(Distance(here->m_point, road->m_point)), "m"));
+      return;
+    }
   }
   m_lastTurnShiftM = Distance(corner, *crossing);
   LOG(LINFO, ("Turn from", std::round(m_turnFromBearing), "to", std::round(toBearing), "is moved to the crossing by",

@@ -132,7 +132,7 @@ class TestMap : public nogps::MapApi
 {
 public:
   bool IsNavigating() const override { return m_navigating; }
-  nogps::Roads & GetRoads(bool) override { return m_grid; }
+  nogps::Roads & GetRoads(bool) override { return m_roads ? *m_roads : m_grid; }
   void RebuildRouteIfOffRoute(nogps::Fix const &, double, std::optional<double>) override { ++m_rebuilds; }
   std::optional<nogps::RoadPoint> ProjectToRoute(ms::LatLon const &, double) override { return {}; }
   std::optional<nogps::RoadWalker::Result> ShiftAlongRoute(ms::LatLon const &, std::optional<double>, double) override
@@ -141,7 +141,7 @@ public:
   }
   std::optional<nogps::RoadPoint> SnapToMainRoad(ms::LatLon const & position, double radiusM) override
   {
-    return m_grid.Snap(position, {}, radiusM);
+    return GetRoads(false).Snap(position, {}, radiusM);
   }
   std::string GetDistanceLeft() const override { return {}; }
   void ShowCarHeading(double bearingDeg) override { m_carHeading = bearingDeg; }
@@ -150,6 +150,8 @@ public:
   int m_rebuilds = 0;
   std::optional<double> m_carHeading;
   GridRoads m_grid;
+  // Other roads instead of the grid.
+  nogps::Roads * m_roads = nullptr;
 };
 
 /// A data line of the ESP32 box with the totals since its start.
