@@ -195,6 +195,27 @@ UNIT_TEST(NoGps_Engine_StopsCarThatLeftRoads)
   TEST_GREATER(East(env.Last().m_position), 300, ());
 }
 
+UNIT_TEST(NoGps_Engine_GpsIsBackAfterRoadIsLost)
+{
+  Env env(true /* inertial */);
+  MarkCar(env, -400);
+  // The heading goes wrong slowly, slower than a turn: the car leaves the road, the calculation stops.
+  env.Drive(12'000, 36, -5);
+  env.Drive(5000, 36, 0);
+  TEST(env.m_delegate.HasEvent(Event::RoadLost), ());
+  TEST(env.m_engine.IsManualMode(), ());
+  // GPS works again, far from where the calculation has stopped: there is nothing to compare it with, it
+  // is trusted after it has worked for long enough.
+  for (int i = 0; i <= GpsReturnDetector::kMinStreakMs / 1000 + 1; ++i)
+  {
+    env.Drive(1000, 36, 0);
+    env.m_engine.OnFix(GpsAt(env.m_clock, 10 * i, 300, 90.0, 10.0));
+  }
+  TEST(!env.m_engine.IsManualMode(), ());
+  TEST(env.m_delegate.HasEvent(Event::GpsBack), ());
+  TEST_EQUAL(env.Last().m_provider, Provider::Gps, ());
+}
+
 UNIT_TEST(NoGps_Engine_PauseResumesByItself)
 {
   Env env(true /* inertial */);

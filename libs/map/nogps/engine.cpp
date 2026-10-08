@@ -314,7 +314,12 @@ bool Engine::IsGpsBack(Fix const & gps)
 {
   // GPS has worked long enough in the manual mode and agrees with the position known without it.
   std::optional<GpsReturnDetector::Own> own;
-  if (IsInertialActive() && m_savedLocation)
+  if (m_inertial && m_inertial->IsRoadLost())
+  {
+    // The inertial navigation has lost the road and stands where it was: the car is not there, and GPS is
+    // not to be compared with that place.
+  }
+  else if (IsInertialActive() && m_savedLocation)
   {
     own = GpsReturnDetector::Own{m_savedLocation->m_position, m_savedLocation->m_accuracyM};
   }

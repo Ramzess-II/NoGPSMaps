@@ -19,9 +19,9 @@ public:
   static double constexpr kMinTurnDeg = 35;
   // Larger turns are turns around, not at a crossing.
   static double constexpr kMaxTurnDeg = 150;
-  // The crossing is searched this far along the road at least, the calculated distance is often wrong by
-  // tens of meters.
-  static double constexpr kMinSearchM = 60;
+  // The crossing is searched this far along the road at least. Not farther than the calculated distance may
+  // be wrong by: the turn was moved to another crossing 57 m away with the car 15 m from the right one.
+  static double constexpr kMinSearchM = 25;
   static double constexpr kMaxSearchM = 300;
   // A crossing farther from the road the car drove along is on a parallel street.
   static double constexpr kMaxSideOffsetM = 20;
