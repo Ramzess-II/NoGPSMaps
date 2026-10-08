@@ -218,6 +218,9 @@ public:
   bool IsCarHeadingShown() const;
 
   Status GetStatus();
+  /// The whole state of the navigation in a line. It is written to the log every second, the same on every
+  /// platform, so a drive can be analysed afterwards.
+  std::string GetTripLine();
 
 private:
   // InertialNavigator::Listener overrides:
@@ -276,6 +279,11 @@ private:
   // The last GPS position good enough to be used. It is kept in the manual mode too, where GPS is not used,
   // to tell the user that GPS works again.
   std::optional<Fix> m_lastGoodGps;
+  // The last positions as the platform gave them, also not trusted or ignored: the log of a drive has them to
+  // compare the shown position with. The satellites alone, and mixed with Wi-Fi and cell towers: iOS has only
+  // the mix, Android may have both.
+  std::optional<Fix> m_rawGps;
+  std::optional<Fix> m_rawFused;
   // After the manual mode the next real position must replace the manual one, even if it is less accurate.
   bool m_acceptNextLocation = false;
   // The source of the last position passed to the core, used to check the route when the source changes.

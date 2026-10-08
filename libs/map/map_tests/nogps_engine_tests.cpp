@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <deque>
+#include <string>
 
 namespace nogps_engine_tests
 {
@@ -244,6 +245,44 @@ UNIT_TEST(NoGps_Engine_GpsIsBackAfterRoadIsLost)
   TEST(!env.m_engine.IsManualMode(), ());
   TEST(env.m_delegate.HasEvent(Event::GpsBack), ());
   TEST_EQUAL(env.Last().m_provider, Provider::Gps, ());
+}
+
+UNIT_TEST(NoGps_Engine_TripLineHasPlatformPositions)
+{
+  Env env(true /* inertial */);
+  TEST(env.m_engine.GetTripLine().find(" gps=") == std::string::npos, ());
+
+  env.m_clock.Advance(1000);
+  env.m_engine.OnFix(GpsAt(env.m_clock, 100, 0, 90.0, 10.0, 4));
+  env.m_clock.Advance(250);
+  char expected[128];
+  std::snprintf(expected, sizeof(expected), " gps=%.6f,%.6f/4.0/36.0/90.0/0.25 ", At(100, 0).m_lat, At(100, 0).m_lon);
+  std::string line = env.m_engine.GetTripLine();
+  TEST(line.find(expected) != std::string::npos, (line));
+
+  // The position GPS is ignored with, e.g. to test the inertial navigation, is written too: the shown position is
+  // compared with it. This one has no speed and no bearing.
+  env.m_engine.SetGpsDisabled(true);
+  env.m_clock.Advance(1000);
+  env.m_engine.OnFix(GpsAt(env.m_clock, 200, 0));
+  std::snprintf(expected, sizeof(expected), " gps=%.6f,%.6f/5.0/-/-/0.00 ", At(200, 0).m_lat, At(200, 0).m_lon);
+  line = env.m_engine.GetTripLine();
+  TEST(line.find(expected) != std::string::npos, (line));
+
+  // The satellites mixed with Wi-Fi and cell towers, the only position of iOS, are written apart.
+  TEST(line.find(" fused=") == std::string::npos, (line));
+  auto fused = GpsAt(env.m_clock, 300, 0, 90.0, 10.0, 8);
+  fused.m_provider = Provider::Fused;
+  env.m_engine.OnFix(fused);
+  std::snprintf(expected, sizeof(expected), " fused=%.6f,%.6f/8.0/36.0/90.0/0.00 ", At(300, 0).m_lat, At(300, 0).m_lon);
+  line = env.m_engine.GetTripLine();
+  TEST(line.find(expected) != std::string::npos, (line));
+  TEST(line.find(" gps=") != std::string::npos, (line));
+
+  // An old position tells nothing about the car now.
+  env.m_clock.Advance(Engine::kGpsStatusMaxAgeMs + 1000);
+  line = env.m_engine.GetTripLine();
+  TEST(line.find(" gps=") == std::string::npos && line.find(" fused=") == std::string::npos, (line));
 }
 
 UNIT_TEST(NoGps_Engine_PauseResumesByItself)

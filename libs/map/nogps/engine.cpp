@@ -45,6 +45,16 @@ std::string FormatSeconds(int64_t ms)
   std::snprintf(buf, sizeof(buf), "%.1f", ms / 1000.0);
   return buf;
 }
+
+// "-" is for what the platform doesn't tell.
+std::string FormatOptional(std::optional<double> value)
+{
+  if (!value)
+    return "-";
+  char buf[32];
+  std::snprintf(buf, sizeof(buf), "%.1f", *value);
+  return buf;
+}
 }  // namespace
 
 Engine::Engine(Delegate & delegate, MapApi & map, Storage & storage, Clock const & clock, Scheduler & scheduler)
@@ -99,6 +109,10 @@ void Engine::OnFix(Fix const & location)
   }
 
   bool const isNetwork = location.m_provider == Provider::Network;
+  if (location.m_provider == Provider::Gps)
+    m_rawGps = location;
+  else if (location.m_provider == Provider::Fused)
+    m_rawFused = location;
   bool const wasSpoofed = m_spoofingDetector.IsSpoofed();
   bool trusted = true;
   if (isNetwork)
@@ -987,14 +1001,19 @@ Status Engine::GetStatus()
 
 void Engine::LogTrip()
 {
-  // The whole state of the navigation once a second, so a drive can be analysed afterwards.
   m_tripLogTimer.Stop();
   if (!m_active)
     return;
 
   CheckGpsLost();
   CheckMotionSourceStopped();
+  LOG(LINFO, (GetTripLine()));
 
+  m_tripLogTimer.Start(kTripLogIntervalMs, [this] { LogTrip(); });
+}
+
+std::string Engine::GetTripLine()
+{
   std::string line = "TRIP src=" + DebugPrint(GetPositionSource());
   char buf[256];
   if (m_savedLocation)
@@ -1006,6 +1025,20 @@ void Engine::LogTrip()
       line += " bear=" + std::to_string(std::lround(*m_savedLocation->m_bearingDeg));
     line += " age=" + FormatSeconds(AgeMs(*m_savedLocation));
   }
+  // The positions of the platform, used or not: latitude,longitude/accuracy in meters/speed in km/h/bearing/age
+  // in seconds. The age tells where the car was at the moment of the line: the two are not written together.
+  auto const addRaw = [&](char const * name, std::optional<Fix> const & fix)
+  {
+    if (!fix || AgeMs(*fix) > kGpsStatusMaxAgeMs)
+      return;
+    auto const speedKmh = fix->m_speedMps ? std::optional<double>(*fix->m_speedMps * 3.6) : std::nullopt;
+    std::snprintf(buf, sizeof(buf), " %s=%.6f,%.6f/%.1f/%s/%s/%.2f", name, fix->m_position.m_lat,
+                  fix->m_position.m_lon, fix->m_accuracyM, FormatOptional(speedKmh).c_str(),
+                  FormatOptional(fix->m_bearingDeg).c_str(), AgeMs(*fix) / 1000.0);
+    line += buf;
+  };
+  addRaw("gps", m_rawGps);
+  addRaw("fused", m_rawFused);
   line += " gpsAge=" + (m_lastTrustedGpsMs ? FormatSeconds(MsSince(m_lastTrustedGpsMs)) : "-");
   line += std::string(" spoofed=") + (m_spoofingDetector.IsSpoofed() ? "1" : "0");
   line += std::string(" paused=") + (m_inertial && m_inertial->IsPaused() ? "1" : "0");
@@ -1065,9 +1098,7 @@ void Engine::LogTrip()
                   m_inertial->IsReady() ? 1 : 0);
     line += buf;
   }
-  LOG(LINFO, (line));
-
-  m_tripLogTimer.Start(kTripLogIntervalMs, [this] { LogTrip(); });
+  return line;
 }
 
 void Engine::Notify(Event event)
