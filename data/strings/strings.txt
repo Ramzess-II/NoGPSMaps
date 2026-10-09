@@ -45725,6 +45725,13 @@ en = ESP32 sensor box (Wi-Fi)
 ru = Блок ESP32 (Wi-Fi)
 uk = Блок ESP32 (Wi-Fi)
 
+[nogps_source_esp32_bt]
+comment = Choice of where the car speed and turns come from, next to "ESP32 sensor box (Wi-Fi)"
+tags = android-app,apple-maps
+en = ESP32 sensor box (Bluetooth)
+ru = Блок ESP32 (Bluetooth)
+uk = Блок ESP32 (Bluetooth)
+
 [nogps_sensors_box]
 tags = android-app,apple-maps
 en = Box: %1$@
@@ -45738,25 +45745,25 @@ ru = ищу блок, подключитесь к Wi-Fi NoGPS
 uk = шукаю блок, підключіться до Wi-Fi NoGPS
 
 [nogps_box_bt_searching]
-comment = State of the sensor box, shown after its name: "Box: ESP32 · searching by Bluetooth and Wi-Fi"
+comment = State of the sensor box, shown after its name: "Box: ESP32 · searching by Bluetooth"
 tags = android-app,apple-maps
-en = searching by Bluetooth and Wi-Fi
-ru = ищу блок по Bluetooth и Wi-Fi
-uk = шукаю блок через Bluetooth і Wi-Fi
+en = searching by Bluetooth
+ru = ищу блок по Bluetooth
+uk = шукаю блок через Bluetooth
 
 [nogps_box_bt_no_permission]
 comment = State of the sensor box, shown after its name
 tags = android-app,apple-maps
-en = the app is not allowed to use Bluetooth, searching by Wi-Fi only
-ru = приложению не разрешён Bluetooth, ищу блок только по Wi-Fi
-uk = застосунку не дозволено Bluetooth, шукаю блок лише через Wi-Fi
+en = the app is not allowed to use Bluetooth
+ru = приложению не разрешён Bluetooth
+uk = застосунку не дозволено Bluetooth
 
 [nogps_box_bt_disabled]
 comment = State of the sensor box, shown after its name
 tags = android-app,apple-maps
-en = Bluetooth is off, searching by Wi-Fi only
-ru = Bluetooth выключен, ищу блок только по Wi-Fi
-uk = Bluetooth вимкнено, шукаю блок лише через Wi-Fi
+en = Bluetooth is off on the phone
+ru = Bluetooth на телефоне выключен
+uk = Bluetooth на телефоні вимкнено
 
 [nogps_box_bt_pairing_closed]
 comment = State of the sensor box, shown after its name. The box accepts a new phone only for two minutes after it gets power
