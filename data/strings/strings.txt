@@ -45737,6 +45737,55 @@ en = searching, connect to the NoGPS Wi-Fi
 ru = ищу блок, подключитесь к Wi-Fi NoGPS
 uk = шукаю блок, підключіться до Wi-Fi NoGPS
 
+[nogps_box_bt_searching]
+comment = State of the sensor box, shown after its name: "Box: ESP32 · searching by Bluetooth and Wi-Fi"
+tags = android-app,apple-maps
+en = searching by Bluetooth and Wi-Fi
+ru = ищу блок по Bluetooth и Wi-Fi
+uk = шукаю блок через Bluetooth і Wi-Fi
+
+[nogps_box_bt_no_permission]
+comment = State of the sensor box, shown after its name
+tags = android-app,apple-maps
+en = the app is not allowed to use Bluetooth, searching by Wi-Fi only
+ru = приложению не разрешён Bluetooth, ищу блок только по Wi-Fi
+uk = застосунку не дозволено Bluetooth, шукаю блок лише через Wi-Fi
+
+[nogps_box_bt_disabled]
+comment = State of the sensor box, shown after its name
+tags = android-app,apple-maps
+en = Bluetooth is off, searching by Wi-Fi only
+ru = Bluetooth выключен, ищу блок только по Wi-Fi
+uk = Bluetooth вимкнено, шукаю блок лише через Wi-Fi
+
+[nogps_box_bt_pairing_closed]
+comment = State of the sensor box, shown after its name. The box accepts a new phone only for two minutes after it gets power
+tags = android-app,apple-maps
+en = found, but not paired with this phone. Unplug the box and plug it back: it accepts a new phone for 2 minutes
+ru = найден, но не сопряжён с этим телефоном. Выньте блок из разъёма и вставьте обратно: 2 минуты он принимает новый телефон
+uk = знайдено, але не спарено з цим телефоном. Вийміть блок із роз'єму й вставте назад: 2 хвилини він приймає новий телефон
+
+[nogps_box_bt_connecting]
+comment = State of the sensor box, shown after its name
+tags = android-app,apple-maps
+en = connecting by Bluetooth
+ru = подключаюсь по Bluetooth
+uk = підключаюся через Bluetooth
+
+[nogps_box_bt_pairing]
+comment = State of the sensor box, shown after its name while the system asks for the pairing code
+tags = android-app,apple-maps
+en = enter the code of the box in the pairing window: 123456 unless it was changed
+ru = введите код блока в окне сопряжения: 123456, если его не меняли
+uk = введіть код блока у вікні спарювання: 123456, якщо його не змінювали
+
+[nogps_box_bt_waiting]
+comment = State of the sensor box, shown after its name
+tags = android-app,apple-maps
+en = connected by Bluetooth, waiting for the data
+ru = подключён по Bluetooth, жду данные
+uk = підключено через Bluetooth, чекаю на дані
+
 [nogps_sensors_calibrate_box]
 tags = android-app,apple-maps
 en = Calibrate
