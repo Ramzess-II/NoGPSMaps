@@ -130,6 +130,11 @@ public:
   /// The position is on a road: its direction is more reliable than the calculated one.
   /// \param bearingDeg direction of the road in the direction of the movement.
   void SetRoadPosition(ms::LatLon const & position, double bearingDeg);
+  /// The user has marked the car on a road. The heading the gyroscope follows is kept if the car can drive along
+  /// the road with it, otherwise the car looks along the road.
+  /// \param bearingDeg direction of the road in the direction of the movement.
+  /// \returns the direction the car looks at.
+  double SetMarkPosition(ms::LatLon const & position, double bearingDeg);
   /// The user has corrected the lag of the calculated position along the road.
   /// \param appliedM the distance the position was moved by, negative if it was moved back.
   void OnPositionCorrected(ms::LatLon const & position, double bearingDeg, double appliedM);

@@ -7,6 +7,8 @@
 #include "map/nogps/geo.hpp"
 #include "map/nogps/storage.hpp"
 
+#include "base/math.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -224,6 +226,45 @@ UNIT_TEST(NoGps_Engine_StopsCarThatLeftRoads)
   TEST(env.m_engine.PlaceMarkByTap(At(300, 0)), ());
   env.Drive(1000, 36, 0);
   TEST_GREATER(East(env.Last().m_position), 300, ());
+}
+
+UNIT_TEST(NoGps_Engine_MarkAheadOnBendKeepsFollowedHeading)
+{
+  // The street going east bends 25 degrees to the left at 100 m, a street going north crosses it at -100 m.
+  double const sin65 = std::sin(math::DegToRad(65.0));
+  double const cos65 = std::cos(math::DegToRad(65.0));
+  PieceRoads roads({{-300, 0, 100, 0}, {100, 0, 100 + 300 * sin65, 300 * cos65}, {-100, -300, -100, 300}},
+                   {{-100, 0}});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 30);
+  env.Drive(4000, 36, 0);
+  env.Drive(1000, 0, 0);
+  TestAlmostEqualAbs(East(env.Last().m_position), 82, 3);
+  TestAlmostEqualAbs(*env.Last().m_bearingDeg, 90, 1);
+
+  // The car stands 20 m before the bend, the user taps 15 m behind the bend: the car still looks east, not along
+  // the road at the tap.
+  TEST(env.m_engine.PlaceMarkByTap(At(100 + 15 * sin65, 15 * cos65)), ());
+  env.Drive(500, 0, 0);
+  TestAlmostEqualAbs(North(env.Last().m_position), 15 * cos65, 1);
+  TestAlmostEqualAbs(*env.Last().m_bearingDeg, 90, 1);
+  TestAlmostEqualAbs(*env.m_map.m_carHeading, 90, 1);
+
+  // The car drives to the bend and through it: it looks along the road after the bend, not 25 degrees aside.
+  env.Drive(2000, 36, 0);
+  env.Drive(1000, 36, -25);
+  env.Drive(3000, 36, 0);
+  TestAlmostEqualAbs(*env.Last().m_bearingDeg, 65, 3);
+  auto const & position = env.Last().m_position;
+  TestAlmostEqualAbs((East(position) - 100) * cos65 - North(position) * sin65, 0, 1);
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), ());
+
+  // A mark on the crossing street: the car has turned to it and looks along it.
+  env.Drive(1000, 0, 0);
+  TEST(env.m_engine.PlaceMarkByTap(At(-100, 100)), ());
+  env.Drive(500, 0, 0);
+  TestAlmostEqualAbs(East(env.Last().m_position), -100, 1);
+  TestAlmostEqualAbs(AngleDiff(*env.Last().m_bearingDeg, 0), 0, 1);
 }
 
 UNIT_TEST(NoGps_Engine_TellsThatMovedBoxDoesNotFollowCar)

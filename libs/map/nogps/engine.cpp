@@ -818,21 +818,24 @@ bool Engine::SetManualLocation(ms::LatLon const & position)
     return false;
   }
 
+  // The gyroscope following the car knows its direction better than the road at the tap does.
+  double const carBearing =
+      m_inertial ? m_inertial->SetMarkPosition(road->m_point, road->m_bearingDeg) : road->m_bearingDeg;
+
   Fix location;
   location.m_provider = Provider::Manual;
   location.m_position = road->m_point;
   location.m_accuracyM = kManualAccuracyM;
-  location.m_bearingDeg = road->m_bearingDeg;
+  location.m_bearingDeg = carBearing;
   location.m_timeMs = m_clock.NowMs();
   location.m_unixTimeMs = m_clock.UnixNowMs();
-  LOG(LINFO, ("tap =", position, "location =", location.m_position, "bearing =", road->m_bearingDeg));
+  LOG(LINFO, ("tap =", position, "location =", location.m_position, "bearing =", road->m_bearingDeg, "heading =",
+              carBearing));
 
   m_manualLocation = location;
   m_manualSetTimeMs = m_clock.NowMs();
   m_lastPositionSource = PositionSource::Manual;
   RebuildRouteIfOffRoute(location);
-  if (m_inertial)
-    m_inertial->SetRoadPosition(road->m_point, road->m_bearingDeg);
   ApplyManualLocation();
   return true;
 }
