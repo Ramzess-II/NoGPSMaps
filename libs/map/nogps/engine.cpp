@@ -480,6 +480,35 @@ void Engine::CheckMotionSourceStopped()
   Notify(Event::MotionSourceStopped);
 }
 
+void Engine::CheckNotCalibrated()
+{
+  // The car speed comes, but the gyroscope is not calibrated or the sensor box tells it has been moved: the
+  // position set by the user stands still while the car drives, and the user would not know why.
+  bool driving = false;
+  if (m_inertial && IsInertialNavigationEnabled() && m_manualMode &&
+      m_inertial->GetSourceState() == SourceState::Connected && m_inertial->GetSpeedKmh() >= kNotCalibratedSpeedKmh)
+  {
+    auto const calibration = m_inertial->GetCalibrationState();
+    driving = calibration != CalibrationState::Done && calibration != CalibrationState::Calibrating;
+  }
+  if (!driving)
+  {
+    m_notCalibratedSinceMs.reset();
+    return;
+  }
+  int64_t const now = m_clock.NowMs();
+  if (!m_notCalibratedSinceMs)
+    m_notCalibratedSinceMs = now;
+  if (now - *m_notCalibratedSinceMs < kNotCalibratedDelayMs ||
+      MsSince(m_notCalibratedWarnedMs) < kMotionSourceWarningIntervalMs)
+  {
+    return;
+  }
+  m_notCalibratedWarnedMs = now;
+  LOG(LWARNING, ("The car drives, the gyroscope is not calibrated:", m_inertial->GetCalibrationState()));
+  Notify(Event::NotCalibrated);
+}
+
 void Engine::OnGpsSpoofingChanged(bool spoofed)
 {
   LOG(LWARNING, ("GPS spoofed =", spoofed));
@@ -1030,6 +1059,7 @@ void Engine::LogTrip()
 
   CheckGpsLost();
   CheckMotionSourceStopped();
+  CheckNotCalibrated();
   LOG(LINFO, (GetTripLine()));
 
   m_tripLogTimer.Start(kTripLogIntervalMs, [this] { LogTrip(); });

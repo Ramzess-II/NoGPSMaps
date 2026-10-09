@@ -30,6 +30,7 @@ std::string DebugPrint(Event event)
   case Event::TurnsReversed: return "TurnsReversed";
   case Event::MotionSourceStopped: return "MotionSourceStopped";
   case Event::MarkNoRoad: return "MarkNoRoad";
+  case Event::NotCalibrated: return "NotCalibrated";
   }
   UNREACHABLE();
 }

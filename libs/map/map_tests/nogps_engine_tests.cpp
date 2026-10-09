@@ -39,14 +39,14 @@ public:
 
   /// The ESP32 box sends its data 50 times a second for |ms|: the car drives at |speedKmh| turning at |yawRateDegS|,
   /// clockwise is positive.
-  void Drive(int64_t ms, int speedKmh, double yawRateDegS)
+  void Drive(int64_t ms, int speedKmh, double yawRateDegS, int flags = kCalibratedFlags)
   {
     for (int64_t t = 0; t < ms; t += 20)
     {
       m_clock.Advance(20);
       m_boxTimeMs += 20;
       m_yawMdeg += yawRateDegS * 20;
-      m_engine.OnEsp32Datagram(BoxDataLine(++m_seq, m_boxTimeMs, std::llround(m_yawMdeg), speedKmh, kCalibratedFlags));
+      m_engine.OnEsp32Datagram(BoxDataLine(++m_seq, m_boxTimeMs, std::llround(m_yawMdeg), speedKmh, flags));
     }
   }
 
@@ -224,6 +224,38 @@ UNIT_TEST(NoGps_Engine_StopsCarThatLeftRoads)
   TEST(env.m_engine.PlaceMarkByTap(At(300, 0)), ());
   env.Drive(1000, 36, 0);
   TEST_GREATER(East(env.Last().m_position), 300, ());
+}
+
+UNIT_TEST(NoGps_Engine_TellsThatMovedBoxDoesNotFollowCar)
+{
+  Env env(true /* inertial */);
+  MarkCar(env, 50);
+  env.Drive(5000, 36, 0);
+  TEST_GREATER(East(env.Last().m_position), 90, ());
+  TEST(!env.m_delegate.HasEvent(Event::NotCalibrated), ());
+
+  // The box tells it has been moved in the car: its rotation is not trusted, the car is not followed.
+  auto const stopped = env.Last().m_position;
+  int const movedFlags = kCalibratedFlags | esp32::kFlagMountMoved;
+  env.Drive(Engine::kNotCalibratedDelayMs - 1500, 36, 0, movedFlags);
+  // Not at once: the box needs a couple of seconds after it wakes up.
+  TEST(!env.m_delegate.HasEvent(Event::NotCalibrated), ());
+  env.Drive(4000, 36, 0, movedFlags);
+  TEST(env.m_delegate.HasEvent(Event::NotCalibrated), ());
+  TestAlmostEqualAbs(Distance(env.Last().m_position, stopped), 0, 0.01);
+
+  // The user is told once in a while, not every second, and not while the car stands.
+  auto const count = [&env]
+  { return std::count(env.m_delegate.m_events.begin(), env.m_delegate.m_events.end(), Event::NotCalibrated); };
+  TEST_EQUAL(count(), 1, ());
+  env.Drive(Engine::kMotionSourceWarningIntervalMs, 36, 0, movedFlags);
+  TEST_EQUAL(count(), 2, ());
+  env.Drive(Engine::kMotionSourceWarningIntervalMs + 5000, 0, 0, movedFlags);
+  TEST_EQUAL(count(), 2, ());
+
+  // Calibrated again: the car is followed.
+  env.Drive(3000, 36, 0);
+  TEST_GREATER(Distance(env.Last().m_position, stopped), 10, ());
 }
 
 UNIT_TEST(NoGps_Engine_GpsIsBackAfterRoadIsLost)

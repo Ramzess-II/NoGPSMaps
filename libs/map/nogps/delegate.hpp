@@ -56,6 +56,9 @@ enum class Event
   MotionSourceStopped,
   // The user has tapped the map in the manual mode where there is no road: the car is always on a road.
   MarkNoRoad,
+  // The car drives without GPS, but its turns are not known: the gyroscope is not calibrated or the sensor box
+  // has been moved. The position stands still. Repeated while it lasts.
+  NotCalibrated,
 };
 
 /// What the platform does about the ESP32 sensor box over Bluetooth LE, told to Engine::OnEsp32BleState().

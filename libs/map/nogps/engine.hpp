@@ -151,6 +151,10 @@ public:
   static int64_t constexpr kSaveTrustedIntervalMs = 30'000;
   // The stopped car speed is told repeatedly: a message is easily missed while driving.
   static int64_t constexpr kMotionSourceWarningIntervalMs = 30'000;
+  // The gyroscope not calibrated is told about when the car drives this fast for this long: the sensor box needs
+  // a couple of seconds after it wakes up.
+  static int constexpr kNotCalibratedSpeedKmh = 10;
+  static int64_t constexpr kNotCalibratedDelayMs = 5000;
   // Meters the position is moved by with the buttons, the user chooses one of them.
   static int constexpr kShiftStepsM[] = {10, 20, 50, 100};
 
@@ -253,6 +257,7 @@ private:
   void EnterManualModeByItself(std::string const & reason);
   void CheckGpsLost();
   void CheckMotionSourceStopped();
+  void CheckNotCalibrated();
   void OnGpsSpoofingChanged(bool spoofed);
   void RebuildRouteIfOffRoute(Fix const & fix);
   void SaveTrustedPosition();
@@ -316,6 +321,9 @@ private:
   // The motion source of the inertial navigation gave the car speed, the user is told when it stops.
   bool m_motionSourceWorked = false;
   std::optional<int64_t> m_motionSourceWarnedMs;
+  // Since when the car drives with the gyroscope not calibrated, and when the user was told about it.
+  std::optional<int64_t> m_notCalibratedSinceMs;
+  std::optional<int64_t> m_notCalibratedWarnedMs;
 
   GpsSpoofingDetector m_spoofingDetector;
   GpsReturnDetector m_gpsReturnDetector;
