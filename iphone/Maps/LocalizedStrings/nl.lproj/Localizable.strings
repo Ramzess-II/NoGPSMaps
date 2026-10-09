@@ -1305,6 +1305,15 @@
 "nogps_shift_buttons_hint" = "Shows the buttons moving the car along the road by 10 m. Moving it where the car really is corrects the speed of the car.";
 "nogps_obd_stopped" = "No speed from the OBD adapter, the car stands still on the map. Check the adapter or mark yourself";
 "nogps_box_stopped" = "No data from the sensor box, the car stands still on the map. Check the box or mark yourself";
+
+/* Warning shown while driving without GPS: the sensor box tells it has been moved in the car since its calibration */
+"nogps_box_moved_stopped" = "The sensor box has been moved, the car stands still on the map. Stop and calibrate the box";
+
+/* Warning shown while driving without GPS: the sensor box is not calibrated */
+"nogps_box_uncalibrated_stopped" = "The sensor box is not calibrated, the car stands still on the map. Stop and calibrate the box";
+
+/* Warning shown while driving without GPS: the gyroscope of the phone is not zeroed */
+"nogps_gyro_stopped" = "The gyroscope is not zeroed, the car stands still on the map. Stop and zero it";
 "nogps_clear_speed" = "Reset";
 "nogps_clear_speed_title" = "Reset the speed calibration?";
 "nogps_clear_speed_message" = "The speed corrections learned from GPS at different speeds and from your corrections will be forgotten. Do it after new tyres or another car. They are learned anew while GPS works.";

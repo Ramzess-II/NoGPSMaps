@@ -1305,6 +1305,15 @@
 "nogps_shift_buttons_hint" = "Показывает кнопки сдвига машины вдоль дороги на 10 м. Сдвигая её туда, где машина на самом деле, вы уточняете скорость машины.";
 "nogps_obd_stopped" = "Нет скорости от OBD-адаптера, машина на карте стоит. Проверьте адаптер или отметьте себя";
 "nogps_box_stopped" = "Нет данных от блока датчиков, машина на карте стоит. Проверьте блок или отметьте себя";
+
+/* Warning shown while driving without GPS: the sensor box tells it has been moved in the car since its calibration */
+"nogps_box_moved_stopped" = "Блок датчиков сдвинули, машина на карте стоит. Остановитесь и откалибруйте блок";
+
+/* Warning shown while driving without GPS: the sensor box is not calibrated */
+"nogps_box_uncalibrated_stopped" = "Блок датчиков не откалиброван, машина на карте стоит. Остановитесь и откалибруйте блок";
+
+/* Warning shown while driving without GPS: the gyroscope of the phone is not zeroed */
+"nogps_gyro_stopped" = "Гироскоп не обнулён, машина на карте стоит. Остановитесь и обнулите его";
 "nogps_clear_speed" = "Сбросить";
 "nogps_clear_speed_title" = "Сбросить калибровку скорости?";
 "nogps_clear_speed_message" = "Поправки скорости, измеренные по GPS на разных скоростях и по вашим сдвигам, будут забыты. Делайте это после смены шин или машины. Пока работает GPS, они измеряются заново.";
