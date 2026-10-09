@@ -47,6 +47,14 @@ enum class SourceState
   Connected,
 };
 
+/// How the lines of the ESP32 sensor box come.
+enum class Esp32Link
+{
+  None,
+  Wifi,
+  Ble,
+};
+
 enum class CalibrationState
 {
   None,
@@ -59,6 +67,7 @@ enum class CalibrationState
 };
 
 std::string DebugPrint(SourceState state);
+std::string DebugPrint(Esp32Link link);
 std::string DebugPrint(CalibrationState state);
 
 /// Where the inertial navigation takes the car movement from: the speed of the car and its rotation.

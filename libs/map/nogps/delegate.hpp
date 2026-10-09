@@ -58,8 +58,29 @@ enum class Event
   MarkNoRoad,
 };
 
+/// What the platform does about the ESP32 sensor box over Bluetooth LE, told to Engine::OnEsp32BleState().
+enum class BleState
+{
+  // Bluetooth is not searched: it is not asked for, or the platform has no Bluetooth LE.
+  Off,
+  // The user has not allowed the app to use Bluetooth.
+  NoPermission,
+  // Bluetooth is switched off on the phone.
+  Disabled,
+  Searching,
+  // A box is found, but it doesn't know the phone and doesn't accept a new one now: it does for two minutes
+  // after it is powered.
+  PairingClosed,
+  Connecting,
+  // The phone asks the user for the code of the box.
+  Pairing,
+  // Connected and subscribed to the lines of the box.
+  Connected,
+};
+
 std::string DebugPrint(Provider provider);
 std::string DebugPrint(Event event);
+std::string DebugPrint(BleState state);
 
 /// What the platform does for the navigation without GPS. Everything is called on the GUI thread, and the
 /// platform calls the Engine back on it.
@@ -81,6 +102,14 @@ public:
   virtual void Esp32Open(std::string const & host, uint16_t port) = 0;
   virtual void Esp32Send(std::string const & line) = 0;
   virtual void Esp32Close() = 0;
+
+  /// The same box over Bluetooth LE. The platform searches the box by its service, connects, subscribes to the
+  /// characteristic with its lines and keeps doing it until closed: the bytes go to Engine::OnEsp32BleBytes()
+  /// as they come, every change of the state to Engine::OnEsp32BleState(). The UUIDs and the pairing are in
+  /// docs/nogps/esp32-firmware-spec.md, section 17. A platform without it has nothing to do here.
+  virtual void Esp32BleOpen() {}
+  virtual void Esp32BleSend(std::string const & /* line */) {}
+  virtual void Esp32BleClose() {}
 
   /// The position to show and to navigate by.
   virtual void OnPosition(Fix const & fix) = 0;

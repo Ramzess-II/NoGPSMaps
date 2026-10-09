@@ -106,6 +106,9 @@ public:
   }
   void Esp32Send(std::string const & line) override { m_esp32Sent.push_back(line); }
   void Esp32Close() override { m_esp32Open = false; }
+  void Esp32BleOpen() override { m_esp32BleOpen = true; }
+  void Esp32BleSend(std::string const & line) override { m_esp32BleSent.push_back(line); }
+  void Esp32BleClose() override { m_esp32BleOpen = false; }
   void OnPosition(nogps::Fix const & fix) override { m_positions.push_back(fix); }
   void OnEvent(nogps::Event event) override { m_events.push_back(event); }
 
@@ -123,6 +126,8 @@ public:
   uint16_t m_esp32Port = 0;
   bool m_esp32Open = false;
   std::vector<std::string> m_esp32Sent;
+  bool m_esp32BleOpen = false;
+  std::vector<std::string> m_esp32BleSent;
   std::vector<nogps::Fix> m_positions;
   std::vector<nogps::Event> m_events;
 };

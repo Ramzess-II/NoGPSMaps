@@ -294,6 +294,19 @@ void Engine::OnEsp32Datagram(std::string_view text)
     m_inertial->OnEsp32Datagram(text);
 }
 
+void Engine::OnEsp32BleBytes(std::string_view bytes)
+{
+  if (m_inertial)
+    m_inertial->OnEsp32BleBytes(bytes);
+}
+
+void Engine::OnEsp32BleState(BleState state)
+{
+  CHECK_THREAD_CHECKER(m_threadChecker, ());
+  if (m_inertial)
+    m_inertial->OnEsp32BleState(state);
+}
+
 PositionSource Engine::SourceOf(Fix const & fix)
 {
   switch (fix.m_provider)
@@ -984,6 +997,8 @@ Status Engine::GetStatus()
   if (status.m_inertialStarted)
   {
     status.m_sourceState = m_inertial->GetSourceState();
+    status.m_esp32Link = m_inertial->GetEsp32Link();
+    status.m_bleState = m_inertial->GetBleState();
     status.m_deviceName = m_inertial->GetDeviceName();
     status.m_speedKmh = m_inertial->GetSpeedKmh();
     status.m_carInfo = m_inertial->GetCarInfo();
@@ -1060,6 +1075,13 @@ std::string Engine::GetTripLine()
   if (m_inertial && IsInertialNavigationEnabled())
   {
     line += " obd=" + DebugPrint(m_inertial->GetSourceState()) + " speed=" + std::to_string(m_inertial->GetSpeedKmh());
+    // The ESP32 box: the link its data come by and what Bluetooth does.
+    auto const link = m_inertial->GetEsp32Link();
+    auto const bleState = m_inertial->GetBleState();
+    if (link != Esp32Link::None || bleState != BleState::Off)
+    {
+      line += " link=" + DebugPrint(link) + "/" + DebugPrint(bleState);
+    }
     std::snprintf(buf, sizeof(buf), " scale=%.3f table=%d lag=%.2f%s", m_inertial->GetSpeedScale(),
                   m_inertial->GetSpeedTableRanges(), m_inertial->GetSpeedLag(),
                   m_inertial->IsSpeedLagMeasured() ? "" : "/DEFAULT");

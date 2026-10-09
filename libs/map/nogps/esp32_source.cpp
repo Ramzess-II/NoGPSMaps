@@ -28,6 +28,7 @@ void Esp32Source::Start()
   LOG(LINFO, ("address =", m_address));
   m_running = true;
   m_delegate.Esp32Open(m_address, kBoxPort);
+  m_delegate.Esp32BleOpen();
   SendHello();
 }
 
@@ -39,6 +40,12 @@ void Esp32Source::Stop()
   m_running = false;
   m_helloTimer.Stop();
   m_delegate.Esp32Close();
+  m_delegate.Esp32BleClose();
+  m_bleState = BleState::Off;
+  m_bleConnectedMs.reset();
+  m_lastBleLineMs.reset();
+  m_bleLine.clear();
+  m_link = Esp32Link::None;
   m_hasLast = false;
   m_lastDataMs.reset();
 }
@@ -51,18 +58,91 @@ void Esp32Source::SendHello()
 
 void Esp32Source::Send(std::string_view command, int id)
 {
-  m_delegate.Esp32Send(esp32::Command(id, command));
+  auto const line = esp32::Command(id, command);
+  // Bluetooth is preferred: the phone doesn't have to stay in the Wi-Fi network of the box. The box sends its
+  // data where the last HELLO has come from, so it is not called over Wi-Fi while Bluetooth works.
+  bool const ble = m_bleState == BleState::Connected;
+  if (ble)
+    m_delegate.Esp32BleSend(line);
+  if (!ble || IsBleSilent())
+    m_delegate.Esp32Send(line);
+}
+
+bool Esp32Source::IsBleSilent() const
+{
+  int64_t const now = m_clock.NowMs();
+  // Just connected: the box sends nothing before it gets a HELLO.
+  if (m_bleConnectedMs && now - *m_bleConnectedMs <= kBleSilenceMs)
+    return false;
+  return !m_lastBleLineMs || now - *m_lastBleLineMs > kBleSilenceMs;
+}
+
+void Esp32Source::OnBleState(BleState state)
+{
+  if (!m_running || state == m_bleState)
+    return;
+  LOG(LINFO, ("Bluetooth =", state));
+  m_bleState = state;
+  m_bleLine.clear();
+  if (state != BleState::Connected)
+    return;
+  m_bleConnectedMs = m_clock.NowMs();
+  // The box starts sending at once, not at the next HELLO.
+  SendHello();
+}
+
+void Esp32Source::OnBleBytes(std::string_view bytes)
+{
+  if (!m_running)
+    return;
+  for (char const c : bytes)
+  {
+    // A line starts with "$": what was received of a line cut in the middle is dropped.
+    if (c == '$')
+      m_bleLine.clear();
+    else if (m_bleLine.empty())
+      continue;
+    if (c == '\n')
+    {
+      OnLine(m_bleLine, Esp32Link::Ble);
+      m_bleLine.clear();
+    }
+    else if (m_bleLine.size() < kMaxLineSize)
+    {
+      m_bleLine += c;
+    }
+    else
+    {
+      m_bleLine.clear();
+    }
+  }
+}
+
+Esp32Link Esp32Source::GetLink() const
+{
+  return IsConnected() ? m_link : Esp32Link::None;
 }
 
 void Esp32Source::OnDatagram(std::string_view text)
 {
-  if (!m_running)
-    return;
+  if (m_running)
+    OnLine(text, Esp32Link::Wifi);
+}
+
+void Esp32Source::OnLine(std::string_view text, Esp32Link link)
+{
   auto const fields = esp32::Parse(text);
   if (!fields)
     return;
+  if (link == Esp32Link::Ble)
+    m_lastBleLineMs = m_clock.NowMs();
   if (auto const data = esp32::ParseData(*fields))
   {
+    if (link != m_link)
+    {
+      LOG(LINFO, ("The box is heard over", link));
+      m_link = link;
+    }
     OnData(*data);
     return;
   }

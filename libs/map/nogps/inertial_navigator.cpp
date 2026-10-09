@@ -366,6 +366,28 @@ void InertialNavigator::OnEsp32Datagram(std::string_view text)
     m_esp32->OnDatagram(text);
 }
 
+void InertialNavigator::OnEsp32BleBytes(std::string_view bytes)
+{
+  if (m_esp32)
+    m_esp32->OnBleBytes(bytes);
+}
+
+void InertialNavigator::OnEsp32BleState(BleState state)
+{
+  if (m_esp32)
+    m_esp32->OnBleState(state);
+}
+
+Esp32Link InertialNavigator::GetEsp32Link() const
+{
+  return m_esp32 ? m_esp32->GetLink() : Esp32Link::None;
+}
+
+BleState InertialNavigator::GetBleState() const
+{
+  return m_esp32 ? m_esp32->GetBleState() : BleState::Off;
+}
+
 void InertialNavigator::OnSpeed(int speedKmh, int64_t timeMs)
 {
   m_speedKmh = speedKmh;

@@ -66,6 +66,9 @@ struct Status
   // The rest is known while the inertial navigation works.
   bool m_inertialStarted = false;
   SourceState m_sourceState = SourceState::Disconnected;
+  // The ESP32 sensor box: the link it is heard by, and what the platform does to reach it over Bluetooth.
+  Esp32Link m_esp32Link = Esp32Link::None;
+  BleState m_bleState = BleState::Off;
   std::string m_deviceName;
   // -1 if unknown.
   int m_speedKmh = -1;
@@ -170,6 +173,9 @@ public:
   void OnElm327Bytes(std::string_view data);
   void OnElm327Closed(std::string const & reason);
   void OnEsp32Datagram(std::string_view text);
+  // The ESP32 sensor box over Bluetooth LE, see Delegate::Esp32BleOpen().
+  void OnEsp32BleBytes(std::string_view bytes);
+  void OnEsp32BleState(BleState state);
 
   bool IsManualMode() const { return m_manualMode; }
   void SetManualMode(bool enabled);

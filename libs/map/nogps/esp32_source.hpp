@@ -16,8 +16,10 @@ namespace nogps
 class Clock;
 class Delegate;
 
-/// The NoGPS ESP32 sensor box: it is fixed in the car and sends the car rotation and speed over its own Wi-Fi
-/// network, the phone can be held in hands. The box zeroes its gyroscope by itself on every stop.
+/// The NoGPS ESP32 sensor box: it is fixed in the car and sends the car rotation and speed over Bluetooth LE
+/// or its own Wi-Fi network, the phone can be held in hands. The box zeroes its gyroscope by itself on every
+/// stop. Both links are tried at once and carry the same lines; the box sends its data over the one the last
+/// HELLO has come by.
 class Esp32Source : public MotionSource
 {
 public:
@@ -32,6 +34,11 @@ public:
   static int64_t constexpr kEventsRequestIntervalMs = 2000;
   // More than the box keeps in its journal.
   static size_t constexpr kMaxLoggedEvents = 64;
+  // Bluetooth connected but silent for this long does not work, e.g. the box has forgotten the phone: the box
+  // is called over Wi-Fi too.
+  static int64_t constexpr kBleSilenceMs = 3000;
+  // The lines of the box are shorter.
+  static size_t constexpr kMaxLineSize = 512;
 
   /// \param address the address of the box, 192.168.4.1 for its own access point.
   Esp32Source(Delegate & delegate, Scheduler & scheduler, Clock const & clock, std::string address,
@@ -49,9 +56,18 @@ public:
   std::string GetDeviceName() const override;
   std::optional<CarInfo> GetCarInfo() const override;
 
+  /// A line of the box that has come over Wi-Fi.
   void OnDatagram(std::string_view text);
+  /// The bytes of the box as they come over Bluetooth: a line may be cut in pieces, a piece may have several lines.
+  void OnBleBytes(std::string_view bytes);
+  void OnBleState(BleState state);
+  BleState GetBleState() const { return m_bleState; }
+  /// \returns the link the data come by now.
+  Esp32Link GetLink() const;
 
 private:
+  void OnLine(std::string_view text, Esp32Link link);
+  bool IsBleSilent() const;
   void SendHello();
   void Send(std::string_view command, int id);
   void OnData(esp32::Data const & data);
@@ -69,6 +85,14 @@ private:
   Timer m_helloTimer;
   bool m_running = false;
   int m_helloId = 0;
+
+  BleState m_bleState = BleState::Off;
+  std::optional<int64_t> m_bleConnectedMs;
+  std::optional<int64_t> m_lastBleLineMs;
+  // The line being received over Bluetooth, from its "$" on.
+  std::string m_bleLine;
+  // The link the last data line has come by.
+  Esp32Link m_link = Esp32Link::None;
 
   // Nothing until the first data line.
   std::optional<int64_t> m_lastDataMs;

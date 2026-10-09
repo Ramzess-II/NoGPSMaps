@@ -154,6 +154,8 @@ public:
   void OnElm327Bytes(std::string_view data);
   void OnElm327Closed(std::string const & reason);
   void OnEsp32Datagram(std::string_view text);
+  void OnEsp32BleBytes(std::string_view bytes);
+  void OnEsp32BleState(BleState state);
 
   bool IsReady() const;
   bool HasPosition() const { return m_deadReckoning.HasPosition(); }
@@ -182,6 +184,9 @@ public:
   SourceState GetSourceState() const;
   /// \returns the name of the sensor device to show, empty for the phone.
   std::string GetDeviceName() const;
+  /// The link the ESP32 sensor box is heard by and what the platform does about Bluetooth.
+  Esp32Link GetEsp32Link() const;
+  BleState GetBleState() const;
   /// \returns the last speed in km/h, or -1 if it is unknown or stale.
   int GetSpeedKmh() const;
   CalibrationState GetCalibrationState();

@@ -4,6 +4,17 @@
 
 namespace nogps
 {
+std::string DebugPrint(Esp32Link link)
+{
+  switch (link)
+  {
+  case Esp32Link::None: return "-";
+  case Esp32Link::Wifi: return "WIFI";
+  case Esp32Link::Ble: return "BLE";
+  }
+  UNREACHABLE();
+}
+
 std::string DebugPrint(SourceState state)
 {
   switch (state)

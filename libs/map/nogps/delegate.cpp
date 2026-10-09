@@ -33,4 +33,20 @@ std::string DebugPrint(Event event)
   }
   UNREACHABLE();
 }
+
+std::string DebugPrint(BleState state)
+{
+  switch (state)
+  {
+  case BleState::Off: return "OFF";
+  case BleState::NoPermission: return "NO_PERMISSION";
+  case BleState::Disabled: return "DISABLED";
+  case BleState::Searching: return "SEARCHING";
+  case BleState::PairingClosed: return "PAIRING_CLOSED";
+  case BleState::Connecting: return "CONNECTING";
+  case BleState::Pairing: return "PAIRING";
+  case BleState::Connected: return "CONNECTED";
+  }
+  UNREACHABLE();
+}
 }  // namespace nogps
