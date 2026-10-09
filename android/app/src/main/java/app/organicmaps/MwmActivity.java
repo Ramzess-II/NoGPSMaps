@@ -841,9 +841,21 @@ public class MwmActivity extends BaseMwmFragmentActivity
         NoGps.getStatus().esp32Source ? R.string.nogps_box_stopped : R.string.nogps_obd_stopped;
       // The car is always on a road.
       case MARK_NO_ROAD -> R.string.nogps_mark_no_road;
+      case NOT_CALIBRATED -> notCalibratedMessage(NoGps.getStatus());
     };
     if (message != 0)
       Toast.makeText(this, message, event == NoGps.Event.MARK_NO_ROAD ? Toast.LENGTH_SHORT : Toast.LENGTH_LONG).show();
+  }
+
+  /**
+   * The car is not followed while it drives: what is to be calibrated.
+   */
+  private static int notCalibratedMessage(@NonNull NoGps.Status status)
+  {
+    if (!status.esp32Source)
+      return R.string.nogps_gyro_stopped;
+    return status.getCalibration() == NoGps.CalibrationState.MOUNT_MOVED ? R.string.nogps_box_moved_stopped
+                                                                         : R.string.nogps_box_uncalibrated_stopped;
   }
 
   private boolean closeBottomSheet(String id)

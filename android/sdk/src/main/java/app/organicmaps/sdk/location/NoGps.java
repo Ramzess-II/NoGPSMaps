@@ -96,6 +96,9 @@ public final class NoGps
     MOTION_SOURCE_STOPPED,
     // The user has tapped the map in the manual mode where there is no road: the car is always on a road.
     MARK_NO_ROAD,
+    // The car drives without GPS, but the gyroscope is not calibrated or the sensor box has been moved: the
+    // position stands still. Repeated while it lasts.
+    NOT_CALIBRATED,
   }
 
   // nogps::Provider.
