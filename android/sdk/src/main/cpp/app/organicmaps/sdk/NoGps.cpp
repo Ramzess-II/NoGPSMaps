@@ -50,6 +50,12 @@ public:
 
   void Esp32Close() override { CallVoid("esp32Close"); }
 
+  void Esp32BleOpen() override { CallVoid("esp32BleOpen"); }
+
+  void Esp32BleSend(std::string const & line) override { CallWithBytes("esp32BleSend", line); }
+
+  void Esp32BleClose() override { CallVoid("esp32BleClose"); }
+
   void OnPosition(nogps::Fix const & fix) override
   {
     JNIEnv * env = jni::GetEnv();
@@ -228,6 +234,16 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeOnEsp32Datagram(JNI
   NoGpsEngine().OnEsp32Datagram(NoGpsBytes(env, data));
 }
 
+JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeOnEsp32BleBytes(JNIEnv * env, jclass, jbyteArray data)
+{
+  NoGpsEngine().OnEsp32BleBytes(NoGpsBytes(env, data));
+}
+
+JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeOnEsp32BleState(JNIEnv *, jclass, jint state)
+{
+  NoGpsEngine().OnEsp32BleState(static_cast<nogps::BleState>(state));
+}
+
 JNIEXPORT jboolean Java_app_organicmaps_sdk_location_NoGps_nativeIsManualMode(JNIEnv *, jclass)
 {
   return static_cast<jboolean>(NoGpsEngine().IsManualMode());
@@ -321,6 +337,8 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeGetStatus(JNIEnv * 
   SetNoGpsString(env, out, "esp32Address", status.m_esp32Address);
   SetNoGpsField(env, out, "inertialStarted", status.m_inertialStarted);
   SetNoGpsField(env, out, "sourceState", static_cast<int>(status.m_sourceState));
+  SetNoGpsField(env, out, "esp32Link", static_cast<int>(status.m_esp32Link));
+  SetNoGpsField(env, out, "bleState", static_cast<int>(status.m_bleState));
   SetNoGpsString(env, out, "deviceName", status.m_deviceName);
   SetNoGpsField(env, out, "speedKmh", status.m_speedKmh);
   SetNoGpsField(env, out, "hasCarInfo", status.m_carInfo.has_value());

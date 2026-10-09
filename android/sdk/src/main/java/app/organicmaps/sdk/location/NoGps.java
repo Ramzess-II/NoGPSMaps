@@ -49,6 +49,35 @@ public final class NoGps
     CONNECTED,
   }
 
+  /**
+   * How the lines of the ESP32 sensor box come.
+   */
+  public enum Esp32Link
+  {
+    NONE,
+    WIFI,
+    BLE,
+  }
+
+  /**
+   * What the phone does about the ESP32 sensor box over Bluetooth LE.
+   */
+  public enum BleState
+  {
+    // Bluetooth is not searched: it is not asked for, or the phone has no Bluetooth LE.
+    OFF,
+    NO_PERMISSION,
+    // Bluetooth is switched off on the phone.
+    DISABLED,
+    SEARCHING,
+    // A box is found, but it doesn't know the phone and doesn't accept a new one now.
+    PAIRING_CLOSED,
+    CONNECTING,
+    // The phone asks the user for the code of the box.
+    PAIRING,
+    CONNECTED,
+  }
+
   public enum CalibrationState
   {
     NONE,
@@ -142,6 +171,10 @@ public final class NoGps
     @Keep
     int sourceState;
     @Keep
+    int esp32Link;
+    @Keep
+    int bleState;
+    @Keep
     public String deviceName = "";
     // -1 if unknown.
     @Keep
@@ -192,6 +225,18 @@ public final class NoGps
     }
 
     @NonNull
+    public Esp32Link getEsp32Link()
+    {
+      return Esp32Link.values()[esp32Link];
+    }
+
+    @NonNull
+    public BleState getBleState()
+    {
+      return BleState.values()[bleState];
+    }
+
+    @NonNull
     public CalibrationState getCalibration()
     {
       return CalibrationState.values()[calibration];
@@ -235,6 +280,19 @@ public final class NoGps
 
     @Keep
     void esp32Close();
+
+    /**
+     * The same box over Bluetooth LE: the bytes go to {@link #nativeOnEsp32BleBytes}, the state to
+     * {@link #nativeOnEsp32BleState}.
+     */
+    @Keep
+    void esp32BleOpen();
+
+    @Keep
+    void esp32BleSend(@NonNull byte[] line);
+
+    @Keep
+    void esp32BleClose();
 
     /**
      * The position to show and to navigate by.
@@ -345,6 +403,13 @@ public final class NoGps
   static native void nativeOnElm327Closed(@NonNull String reason);
 
   static native void nativeOnEsp32Datagram(@NonNull byte[] data);
+
+  static native void nativeOnEsp32BleBytes(@NonNull byte[] data);
+
+  /**
+   * @param state one of the states of {@link Esp32BleTransport}.
+   */
+  static native void nativeOnEsp32BleState(int state);
 
   public static native boolean nativeIsManualMode();
 

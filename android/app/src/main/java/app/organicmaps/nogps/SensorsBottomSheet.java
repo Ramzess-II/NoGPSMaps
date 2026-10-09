@@ -52,6 +52,10 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
   // What to do after the Bluetooth permission is granted.
   @Nullable
   private Runnable mAfterPermission;
+  private final ActivityResultLauncher<String[]> mBoxBluetoothLauncher =
+      registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), result -> update());
+  // The user is asked once while the sheet is shown.
+  private boolean mBoxBluetoothAsked;
 
   private SwitchCompat mSwitch;
   private TextView mAdapter;
@@ -110,6 +114,9 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
   {
     super.onStart();
     mHandler.post(mUpdater);
+    final NoGps.Status status = NoGps.getStatus();
+    if (status.inertialEnabled && status.esp32Source)
+      askBoxBluetooth();
   }
 
   @Override
@@ -124,6 +131,8 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     if (esp32)
     {
       NoGps.nativeSetEsp32Source(true);
+      if (NoGps.getStatus().inertialEnabled)
+        askBoxBluetooth();
       update();
       return;
     }
@@ -137,10 +146,12 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
 
   private void onSwitch(boolean enabled)
   {
-    // The sensor box is on Wi-Fi, Bluetooth is not needed for it.
+    // The sensor box works over Wi-Fi without Bluetooth too.
     if (!enabled || NoGps.getStatus().esp32Source)
     {
       NoGps.nativeSetInertialNavigationEnabled(enabled);
+      if (enabled)
+        askBoxBluetooth();
       update();
       return;
     }
@@ -150,6 +161,24 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
         chooseAdapter();
       update();
     });
+  }
+
+  /**
+   * The sensor box is searched over Bluetooth LE. Without the permission it is reached only over its Wi-Fi.
+   */
+  private void askBoxBluetooth()
+  {
+    if (mBoxBluetoothAsked || Build.VERSION.SDK_INT < Build.VERSION_CODES.S)
+      return;
+    final String[] permissions = {Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT};
+    for (String permission : permissions)
+    {
+      if (ContextCompat.checkSelfPermission(requireContext(), permission) == PackageManager.PERMISSION_GRANTED)
+        continue;
+      mBoxBluetoothAsked = true;
+      mBoxBluetoothLauncher.launch(permissions);
+      return;
+    }
   }
 
   private void withBluetoothPermission(@NonNull Runnable action)
@@ -238,8 +267,14 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     mCalibrate.setText(esp32 ? R.string.nogps_sensors_calibrate_box : R.string.nogps_sensors_calibrate);
     if (esp32)
     {
-      final String name = enabled && !status.deviceName.isEmpty() ? status.deviceName : "ESP32";
-      final String box = enabled ? name + " · " + getString(boxStateText(status.getSourceState())) : name;
+      String box = enabled && !status.deviceName.isEmpty() ? status.deviceName : "ESP32";
+      if (enabled)
+      {
+        // The link the box is heard by.
+        if (status.getEsp32Link() != NoGps.Esp32Link.NONE)
+          box += " · " + (status.getEsp32Link() == NoGps.Esp32Link.BLE ? "Bluetooth" : "Wi-Fi");
+        box += " · " + getString(boxStateText(status));
+      }
       mAdapter.setText(getString(R.string.nogps_sensors_box, box));
     }
     else
@@ -349,12 +384,23 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
         .show();
   }
 
-  private static int boxStateText(@NonNull NoGps.SourceState state)
+  private static int boxStateText(@NonNull NoGps.Status status)
   {
-    return switch (state)
+    return switch (status.getSourceState())
     {
       case DISCONNECTED -> R.string.nogps_elm_disconnected;
-      case CONNECTING -> R.string.nogps_box_connecting;
+      // The box is not heard yet: what the phone does to reach it.
+      case CONNECTING -> switch (status.getBleState())
+      {
+        case OFF -> R.string.nogps_box_connecting;
+        case NO_PERMISSION -> R.string.nogps_box_bt_no_permission;
+        case DISABLED -> R.string.nogps_box_bt_disabled;
+        case SEARCHING -> R.string.nogps_box_bt_searching;
+        case PAIRING_CLOSED -> R.string.nogps_box_bt_pairing_closed;
+        case CONNECTING -> R.string.nogps_box_bt_connecting;
+        case PAIRING -> R.string.nogps_box_bt_pairing;
+        case CONNECTED -> R.string.nogps_box_bt_waiting;
+      };
       case NO_ADAPTER -> R.string.nogps_elm_no_adapter;
       case OBD_DISABLED -> R.string.nogps_box_obd_disabled;
       case OBD_CONNECTING -> R.string.nogps_box_obd_connecting;
