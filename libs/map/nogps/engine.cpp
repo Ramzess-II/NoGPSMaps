@@ -575,6 +575,14 @@ void Engine::SetEsp32Source(bool esp32)
     m_inertial->Start();
 }
 
+void Engine::SetEsp32Bluetooth(bool bluetooth)
+{
+  LOG(LINFO, ("bluetooth =", bluetooth));
+  m_storage.Set(Storage::kEsp32Bluetooth, bluetooth);
+  if (IsInertialNavigationEnabled() && m_inertial)
+    m_inertial->Start();
+}
+
 void Engine::SetEsp32Address(std::string const & address)
 {
   LOG(LINFO, ("address =", address));
@@ -991,13 +999,13 @@ Status Engine::GetStatus()
 
   status.m_inertialEnabled = IsInertialNavigationEnabled();
   status.m_esp32Source = m_storage.Get<bool>(Storage::kEsp32Source, false);
+  status.m_esp32Bluetooth = m_storage.Get<bool>(Storage::kEsp32Bluetooth, false);
   status.m_elm327Address = m_storage.Get<std::string>(Storage::kElm327Address, "");
   status.m_esp32Address = m_storage.Get<std::string>(Storage::kEsp32Address, "192.168.4.1");
   status.m_inertialStarted = status.m_inertialEnabled && m_inertial;
   if (status.m_inertialStarted)
   {
     status.m_sourceState = m_inertial->GetSourceState();
-    status.m_esp32Link = m_inertial->GetEsp32Link();
     status.m_bleState = m_inertial->GetBleState();
     status.m_deviceName = m_inertial->GetDeviceName();
     status.m_speedKmh = m_inertial->GetSpeedKmh();
@@ -1075,12 +1083,15 @@ std::string Engine::GetTripLine()
   if (m_inertial && IsInertialNavigationEnabled())
   {
     line += " obd=" + DebugPrint(m_inertial->GetSourceState()) + " speed=" + std::to_string(m_inertial->GetSpeedKmh());
-    // The ESP32 box: the link its data come by and what Bluetooth does.
-    auto const link = m_inertial->GetEsp32Link();
-    auto const bleState = m_inertial->GetBleState();
-    if (link != Esp32Link::None || bleState != BleState::Off)
+    // The ESP32 box: its link, with what Bluetooth does, and how its data came during the last second: the lines
+    // and the longest pause between them in milliseconds.
+    if (auto const rate = m_inertial->GetEsp32DataRate())
     {
-      line += " link=" + DebugPrint(link) + "/" + DebugPrint(bleState);
+      auto const link = m_inertial->GetEsp32Link();
+      line += " link=" + DebugPrint(link);
+      if (link == Esp32Link::Ble)
+        line += "/" + DebugPrint(m_inertial->GetBleState());
+      line += " box=" + std::to_string(rate->m_lines) + "/" + std::to_string(rate->m_maxGapMs);
     }
     std::snprintf(buf, sizeof(buf), " scale=%.3f table=%d lag=%.2f%s", m_inertial->GetSpeedScale(),
                   m_inertial->GetSpeedTableRanges(), m_inertial->GetSpeedLag(),

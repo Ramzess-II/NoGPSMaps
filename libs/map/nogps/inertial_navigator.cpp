@@ -50,7 +50,8 @@ void InertialNavigator::Start()
   if (esp32)
   {
     auto source = std::make_unique<Esp32Source>(
-        m_delegate, m_scheduler, m_clock, m_storage.Get<std::string>(Storage::kEsp32Address, "192.168.4.1"), listener);
+        m_delegate, m_scheduler, m_clock, m_storage.Get<std::string>(Storage::kEsp32Address, "192.168.4.1"), listener,
+        m_storage.Get<bool>(Storage::kEsp32Bluetooth, false) ? Esp32Link::Ble : Esp32Link::Wifi);
     m_esp32 = source.get();
     m_source = std::move(source);
   }
@@ -386,6 +387,13 @@ Esp32Link InertialNavigator::GetEsp32Link() const
 BleState InertialNavigator::GetBleState() const
 {
   return m_esp32 ? m_esp32->GetBleState() : BleState::Off;
+}
+
+std::optional<Esp32Source::DataRate> InertialNavigator::GetEsp32DataRate() const
+{
+  if (!m_esp32)
+    return {};
+  return m_esp32->GetDataRate();
 }
 
 void InertialNavigator::OnSpeed(int speedKmh, int64_t timeMs)

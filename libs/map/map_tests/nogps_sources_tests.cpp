@@ -186,16 +186,18 @@ UNIT_TEST(NoGps_Esp32Source_ReadsLinesOfBluetoothStream)
   TestClock clock;
   TestDelegate delegate;
   MotionRecorder listener;
-  Esp32Source source(delegate, clock, clock, "192.168.4.1", listener);
+  Esp32Source source(delegate, clock, clock, "192.168.4.1", listener, Esp32Link::Ble);
   source.Start();
+  // Bluetooth only: the box has one radio, a phone in its Wi-Fi network disturbs its Bluetooth.
   TEST(delegate.m_esp32BleOpen, ());
+  TEST(!delegate.m_esp32Open, ());
+  TEST_EQUAL(source.GetLink(), Esp32Link::Ble, ());
   source.OnBleState(BleState::Connected);
 
   // Two lines in a piece.
   source.OnBleBytes(BoxDataLine(1, 5000, 0, 36, kCalibratedFlags) + BoxDataLine(2, 5020, 500, 36, kCalibratedFlags));
   TEST_EQUAL(listener.m_speeds, std::vector<int>({36, 36}), ());
   TEST_ALMOST_EQUAL_ABS(listener.m_yawDeg, 0.5, 1e-9, ());
-  TEST_EQUAL(source.GetLink(), Esp32Link::Ble, ());
   TEST_EQUAL(source.GetState(), SourceState::Connected, ());
 
   // A line in three pieces.
@@ -214,52 +216,82 @@ UNIT_TEST(NoGps_Esp32Source_ReadsLinesOfBluetoothStream)
   TEST_EQUAL(listener.m_speeds.size(), 4, ());
   TEST_ALMOST_EQUAL_ABS(listener.m_yawDeg, 2.0, 1e-9, ());
 
+  // A datagram is not from the chosen link.
+  source.OnDatagram(BoxDataLine(6, 5100, 2500, 40, kCalibratedFlags));
+  TEST_EQUAL(listener.m_speeds.size(), 4, ());
+
   source.Stop();
   TEST(!delegate.m_esp32BleOpen, ());
-  TEST_EQUAL(source.GetLink(), Esp32Link::None, ());
 }
 
-UNIT_TEST(NoGps_Esp32Source_CallsBoxOverBluetoothWhileItWorks)
+UNIT_TEST(NoGps_Esp32Source_CallsBoxOverChosenLinkOnly)
+{
+  TestClock clock;
+  {
+    // Wi-Fi: Bluetooth is not touched.
+    TestDelegate delegate;
+    MotionRecorder listener;
+    Esp32Source source(delegate, clock, clock, "192.168.4.1", listener);
+    source.Start();
+    clock.Advance(Esp32Source::kHelloIntervalMs);
+    TEST(delegate.m_esp32Open, ());
+    TEST(!delegate.m_esp32BleOpen, ());
+    TEST_EQUAL(delegate.m_esp32Sent.size(), 2, ());
+    TEST(delegate.m_esp32BleSent.empty(), ());
+    TEST_EQUAL(source.GetLink(), Esp32Link::Wifi, ());
+    source.OnBleBytes(BoxDataLine(1, 5000, 0, 36, kCalibratedFlags));
+    TEST(listener.m_speeds.empty(), ());
+  }
+  {
+    // Bluetooth: nothing is sent until the phone is connected, then HELLO goes at once and every second.
+    TestDelegate delegate;
+    MotionRecorder listener;
+    Esp32Source source(delegate, clock, clock, "192.168.4.1", listener, Esp32Link::Ble);
+    source.Start();
+    source.OnBleState(BleState::Searching);
+    clock.Advance(Esp32Source::kHelloIntervalMs);
+    TEST(delegate.m_esp32BleSent.empty(), ());
+    TEST_EQUAL(source.GetBleState(), BleState::Searching, ());
+    source.OnBleState(BleState::Connected);
+    TEST_EQUAL(delegate.m_esp32BleSent.size(), 1, ());
+    clock.Advance(Esp32Source::kHelloIntervalMs);
+    TEST_EQUAL(delegate.m_esp32BleSent.size(), 2, ());
+    TEST(delegate.m_esp32Sent.empty(), ());
+    source.OnBleState(BleState::Searching);
+    clock.Advance(Esp32Source::kHelloIntervalMs);
+    TEST_EQUAL(delegate.m_esp32BleSent.size(), 2, ());
+  }
+}
+
+UNIT_TEST(NoGps_Esp32Source_CountsDataLinesOfLastSecond)
 {
   TestClock clock;
   TestDelegate delegate;
   MotionRecorder listener;
   Esp32Source source(delegate, clock, clock, "192.168.4.1", listener);
   source.Start();
-  // No Bluetooth yet: the box is called over Wi-Fi only.
-  source.OnBleState(BleState::Searching);
-  clock.Advance(Esp32Source::kHelloIntervalMs);
-  TEST_EQUAL(delegate.m_esp32Sent.size(), 2, ());
-  TEST(delegate.m_esp32BleSent.empty(), ());
-  source.OnDatagram(BoxDataLine(1, 5000, 0, 36, kCalibratedFlags));
-  TEST_EQUAL(source.GetLink(), Esp32Link::Wifi, ());
+  TEST_EQUAL(source.GetDataRate().m_lines, 0, ());
+  TEST_EQUAL(source.GetDataRate().m_maxGapMs, Esp32Source::kDataTimeoutMs, ());
 
-  // Bluetooth is connected: the box is called over it at once, and not over Wi-Fi, so it sends its data there.
-  source.OnBleState(BleState::Connected);
-  TEST_EQUAL(delegate.m_esp32BleSent.size(), 1, ());
-  TEST_EQUAL(delegate.m_esp32BleSent.back(), esp32::Command(3, "HELLO"), ());
-  TEST_EQUAL(delegate.m_esp32Sent.size(), 2, ());
-  int64_t boxTimeMs = 5020;
-  for (int i = 0; i < 5; ++i)
+  // 50 lines a second, then two lines are lost.
+  int64_t boxTimeMs = 5000;
+  for (int i = 0; i < 100; ++i)
   {
-    clock.Advance(Esp32Source::kHelloIntervalMs);
-    source.OnBleBytes(BoxDataLine(2 + i, boxTimeMs += 1000, 0, 36, kCalibratedFlags));
+    clock.Advance(20);
+    source.OnDatagram(BoxDataLine(i, boxTimeMs += 20, 0, 36, kCalibratedFlags));
   }
-  TEST_EQUAL(delegate.m_esp32BleSent.size(), 6, ());
-  TEST_EQUAL(delegate.m_esp32Sent.size(), 2, ());
-  TEST_EQUAL(source.GetLink(), Esp32Link::Ble, ());
+  TEST_EQUAL(source.GetDataRate().m_lines, 50, ());
+  TEST_EQUAL(source.GetDataRate().m_maxGapMs, 20, ());
+  clock.Advance(60);
+  source.OnDatagram(BoxDataLine(100, boxTimeMs += 60, 0, 36, kCalibratedFlags));
+  TEST_EQUAL(source.GetDataRate().m_lines, 48, ());
+  TEST_EQUAL(source.GetDataRate().m_maxGapMs, 60, ());
 
-  // Bluetooth is connected but silent, e.g. the box has forgotten the phone: Wi-Fi is tried too.
-  clock.Advance(Esp32Source::kBleSilenceMs + Esp32Source::kHelloIntervalMs);
-  TEST_GREATER(delegate.m_esp32Sent.size(), 2, ());
-  TEST_EQUAL(delegate.m_esp32Sent.back(), delegate.m_esp32BleSent.back(), ());
-  TEST_EQUAL(source.GetLink(), Esp32Link::None, ());
-
-  // Bluetooth is lost: Wi-Fi only.
-  source.OnBleState(BleState::Searching);
-  size_t const bleSent = delegate.m_esp32BleSent.size();
-  clock.Advance(Esp32Source::kHelloIntervalMs);
-  TEST_EQUAL(delegate.m_esp32BleSent.size(), bleSent, ());
+  // The box is silent.
+  clock.Advance(500);
+  TEST_EQUAL(source.GetDataRate().m_maxGapMs, 500, ());
+  clock.Advance(Esp32Source::kDataTimeoutMs);
+  TEST_EQUAL(source.GetDataRate().m_lines, 0, ());
 }
 
 UNIT_TEST(NoGps_Esp32Source_CalibratesAndTimesOut)

@@ -5,15 +5,18 @@
 
 #include "base/logging.hpp"
 
+#include <algorithm>
+
 namespace nogps
 {
 Esp32Source::Esp32Source(Delegate & delegate, Scheduler & scheduler, Clock const & clock, std::string address,
-                         MotionSource::Listener & listener)
+                         MotionSource::Listener & listener, Esp32Link link)
   : m_delegate(delegate)
   , m_clock(clock)
   , m_address(std::move(address))
   , m_listener(listener)
   , m_helloTimer(scheduler)
+  , m_link(link)
 {}
 
 Esp32Source::~Esp32Source()
@@ -25,10 +28,12 @@ void Esp32Source::Start()
 {
   if (m_running)
     return;
-  LOG(LINFO, ("address =", m_address));
+  LOG(LINFO, ("link =", m_link, "address =", m_address));
   m_running = true;
-  m_delegate.Esp32Open(m_address, kBoxPort);
-  m_delegate.Esp32BleOpen();
+  if (m_link == Esp32Link::Ble)
+    m_delegate.Esp32BleOpen();
+  else
+    m_delegate.Esp32Open(m_address, kBoxPort);
   SendHello();
 }
 
@@ -39,13 +44,13 @@ void Esp32Source::Stop()
   LOG(LINFO, ("ESP32 stopped"));
   m_running = false;
   m_helloTimer.Stop();
-  m_delegate.Esp32Close();
-  m_delegate.Esp32BleClose();
+  if (m_link == Esp32Link::Ble)
+    m_delegate.Esp32BleClose();
+  else
+    m_delegate.Esp32Close();
   m_bleState = BleState::Off;
-  m_bleConnectedMs.reset();
-  m_lastBleLineMs.reset();
   m_bleLine.clear();
-  m_link = Esp32Link::None;
+  m_dataTimesMs.clear();
   m_hasLast = false;
   m_lastDataMs.reset();
 }
@@ -59,22 +64,10 @@ void Esp32Source::SendHello()
 void Esp32Source::Send(std::string_view command, int id)
 {
   auto const line = esp32::Command(id, command);
-  // Bluetooth is preferred: the phone doesn't have to stay in the Wi-Fi network of the box. The box sends its
-  // data where the last HELLO has come from, so it is not called over Wi-Fi while Bluetooth works.
-  bool const ble = m_bleState == BleState::Connected;
-  if (ble)
-    m_delegate.Esp32BleSend(line);
-  if (!ble || IsBleSilent())
+  if (m_link != Esp32Link::Ble)
     m_delegate.Esp32Send(line);
-}
-
-bool Esp32Source::IsBleSilent() const
-{
-  int64_t const now = m_clock.NowMs();
-  // Just connected: the box sends nothing before it gets a HELLO.
-  if (m_bleConnectedMs && now - *m_bleConnectedMs <= kBleSilenceMs)
-    return false;
-  return !m_lastBleLineMs || now - *m_lastBleLineMs > kBleSilenceMs;
+  else if (m_bleState == BleState::Connected)
+    m_delegate.Esp32BleSend(line);
 }
 
 void Esp32Source::OnBleState(BleState state)
@@ -84,16 +77,14 @@ void Esp32Source::OnBleState(BleState state)
   LOG(LINFO, ("Bluetooth =", state));
   m_bleState = state;
   m_bleLine.clear();
-  if (state != BleState::Connected)
-    return;
-  m_bleConnectedMs = m_clock.NowMs();
   // The box starts sending at once, not at the next HELLO.
-  SendHello();
+  if (state == BleState::Connected)
+    SendHello();
 }
 
 void Esp32Source::OnBleBytes(std::string_view bytes)
 {
-  if (!m_running)
+  if (!m_running || m_link != Esp32Link::Ble)
     return;
   for (char const c : bytes)
   {
@@ -104,7 +95,7 @@ void Esp32Source::OnBleBytes(std::string_view bytes)
       continue;
     if (c == '\n')
     {
-      OnLine(m_bleLine, Esp32Link::Ble);
+      OnLine(m_bleLine);
       m_bleLine.clear();
     }
     else if (m_bleLine.size() < kMaxLineSize)
@@ -118,31 +109,36 @@ void Esp32Source::OnBleBytes(std::string_view bytes)
   }
 }
 
-Esp32Link Esp32Source::GetLink() const
+Esp32Source::DataRate Esp32Source::GetDataRate() const
 {
-  return IsConnected() ? m_link : Esp32Link::None;
+  int64_t const now = m_clock.NowMs();
+  DataRate rate;
+  int64_t previousMs = now - kDataTimeoutMs;
+  for (int64_t const timeMs : m_dataTimesMs)
+  {
+    if (timeMs <= now - kDataTimeoutMs)
+      continue;
+    ++rate.m_lines;
+    rate.m_maxGapMs = std::max(rate.m_maxGapMs, timeMs - previousMs);
+    previousMs = timeMs;
+  }
+  rate.m_maxGapMs = std::max(rate.m_maxGapMs, now - previousMs);
+  return rate;
 }
 
 void Esp32Source::OnDatagram(std::string_view text)
 {
-  if (m_running)
-    OnLine(text, Esp32Link::Wifi);
+  if (m_running && m_link != Esp32Link::Ble)
+    OnLine(text);
 }
 
-void Esp32Source::OnLine(std::string_view text, Esp32Link link)
+void Esp32Source::OnLine(std::string_view text)
 {
   auto const fields = esp32::Parse(text);
   if (!fields)
     return;
-  if (link == Esp32Link::Ble)
-    m_lastBleLineMs = m_clock.NowMs();
   if (auto const data = esp32::ParseData(*fields))
   {
-    if (link != m_link)
-    {
-      LOG(LINFO, ("The box is heard over", link));
-      m_link = link;
-    }
     OnData(*data);
     return;
   }
@@ -183,6 +179,9 @@ void Esp32Source::OnData(esp32::Data const & data)
   int64_t const now = m_clock.NowMs();
   bool const fresh = m_lastDataMs && now - *m_lastDataMs <= kDataTimeoutMs;
   m_lastDataMs = now;
+  m_dataTimesMs.push_back(now);
+  while (now - m_dataTimesMs.front() >= kDataTimeoutMs)
+    m_dataTimesMs.pop_front();
   m_flags = data.m_flags;
   if (data.m_speedKmh >= 0)
     m_listener.OnSpeed(data.m_speedKmh, now - data.m_speedAgeMs);

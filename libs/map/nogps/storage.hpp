@@ -17,6 +17,8 @@ public:
   static std::string_view constexpr kElm327Address = "NoGpsElm327Address";
   static std::string_view constexpr kEsp32Source = "NoGpsEsp32Source";
   static std::string_view constexpr kEsp32Address = "NoGpsEsp32Address";
+  // The ESP32 sensor box is reached over Bluetooth LE, not over its Wi-Fi network.
+  static std::string_view constexpr kEsp32Bluetooth = "NoGpsEsp32Bluetooth";
   static std::string_view constexpr kShiftStepM = "NoGpsShiftStep";
   static std::string_view constexpr kShiftButtonsShown = "NoGpsShiftButtons";
   static std::string_view constexpr kSpeedScale = "NoGpsSpeedScale";

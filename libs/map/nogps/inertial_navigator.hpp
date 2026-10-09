@@ -5,6 +5,7 @@
 #include "map/nogps/bend_matcher.hpp"
 #include "map/nogps/dead_reckoning.hpp"
 #include "map/nogps/delegate.hpp"
+#include "map/nogps/esp32_source.hpp"
 #include "map/nogps/gyro_calibrator.hpp"
 #include "map/nogps/motion_source.hpp"
 #include "map/nogps/speed_lag.hpp"
@@ -24,7 +25,6 @@ namespace nogps
 {
 class Clock;
 class Elm327Session;
-class Esp32Source;
 class PhoneMotion;
 class Roads;
 class Scheduler;
@@ -184,9 +184,11 @@ public:
   SourceState GetSourceState() const;
   /// \returns the name of the sensor device to show, empty for the phone.
   std::string GetDeviceName() const;
-  /// The link the ESP32 sensor box is heard by and what the platform does about Bluetooth.
+  /// The link the ESP32 sensor box is reached by and what the platform does about Bluetooth.
   Esp32Link GetEsp32Link() const;
   BleState GetBleState() const;
+  /// \returns nothing if the car movement doesn't come from the ESP32 sensor box.
+  std::optional<Esp32Source::DataRate> GetEsp32DataRate() const;
   /// \returns the last speed in km/h, or -1 if it is unknown or stale.
   int GetSpeedKmh() const;
   CalibrationState GetCalibrationState();

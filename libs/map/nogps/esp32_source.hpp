@@ -6,6 +6,7 @@
 #include "map/nogps/scheduler.hpp"
 
 #include <cstdint>
+#include <deque>
 #include <optional>
 #include <set>
 #include <string>
@@ -16,10 +17,10 @@ namespace nogps
 class Clock;
 class Delegate;
 
-/// The NoGPS ESP32 sensor box: it is fixed in the car and sends the car rotation and speed over Bluetooth LE
-/// or its own Wi-Fi network, the phone can be held in hands. The box zeroes its gyroscope by itself on every
-/// stop. Both links are tried at once and carry the same lines; the box sends its data over the one the last
-/// HELLO has come by.
+/// The NoGPS ESP32 sensor box: it is fixed in the car and sends the car rotation and speed over its own Wi-Fi
+/// network or over Bluetooth LE, the phone can be held in hands. The box zeroes its gyroscope by itself on
+/// every stop. The lines are the same over both links, the user chooses one of them: the box has one radio,
+/// and a phone in its Wi-Fi network disturbs its Bluetooth.
 class Esp32Source : public MotionSource
 {
 public:
@@ -34,15 +35,21 @@ public:
   static int64_t constexpr kEventsRequestIntervalMs = 2000;
   // More than the box keeps in its journal.
   static size_t constexpr kMaxLoggedEvents = 64;
-  // Bluetooth connected but silent for this long does not work, e.g. the box has forgotten the phone: the box
-  // is called over Wi-Fi too.
-  static int64_t constexpr kBleSilenceMs = 3000;
   // The lines of the box are shorter.
   static size_t constexpr kMaxLineSize = 512;
 
-  /// \param address the address of the box, 192.168.4.1 for its own access point.
+  /// How the data lines came during the last second, for the log of a drive.
+  struct DataRate
+  {
+    int m_lines = 0;
+    // The longest pause between two lines, or since the last one.
+    int64_t m_maxGapMs = 0;
+  };
+
+  /// \param address the address of the box in its Wi-Fi network, 192.168.4.1 for its own access point.
+  /// \param link the link to reach the box by, Wi-Fi or Bluetooth.
   Esp32Source(Delegate & delegate, Scheduler & scheduler, Clock const & clock, std::string address,
-              MotionSource::Listener & listener);
+              MotionSource::Listener & listener, Esp32Link link = Esp32Link::Wifi);
   ~Esp32Source() override;
 
   // MotionSource overrides:
@@ -62,12 +69,11 @@ public:
   void OnBleBytes(std::string_view bytes);
   void OnBleState(BleState state);
   BleState GetBleState() const { return m_bleState; }
-  /// \returns the link the data come by now.
-  Esp32Link GetLink() const;
+  Esp32Link GetLink() const { return m_link; }
+  DataRate GetDataRate() const;
 
 private:
-  void OnLine(std::string_view text, Esp32Link link);
-  bool IsBleSilent() const;
+  void OnLine(std::string_view text);
   void SendHello();
   void Send(std::string_view command, int id);
   void OnData(esp32::Data const & data);
@@ -86,13 +92,12 @@ private:
   bool m_running = false;
   int m_helloId = 0;
 
+  Esp32Link const m_link;
   BleState m_bleState = BleState::Off;
-  std::optional<int64_t> m_bleConnectedMs;
-  std::optional<int64_t> m_lastBleLineMs;
   // The line being received over Bluetooth, from its "$" on.
   std::string m_bleLine;
-  // The link the last data line has come by.
-  Esp32Link m_link = Esp32Link::None;
+  // When the data lines of the last second came.
+  std::deque<int64_t> m_dataTimesMs;
 
   // Nothing until the first data line.
   std::optional<int64_t> m_lastDataMs;
