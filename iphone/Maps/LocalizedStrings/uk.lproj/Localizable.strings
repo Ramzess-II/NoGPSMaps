@@ -1272,6 +1272,27 @@
 "nogps_source_esp32" = "Блок ESP32 (Wi-Fi)";
 "nogps_sensors_box" = "Блок: %1$@";
 "nogps_box_connecting" = "шукаю блок, підключіться до Wi-Fi NoGPS";
+
+/* State of the sensor box, shown after its name: "Box: ESP32 · searching by Bluetooth and Wi-Fi" */
+"nogps_box_bt_searching" = "шукаю блок через Bluetooth і Wi-Fi";
+
+/* State of the sensor box, shown after its name */
+"nogps_box_bt_no_permission" = "застосунку не дозволено Bluetooth, шукаю блок лише через Wi-Fi";
+
+/* State of the sensor box, shown after its name */
+"nogps_box_bt_disabled" = "Bluetooth вимкнено, шукаю блок лише через Wi-Fi";
+
+/* State of the sensor box, shown after its name. The box accepts a new phone only for two minutes after it gets power */
+"nogps_box_bt_pairing_closed" = "знайдено, але не спарено з цим телефоном. Вийміть блок із роз'єму й вставте назад: 2 хвилини він приймає новий телефон";
+
+/* State of the sensor box, shown after its name */
+"nogps_box_bt_connecting" = "підключаюся через Bluetooth";
+
+/* State of the sensor box, shown after its name while the system asks for the pairing code */
+"nogps_box_bt_pairing" = "введіть код блока у вікні спарювання: 123456, якщо його не змінювали";
+
+/* State of the sensor box, shown after its name */
+"nogps_box_bt_waiting" = "підключено через Bluetooth, чекаю на дані";
 "nogps_sensors_calibrate_box" = "Калібрувати";
 "nogps_gyro_mount_moved" = "блок зсунули, відкалібруйте";
 "nogps_sensors_hint_box" = "Закріпіть блок нерухомо. Відкалібруйте його один раз, коли машина стоїть на рівному місці, далі блок сам обнуляє гіроскоп на кожній зупинці.";
