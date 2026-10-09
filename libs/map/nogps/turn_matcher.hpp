@@ -22,7 +22,9 @@ public:
   // The crossing is searched this far along the road at least. Not farther than the calculated distance may
   // be wrong by: the turn was moved to another crossing 57 m away with the car 15 m from the right one.
   static double constexpr kMinSearchM = 25;
-  static double constexpr kMaxSearchM = 300;
+  // Nor farther than this, however long the car has driven without a known place: the bends of the roads keep
+  // the calculated distance right within 10 m, and no turn moved farther than 20 m was moved to its crossing.
+  static double constexpr kMaxSearchM = 60;
   // A crossing farther from the road the car drove along is on a parallel street.
   static double constexpr kMaxSideOffsetM = 20;
   // The roads of a crossing are checked this far from it: close to it all its roads meet.

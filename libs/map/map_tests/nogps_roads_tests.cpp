@@ -113,6 +113,17 @@ UNIT_TEST(NoGps_TurnMatcher_NotFartherThanCalculationMayBeWrong)
   TEST(TurnMatcher::FindCrossing(grid, At(160, 0), 90, 0, 45), ());
 }
 
+UNIT_TEST(NoGps_TurnMatcher_NotFartherThanCalculationIsEverWrong)
+{
+  // The street going east has one crossing, at 100 m. After kilometers without a known place the calculation
+  // tells it may be wrong by 140 m, but it never is: a crossing 70 m away is not where the car has turned.
+  PieceRoads roads({{-300, 0, 300, 0}, {100, -300, 100, 300}}, {{100, 0}});
+  auto const crossing = TurnMatcher::FindCrossing(roads, At(45, 0), 90, 0, 140);
+  TEST(crossing, ());
+  TestAt(100, 0, *crossing);
+  TEST(!TurnMatcher::FindCrossing(roads, At(30, 0), 90, 0, 140), ());
+}
+
 UNIT_TEST(NoGps_TurnMatcher_MatchesTurnBeforeCrossing)
 {
   // The calculated distance lags: the car turned left at 200 m, but it is at 160 m by the calculation.
