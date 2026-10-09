@@ -1006,14 +1006,16 @@
     <string name="nogps_status_paused">Pause</string>
     <string name="nogps_source_phone">Phone + ELM327 (Bluetooth)</string>
     <string name="nogps_source_esp32">ESP32 sensor box (Wi-Fi)</string>
+    <!-- Choice of where the car speed and turns come from, next to "ESP32 sensor box (Wi-Fi)" -->
+    <string name="nogps_source_esp32_bt">ESP32 sensor box (Bluetooth)</string>
     <string name="nogps_sensors_box">Box: %1$s</string>
     <string name="nogps_box_connecting">searching, connect to the NoGPS Wi-Fi</string>
-    <!-- State of the sensor box, shown after its name: "Box: ESP32 · searching by Bluetooth and Wi-Fi" -->
-    <string name="nogps_box_bt_searching">searching by Bluetooth and Wi-Fi</string>
+    <!-- State of the sensor box, shown after its name: "Box: ESP32 · searching by Bluetooth" -->
+    <string name="nogps_box_bt_searching">searching by Bluetooth</string>
     <!-- State of the sensor box, shown after its name -->
-    <string name="nogps_box_bt_no_permission">the app is not allowed to use Bluetooth, searching by Wi-Fi only</string>
+    <string name="nogps_box_bt_no_permission">the app is not allowed to use Bluetooth</string>
     <!-- State of the sensor box, shown after its name -->
-    <string name="nogps_box_bt_disabled">Bluetooth is off, searching by Wi-Fi only</string>
+    <string name="nogps_box_bt_disabled">Bluetooth is off on the phone</string>
     <!-- State of the sensor box, shown after its name. The box accepts a new phone only for two minutes after it gets power -->
     <string name="nogps_box_bt_pairing_closed">found, but not paired with this phone. Unplug the box and plug it back: it accepts a new phone for 2 minutes</string>
     <!-- State of the sensor box, shown after its name -->
