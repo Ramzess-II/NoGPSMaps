@@ -44,6 +44,12 @@
       android:layout_height="48dp"
       android:text="@string/nogps_source_esp32"
       android:textSize="16sp" />
+    <RadioButton
+      android:id="@+id/nogps_source_esp32_bt"
+      android:layout_width="match_parent"
+      android:layout_height="48dp"
+      android:text="@string/nogps_source_esp32_bt"
+      android:textSize="16sp" />
   </RadioGroup>
 
   <TextView

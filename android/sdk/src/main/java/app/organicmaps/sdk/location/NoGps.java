@@ -50,16 +50,6 @@ public final class NoGps
   }
 
   /**
-   * How the lines of the ESP32 sensor box come.
-   */
-  public enum Esp32Link
-  {
-    NONE,
-    WIFI,
-    BLE,
-  }
-
-  /**
    * What the phone does about the ESP32 sensor box over Bluetooth LE.
    */
   public enum BleState
@@ -160,6 +150,9 @@ public final class NoGps
     public boolean inertialEnabled;
     @Keep
     public boolean esp32Source;
+    // The sensor box is reached over Bluetooth LE, not over its Wi-Fi network.
+    @Keep
+    public boolean esp32Bluetooth;
     // Empty if no adapter is chosen.
     @Keep
     public String elm327Address = "";
@@ -170,8 +163,6 @@ public final class NoGps
     public boolean inertialStarted;
     @Keep
     int sourceState;
-    @Keep
-    int esp32Link;
     @Keep
     int bleState;
     @Keep
@@ -222,12 +213,6 @@ public final class NoGps
     public SourceState getSourceState()
     {
       return SourceState.values()[sourceState];
-    }
-
-    @NonNull
-    public Esp32Link getEsp32Link()
-    {
-      return Esp32Link.values()[esp32Link];
     }
 
     @NonNull
@@ -428,6 +413,8 @@ public final class NoGps
   public static native void nativeSetElm327Address(@NonNull String address);
 
   public static native void nativeSetEsp32Source(boolean esp32);
+
+  public static native void nativeSetEsp32Bluetooth(boolean bluetooth);
 
   public static native void nativeSetEsp32Address(@NonNull String address);
 

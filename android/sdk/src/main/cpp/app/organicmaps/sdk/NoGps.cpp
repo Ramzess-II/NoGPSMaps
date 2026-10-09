@@ -290,6 +290,11 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeSetEsp32Source(JNIE
   NoGpsEngine().SetEsp32Source(esp32);
 }
 
+JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeSetEsp32Bluetooth(JNIEnv *, jclass, jboolean bluetooth)
+{
+  NoGpsEngine().SetEsp32Bluetooth(bluetooth);
+}
+
 JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeSetEsp32Address(JNIEnv * env, jclass, jstring address)
 {
   NoGpsEngine().SetEsp32Address(jni::ToNativeString(env, address));
@@ -333,11 +338,11 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeGetStatus(JNIEnv * 
   SetNoGpsField(env, out, "shiftButtonsShown", status.m_shiftButtonsShown);
   SetNoGpsField(env, out, "inertialEnabled", status.m_inertialEnabled);
   SetNoGpsField(env, out, "esp32Source", status.m_esp32Source);
+  SetNoGpsField(env, out, "esp32Bluetooth", status.m_esp32Bluetooth);
   SetNoGpsString(env, out, "elm327Address", status.m_elm327Address);
   SetNoGpsString(env, out, "esp32Address", status.m_esp32Address);
   SetNoGpsField(env, out, "inertialStarted", status.m_inertialStarted);
   SetNoGpsField(env, out, "sourceState", static_cast<int>(status.m_sourceState));
-  SetNoGpsField(env, out, "esp32Link", static_cast<int>(status.m_esp32Link));
   SetNoGpsField(env, out, "bleState", static_cast<int>(status.m_bleState));
   SetNoGpsString(env, out, "deviceName", status.m_deviceName);
   SetNoGpsField(env, out, "speedKmh", status.m_speedKmh);
