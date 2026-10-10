@@ -59,6 +59,12 @@ enum class Event
   // The car drives without GPS, but its turns are not known: the gyroscope is not calibrated or the sensor box
   // has been moved. The position stands still. Repeated while it lasts.
   NotCalibrated,
+  // The sensor box works with another firmware than the application comes with, and can take it now: the car
+  // stands. Told once for a firmware of a box.
+  FirmwareUpdateAvailable,
+  // The update of the firmware of the sensor box has ended.
+  FirmwareUpdateDone,
+  FirmwareUpdateFailed,
 };
 
 /// What the platform does about the ESP32 sensor box over Bluetooth LE, told to Engine::OnEsp32BleState().
@@ -112,6 +118,9 @@ public:
   /// docs/nogps/esp32-firmware-spec.md, section 17. A platform without it has nothing to do here.
   virtual void Esp32BleOpen() {}
   virtual void Esp32BleSend(std::string const & /* line */) {}
+  /// A piece of a new firmware for the box: written to its characteristic for them without a response, in the
+  /// order of the calls, the lines of Esp32BleSend() go between the pieces. Section 18 of the same document.
+  virtual void Esp32BleSendFirmware(std::string const & /* piece */) {}
   virtual void Esp32BleClose() {}
 
   /// The position to show and to navigate by.

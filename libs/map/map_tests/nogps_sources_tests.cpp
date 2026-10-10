@@ -7,9 +7,12 @@
 #include "map/nogps/phone_motion.hpp"
 
 #include "base/math.hpp"
+#include "base/string_utils.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace nogps_sources_tests
@@ -383,6 +386,297 @@ UNIT_TEST(NoGps_Esp32Source_TellsSleepingBox)
   source.Stop();
   TEST(!delegate.m_esp32Open, ());
   TEST_EQUAL(source.GetState(), SourceState::Disconnected, ());
+}
+
+// The box connected over Bluetooth that has told about itself and takes firmwares.
+class UpdatedBox
+{
+public:
+  explicit UpdatedBox(size_t imageSize = 1000)
+  {
+    for (size_t i = 0; i < imageSize; ++i)
+      m_image += static_cast<char>(i * 7 % 251);
+    m_source.Start();
+    Connect("0.3.2");
+  }
+
+  void Connect(std::string const & firmware)
+  {
+    m_source.OnBleState(BleState::Connected);
+    Line("NGI,1," + firmware + ",2026-10-10T07:33,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,WIFI BLE OTA");
+  }
+
+  void Line(std::string const & body) { m_source.OnBleBytes(BoxLine(body)); }
+
+  void StartUpdate()
+  {
+    m_source.StartUpdate({"0.3.3", "esp32s3", "s3zero", [this] { return m_image; }});
+  }
+
+  /// The box accepts the last command.
+  void Accept(std::string const & values = {}) { Line("NGA," + std::to_string(LastCommand().first) + ",OK" + values); }
+  void Refuse(std::string const & error) { Line("NGA," + std::to_string(LastCommand().first) + ",ERR," + error); }
+
+  /// \returns the id and the text of the last command but HELLO sent to the box.
+  std::pair<int, std::string> LastCommand() const
+  {
+    for (auto it = m_delegate.m_esp32BleSent.rbegin(); it != m_delegate.m_esp32BleSent.rend(); ++it)
+    {
+      auto const fields = esp32::Parse(*it);
+      TEST(fields && fields->size() >= 3 && (*fields)[0] == "NGC", (*it));
+      if ((*fields)[2] == "HELLO")
+        continue;
+      int id = 0;
+      TEST(strings::to_int((*fields)[1], id), ());
+      std::string command = (*fields)[2];
+      for (size_t i = 3; i < fields->size(); ++i)
+        command += "," + (*fields)[i];
+      return {id, command};
+    }
+    return {};
+  }
+
+  /// \returns where the pieces sent since the previous call start, and writes them to the firmware of the box.
+  std::vector<size_t> TakePieces()
+  {
+    std::vector<size_t> offsets;
+    for (auto const & piece : m_delegate.m_firmwarePieces)
+    {
+      TEST_GREATER(piece.size(), 4, ());
+      size_t offset = 0;
+      for (size_t i = 0; i < 4; ++i)
+        offset |= static_cast<size_t>(static_cast<unsigned char>(piece[i])) << (8 * i);
+      offsets.push_back(offset);
+      if (m_written.size() < offset + piece.size() - 4)
+        m_written.resize(offset + piece.size() - 4);
+      m_written.replace(offset, piece.size() - 4, piece, 4);
+    }
+    m_delegate.m_firmwarePieces.clear();
+    return offsets;
+  }
+
+  Esp32Update const & Update() const { return m_source.GetUpdate(); }
+
+  /// The whole firmware is sent and accepted, the box restarts.
+  void SendAllAndRestart()
+  {
+    StartUpdate();
+    Accept(",240,4096");
+    Line("NGO,1," + std::to_string(m_image.size()) + ",RECV");
+    TEST_EQUAL(LastCommand().second, "OTA_END", ());
+    Accept();
+    m_source.OnBleState(BleState::Searching);
+  }
+
+  TestClock m_clock;
+  TestDelegate m_delegate;
+  MotionRecorder m_listener;
+  Esp32Source m_source{m_delegate, m_clock, m_clock, "192.168.4.1", m_listener, Esp32Link::Ble};
+  std::string m_image;
+  // The firmware as the box has got it.
+  std::string m_written;
+};
+
+UNIT_TEST(NoGps_Esp32Update_SendsFirmwareInPieces)
+{
+  UpdatedBox box;
+  TEST(box.m_source.CanUpdate(), ());
+  TEST_EQUAL(box.m_source.GetInfo()->m_firmware, "0.3.2", ());
+
+  box.StartUpdate();
+  auto const begin = box.LastCommand().second;
+  TEST(begin.starts_with("OTA_BEGIN,1000,") && begin.ends_with(",0.3.3"), (begin));
+  TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Starting, ());
+  TEST_EQUAL(box.m_source.GetState(), SourceState::Updating, ());
+  TEST(!box.m_source.CanUpdate(), ());
+  TEST(box.TakePieces().empty(), ());
+
+  // The box takes pieces of 240 bytes not farther than 480 bytes from what it has written.
+  box.Accept(",240,480");
+  TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Sending, ());
+  TEST_EQUAL(box.TakePieces(), std::vector<size_t>({0, 240}), ());
+  box.Line("NGO,1,240,RECV");
+  TEST_EQUAL(box.TakePieces(), std::vector<size_t>({480}), ());
+  TEST_EQUAL(box.Update().GetProgressPercent(), 24, ());
+  // The same again: nothing new fits.
+  box.Line("NGO,1,240,RECV");
+  TEST(box.TakePieces().empty(), ());
+
+  // The piece at 240 was lost: the box has dropped the one after it and tells where it stays.
+  box.Line("NGO,1,240,RESEND");
+  TEST_EQUAL(box.TakePieces(), std::vector<size_t>({240, 480}), ());
+  box.Line("NGO,1,720,RECV");
+  TEST_EQUAL(box.TakePieces(), std::vector<size_t>({720, 960}), ());
+  TEST_EQUAL(box.m_written, box.m_image, ());
+
+  box.Line("NGO,1,1000,RECV");
+  TEST_EQUAL(box.LastCommand().second, "OTA_END", ());
+  TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Verifying, ());
+  box.Line("NGO,1,1000,VERIFY");
+  box.Line("NGO,1,1000,DONE");
+  TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Restarting, ());
+  box.Accept();
+  TEST_EQUAL(box.Update().GetProgressPercent(), 100, ());
+
+  // The box restarts and comes back with the new firmware.
+  box.m_source.OnBleState(BleState::Searching);
+  TEST(!box.m_source.GetInfo(), ());
+  TEST_EQUAL(box.m_source.GetState(), SourceState::Updating, ());
+  box.Connect("0.3.3");
+  TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Done, ());
+  TEST_EQUAL(box.m_source.GetState(), SourceState::Connecting, ());
+  TEST(box.m_source.CanUpdate(), ());
+  TEST(box.TakePieces().empty(), ());
+}
+
+UNIT_TEST(NoGps_Esp32Update_TellsSizeAndHashOfFirmware)
+{
+  UpdatedBox box;
+  box.m_image = "abc";
+  box.StartUpdate();
+  TEST_EQUAL(box.LastCommand().second,
+             "OTA_BEGIN,3,ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad,0.3.3", ());
+  box.Accept(",240,4096");
+  TEST_EQUAL(box.m_delegate.m_firmwarePieces, std::vector<std::string>({std::string("\0\0\0\0abc", 7)}), ());
+
+  // A firmware that can't be read is not sent.
+  UpdatedBox noFile;
+  noFile.m_image.clear();
+  noFile.StartUpdate();
+  TEST_EQUAL(noFile.Update().GetState(), Esp32Update::State::Failed, ());
+  TEST_EQUAL(noFile.Update().GetError(), "NO_FILE", ());
+  TEST(noFile.m_delegate.m_firmwarePieces.empty(), ());
+}
+
+UNIT_TEST(NoGps_Esp32Update_FailsAndStartsAgain)
+{
+  UpdatedBox box;
+  auto const testFailed = [&box](std::string const & error)
+  {
+    TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Failed, ());
+    TEST_EQUAL(box.Update().GetError(), error, ());
+    TEST(box.m_source.GetState() != SourceState::Updating, ());
+  };
+
+  // The car drives: the box doesn't take a firmware.
+  box.StartUpdate();
+  box.Refuse("MOVING");
+  testFailed("MOVING");
+  TEST(box.m_source.CanUpdate(), ());
+
+  // The box finds the firmware made for another chip by its first piece.
+  box.StartUpdate();
+  box.Accept(",240,4096");
+  TEST_EQUAL(box.TakePieces().size(), 5, ());
+  box.Line("NGO,1,0,ERR_CHIP");
+  testFailed("CHIP");
+
+  // The firmware has come damaged.
+  box.StartUpdate();
+  box.Accept(",240,4096");
+  box.Line("NGO,1,1000,RECV");
+  box.Refuse("HASH");
+  testFailed("HASH");
+
+  // The connection is lost on the way: the update is not continued.
+  box.StartUpdate();
+  box.Accept(",240,4096");
+  box.m_source.OnBleState(BleState::Searching);
+  testFailed("LINK");
+  TEST(!box.m_source.CanUpdate(), ());
+  box.Connect("0.3.2");
+
+  // The user stops it.
+  box.StartUpdate();
+  box.Accept(",240,4096");
+  box.m_source.CancelUpdate();
+  TEST_EQUAL(box.LastCommand().second, "OTA_ABORT", ());
+  testFailed("CANCELED");
+
+  // The new firmware didn't start: the box has come back with the previous one.
+  box.SendAllAndRestart();
+  TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Restarting, ());
+  box.Connect("0.3.2");
+  testFailed("ROLLBACK");
+
+  // The reply to the end is lost with the connection of the restarting box.
+  box.StartUpdate();
+  box.Accept(",240,4096");
+  box.Line("NGO,1,1000,RECV");
+  box.m_source.OnBleState(BleState::Searching);
+  TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Restarting, ());
+  box.Connect("0.3.3");
+  TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Done, ());
+}
+
+UNIT_TEST(NoGps_Esp32Update_SendsAgainAndGivesUp)
+{
+  {
+    // The pieces are lost without a word of the box: they are sent again, then the update is given up.
+    UpdatedBox box;
+    box.StartUpdate();
+    box.Accept(",240,480");
+    TEST_EQUAL(box.TakePieces(), std::vector<size_t>({0, 240}), ());
+    box.m_clock.Advance(Esp32Update::kResendMs + Esp32Update::kCheckIntervalMs);
+    TEST_EQUAL(box.TakePieces(), std::vector<size_t>({0, 240}), ());
+    box.m_clock.Advance(Esp32Update::kStallMs);
+    TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Failed, ());
+    TEST_EQUAL(box.Update().GetError(), "TIMEOUT", ());
+    TEST_EQUAL(box.LastCommand().second, "OTA_ABORT", ());
+  }
+  {
+    // The box doesn't answer.
+    UpdatedBox box;
+    box.StartUpdate();
+    box.m_clock.Advance(Esp32Update::kReplyTimeoutMs + Esp32Update::kCheckIntervalMs);
+    TEST_EQUAL(box.Update().GetError(), "NO_REPLY", ());
+  }
+  {
+    // The box doesn't come back after it has taken the firmware.
+    UpdatedBox box;
+    box.SendAllAndRestart();
+    box.m_clock.Advance(Esp32Update::kRestartTimeoutMs + Esp32Update::kCheckIntervalMs);
+    TEST_EQUAL(box.Update().GetError(), "NO_RESTART", ());
+  }
+}
+
+UNIT_TEST(NoGps_Esp32Source_AsksBoxAboutItself)
+{
+  TestClock clock;
+  TestDelegate delegate;
+  MotionRecorder listener;
+  Esp32Source source(delegate, clock, clock, "192.168.4.1", listener, Esp32Link::Ble);
+  source.Start();
+  source.OnBleState(BleState::Connected);
+  auto const infoRequests = [&delegate]
+  {
+    return std::count_if(delegate.m_esp32BleSent.begin(), delegate.m_esp32BleSent.end(),
+                         [](std::string const & line) { return line.find(",INFO*") != std::string::npos; });
+  };
+  // The box has been talking to the application before it was restarted: it doesn't tell about itself again.
+  int64_t seq = 0;
+  auto const hear = [&](int64_t ms)
+  {
+    for (int64_t t = 0; t < ms; t += 20)
+    {
+      clock.Advance(20);
+      ++seq;
+      source.OnBleBytes(BoxDataLine(seq, 5000 + seq * 20, 0, 0, kCalibratedFlags));
+    }
+  };
+  hear(Esp32Source::kHelloIntervalMs * Esp32Source::kInfoRequestHellos);
+  TEST_EQUAL(infoRequests(), 1, ());
+  TEST(!source.CanUpdate(), ());
+  source.OnBleBytes(BoxLine("NGI,1,0.3.3,2026-10-10T07:33,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,WIFI BLE OTA"));
+  TEST(source.CanUpdate(), ());
+  hear(Esp32Source::kHelloIntervalMs * Esp32Source::kInfoRequestHellos * 2);
+  TEST_EQUAL(infoRequests(), 1, ());
+
+  // An old firmware doesn't know the question: it is not asked forever.
+  source.OnBleState(BleState::Searching);
+  source.OnBleState(BleState::Connected);
+  hear(Esp32Source::kHelloIntervalMs * Esp32Source::kInfoRequestHellos * (Esp32Source::kMaxInfoRequests + 3));
+  TEST_EQUAL(infoRequests(), 1 + Esp32Source::kMaxInfoRequests, ());
 }
 
 UNIT_TEST(NoGps_PhoneMotion_CalibratesAndTurns)

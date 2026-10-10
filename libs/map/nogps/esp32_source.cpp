@@ -17,6 +17,7 @@ Esp32Source::Esp32Source(Delegate & delegate, Scheduler & scheduler, Clock const
   , m_listener(listener)
   , m_helloTimer(scheduler)
   , m_link(link)
+  , m_update(*this, scheduler, clock)
 {}
 
 Esp32Source::~Esp32Source()
@@ -53,12 +54,55 @@ void Esp32Source::Stop()
   m_dataTimesMs.clear();
   m_hasLast = false;
   m_lastDataMs.reset();
+  m_info.reset();
+  m_hellosWithoutInfo = 0;
+  m_update.Reset();
 }
 
 void Esp32Source::SendHello()
 {
   Send("HELLO", ++m_helloId);
+  // The box tells about itself when a connection starts, the application may have missed it: the box was
+  // talking to it before it was restarted.
+  if (!m_info && IsConnected() && m_hellosWithoutInfo < kInfoRequestHellos * kMaxInfoRequests &&
+      ++m_hellosWithoutInfo % kInfoRequestHellos == 0)
+  {
+    Send("INFO", m_nextCommandId++);
+  }
   m_helloTimer.Start(kHelloIntervalMs, [this] { SendHello(); });
+}
+
+int Esp32Source::SendUpdateCommand(std::string const & command)
+{
+  int const id = m_nextCommandId++;
+  Send(command, id);
+  return id;
+}
+
+void Esp32Source::SendFirmwarePiece(std::string const & piece)
+{
+  if (m_link == Esp32Link::Ble && m_bleState == BleState::Connected)
+    m_delegate.Esp32BleSendFirmware(piece);
+}
+
+bool Esp32Source::CanUpdate() const
+{
+  return m_running && m_link == Esp32Link::Ble && m_bleState == BleState::Connected && m_info && m_info->m_canUpdate &&
+         !m_update.IsActive();
+}
+
+void Esp32Source::StartUpdate(Firmware const & firmware)
+{
+  if (CanUpdate())
+    m_update.Start(firmware.m_read(), firmware.m_version);
+}
+
+void Esp32Source::OnInfo(esp32::Info const & info)
+{
+  if (!m_info || m_info->m_firmware != info.m_firmware)
+    LOG(LINFO, ("Box firmware =", info.m_firmware, info.m_chip, info.m_board, "updates =", info.m_canUpdate));
+  m_info = info;
+  m_update.OnBoxFirmware(info.m_firmware);
 }
 
 void Esp32Source::Send(std::string_view command, int id)
@@ -77,6 +121,13 @@ void Esp32Source::OnBleState(BleState state)
   LOG(LINFO, ("Bluetooth =", state));
   m_bleState = state;
   m_bleLine.clear();
+  if (state != BleState::Connected)
+  {
+    // Another box may be found, or this one with a new firmware.
+    m_info.reset();
+    m_hellosWithoutInfo = 0;
+    m_update.OnLinkLost();
+  }
   // The box starts sending at once, not at the next HELLO.
   if (state == BleState::Connected)
     SendHello();
@@ -150,6 +201,16 @@ void Esp32Source::OnLine(std::string_view text)
   if (auto const event = esp32::ParseEvent(*fields))
   {
     OnEvent(*event);
+    return;
+  }
+  if (auto const info = esp32::ParseInfo(*fields))
+  {
+    OnInfo(*info);
+    return;
+  }
+  if (auto const progress = esp32::ParseUpdateProgress(*fields))
+  {
+    m_update.OnProgress(*progress);
     return;
   }
   if (auto const lastNumber = esp32::ParseLastEventNumber(*fields))
@@ -254,7 +315,7 @@ void Esp32Source::OnLastEventNumber(int64_t lastNumber)
 
 void Esp32Source::OnReply(esp32::Reply const & reply)
 {
-  if (reply.m_id != m_calibrationId)
+  if (m_update.OnReply(reply) || reply.m_id != m_calibrationId)
     return;
   if (reply.m_progress)
   {
@@ -275,6 +336,9 @@ SourceState Esp32Source::GetState() const
 {
   if (!m_running)
     return SourceState::Disconnected;
+  // The box sends no data while it takes a firmware and restarts with it.
+  if (m_update.IsActive())
+    return SourceState::Updating;
   if (!IsConnected())
     return IsSleeping() ? SourceState::BoxSleeping : SourceState::Connecting;
   if (m_flags & esp32::kFlagObdOk)

@@ -509,6 +509,45 @@ void Engine::CheckNotCalibrated()
   Notify(Event::NotCalibrated);
 }
 
+void Engine::CheckFirmwareUpdate()
+{
+  auto * box = m_inertial && IsInertialNavigationEnabled() ? m_inertial->GetEsp32() : nullptr;
+  auto const state = box ? box->GetUpdate().GetState() : Esp32Update::State::None;
+  if (state != m_firmwareUpdateState)
+  {
+    m_firmwareUpdateState = state;
+    if (state == Esp32Update::State::Done)
+      Notify(Event::FirmwareUpdateDone);
+    else if (state == Esp32Update::State::Failed)
+      Notify(Event::FirmwareUpdateFailed);
+  }
+
+  if (!box || !box->GetInfo())
+  {
+    m_boxKnownSinceMs.reset();
+    m_drivenWithBox = false;
+    return;
+  }
+  int64_t const now = m_clock.NowMs();
+  if (!m_boxKnownSinceMs)
+    m_boxKnownSinceMs = now;
+  if (m_inertial->GetSpeedKmh() > 0)
+    m_drivenWithBox = true;
+  // The box refuses an update while the car drives.
+  auto const * firmware = FindBoxFirmware();
+  if (m_drivenWithBox || now - *m_boxKnownSinceMs < kFirmwareOfferDelayMs || !firmware ||
+      firmware->m_version == box->GetInfo()->m_firmware)
+  {
+    return;
+  }
+  std::string const offer = box->GetInfo()->m_firmware + " to " + firmware->m_version;
+  if (offer == m_offeredFirmware)
+    return;
+  m_offeredFirmware = offer;
+  LOG(LINFO, ("The firmware of the box can be updated:", offer));
+  Notify(Event::FirmwareUpdateAvailable);
+}
+
 void Engine::OnGpsSpoofingChanged(bool spoofed)
 {
   LOG(LWARNING, ("GPS spoofed =", spoofed));
@@ -630,6 +669,34 @@ void Engine::ClearSpeedCalibration()
 {
   if (m_inertial)
     m_inertial->ClearSpeedCalibration();
+}
+
+void Engine::SetFirmwares(std::vector<Firmware> firmwares)
+{
+  m_firmwares = std::move(firmwares);
+}
+
+Firmware const * Engine::FindBoxFirmware()
+{
+  auto * box = m_inertial && IsInertialNavigationEnabled() ? m_inertial->GetEsp32() : nullptr;
+  if (!box || !box->CanUpdate())
+    return nullptr;
+  auto const & info = *box->GetInfo();
+  auto const it = std::find_if(m_firmwares.begin(), m_firmwares.end(), [&info](Firmware const & firmware)
+  { return firmware.m_chip == info.m_chip && firmware.m_board == info.m_board; });
+  return it != m_firmwares.end() ? &*it : nullptr;
+}
+
+void Engine::StartFirmwareUpdate()
+{
+  if (auto const * firmware = FindBoxFirmware())
+    m_inertial->GetEsp32()->StartUpdate(*firmware);
+}
+
+void Engine::CancelFirmwareUpdate()
+{
+  if (m_inertial && m_inertial->GetEsp32())
+    m_inertial->GetEsp32()->CancelUpdate();
 }
 
 void Engine::CycleShiftStep()
@@ -1050,6 +1117,16 @@ Status Engine::GetStatus()
     status.m_calibrationProgress = m_inertial->GetCalibrationProgressPercent();
     status.m_hasInertialPosition = m_inertial->HasPosition();
     status.m_paused = m_inertial->IsPaused();
+    if (auto const * box = m_inertial->GetEsp32())
+    {
+      if (box->GetInfo())
+        status.m_boxFirmware = box->GetInfo()->m_firmware;
+      if (auto const * firmware = FindBoxFirmware())
+        status.m_bundledFirmware = firmware->m_version;
+      status.m_firmwareUpdate = box->GetUpdate().GetState();
+      status.m_firmwareUpdateProgress = box->GetUpdate().GetProgressPercent();
+      status.m_firmwareUpdateError = box->GetUpdate().GetError();
+    }
   }
   return status;
 }
@@ -1063,6 +1140,7 @@ void Engine::LogTrip()
   CheckGpsLost();
   CheckMotionSourceStopped();
   CheckNotCalibrated();
+  CheckFirmwareUpdate();
   LOG(LINFO, (GetTripLine()));
 
   m_tripLogTimer.Start(kTripLogIntervalMs, [this] { LogTrip(); });
@@ -1125,6 +1203,12 @@ std::string Engine::GetTripLine()
       if (link == Esp32Link::Ble)
         line += "/" + DebugPrint(m_inertial->GetBleState());
       line += " box=" + std::to_string(rate->m_lines) + "/" + std::to_string(rate->m_maxGapMs);
+      // The firmware of the box and its update with the percent sent.
+      auto const * box = m_inertial->GetEsp32();
+      if (box->GetInfo())
+        line += " fw=" + box->GetInfo()->m_firmware;
+      if (auto const & update = box->GetUpdate(); update.GetState() != Esp32Update::State::None)
+        line += " ota=" + DebugPrint(update.GetState()) + "/" + std::to_string(update.GetProgressPercent());
     }
     std::snprintf(buf, sizeof(buf), " scale=%.3f table=%d lag=%.2f%s", m_inertial->GetSpeedScale(),
                   m_inertial->GetSpeedTableRanges(), m_inertial->GetSpeedLag(),

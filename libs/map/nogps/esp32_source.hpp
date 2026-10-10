@@ -2,6 +2,7 @@
 
 #include "map/nogps/accel_log.hpp"
 #include "map/nogps/esp32_protocol.hpp"
+#include "map/nogps/esp32_update.hpp"
 #include "map/nogps/motion_source.hpp"
 #include "map/nogps/scheduler.hpp"
 
@@ -21,7 +22,9 @@ class Delegate;
 /// network or over Bluetooth LE, the phone can be held in hands. The box zeroes its gyroscope by itself on
 /// every stop. The lines are the same over both links, the user chooses one of them: the box has one radio,
 /// and a phone in its Wi-Fi network disturbs its Bluetooth.
-class Esp32Source : public MotionSource
+class Esp32Source
+  : public MotionSource
+  , private Esp32Update::Link
 {
 public:
   static uint16_t constexpr kBoxPort = 4210;
@@ -37,6 +40,10 @@ public:
   static size_t constexpr kMaxLoggedEvents = 64;
   // The lines of the box are shorter.
   static size_t constexpr kMaxLineSize = 512;
+  // A box that has not told about itself is asked after this many hellos, this many times: an old firmware
+  // doesn't know the question.
+  static int constexpr kInfoRequestHellos = 3;
+  static int constexpr kMaxInfoRequests = 3;
 
   /// How the data lines came during the last second, for the log of a drive.
   struct DataRate
@@ -72,13 +79,26 @@ public:
   Esp32Link GetLink() const { return m_link; }
   DataRate GetDataRate() const;
 
+  /// What the box has told about itself, nothing until it does.
+  std::optional<esp32::Info> const & GetInfo() const { return m_info; }
+  /// \returns true if the box takes a firmware now: it is connected over Bluetooth and its firmware knows how.
+  bool CanUpdate() const;
+  void StartUpdate(Firmware const & firmware);
+  void CancelUpdate() { m_update.Cancel(); }
+  Esp32Update const & GetUpdate() const { return m_update; }
+
 private:
+  // Esp32Update::Link overrides:
+  int SendUpdateCommand(std::string const & command) override;
+  void SendFirmwarePiece(std::string const & piece) override;
+
   void OnLine(std::string_view text);
   void SendHello();
   void Send(std::string_view command, int id);
   void OnData(esp32::Data const & data);
   void OnEvent(esp32::Event const & event);
   void OnReply(esp32::Reply const & reply);
+  void OnInfo(esp32::Info const & info);
   void OnLastEventNumber(int64_t lastNumber);
   void RequestLostEvents(int64_t fromNumber);
   bool IsConnected() const;
@@ -124,5 +144,9 @@ private:
   int64_t m_calibrationStartMs = 0;
   int m_calibrationProgress = 0;
   bool m_calibrationFailed = false;
+
+  std::optional<esp32::Info> m_info;
+  int m_hellosWithoutInfo = 0;
+  Esp32Update m_update;
 };
 }  // namespace nogps

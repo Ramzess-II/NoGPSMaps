@@ -74,6 +74,28 @@ struct Reply
   // The progress in percent, nothing if it is the final reply.
   std::optional<int> m_progress;
   std::string m_error;
+  // What an accepted command returns, e.g. the size of a piece and of the window of a firmware update.
+  std::vector<std::string> m_values;
+};
+
+/// What the box tells about itself when a connection starts.
+struct Info
+{
+  std::string m_firmware;
+  // A firmware is made for a chip and a board.
+  std::string m_chip;
+  std::string m_board;
+  // The box takes a new firmware over Bluetooth.
+  bool m_canUpdate = false;
+};
+
+/// The firmware the box is receiving.
+struct UpdateProgress
+{
+  // The bytes written in a row from the start of the firmware.
+  uint32_t m_received = 0;
+  // RECV, RESEND, VERIFY, DONE, ABORTED or ERR_<code>.
+  std::string m_state;
 };
 
 uint16_t Crc16(std::string_view text);
@@ -90,6 +112,10 @@ std::optional<Data> ParseData(Fields const & fields);
 std::optional<Reply> ParseReply(Fields const & fields);
 /// \returns the event of an NGE line.
 std::optional<Event> ParseEvent(Fields const & fields);
+/// \returns what an NGI line tells about the box.
+std::optional<Info> ParseInfo(Fields const & fields);
+/// \returns the progress of a firmware update from an NGO line.
+std::optional<UpdateProgress> ParseUpdateProgress(Fields const & fields);
 /// \returns the number of the last event of the box from an NGS line, if the box tells it.
 std::optional<int64_t> ParseLastEventNumber(Fields const & fields);
 /// \returns the state of the OBD adapter from an NGS line: NO_ADAPTER, NO_CAR, OK etc.

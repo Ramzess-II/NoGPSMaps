@@ -15,6 +15,7 @@
 #include <cstdio>
 #include <deque>
 #include <string>
+#include <vector>
 
 namespace nogps_engine_tests
 {
@@ -297,6 +298,105 @@ UNIT_TEST(NoGps_Engine_TellsThatMovedBoxDoesNotFollowCar)
   // Calibrated again: the car is followed.
   env.Drive(3000, 36, 0);
   TEST_GREATER(Distance(env.Last().m_position, stopped), 10, ());
+}
+
+UNIT_TEST(NoGps_Engine_OffersFirmwareOfApplication)
+{
+  auto const count = [](Env const & env, Event event)
+  { return std::count(env.m_delegate.m_events.begin(), env.m_delegate.m_events.end(), event); };
+  auto const connect = [](Env & env, std::string const & firmware)
+  {
+    env.m_engine.OnEsp32BleState(BleState::Connected);
+    env.m_engine.OnEsp32BleBytes(
+        BoxLine("NGI,1," + firmware + ",2026-10-10T07:33,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,WIFI BLE OTA"));
+  };
+  int reads = 0;
+  std::vector<Firmware> const firmwares = {{"0.3.3", "esp32s3", "s3zero", [&reads]
+  {
+    ++reads;
+    return std::string(1000, 'x');
+  }}};
+
+  {
+    // The box works with another firmware than the application comes with: the user is asked once.
+    Env env(true /* inertial */);
+    env.m_engine.SetFirmwares(firmwares);
+    env.m_engine.SetEsp32Bluetooth(true);
+    connect(env, "0.3.2");
+    // Not at once: the box tells if the car drives in a moment.
+    env.m_clock.Advance(Engine::kFirmwareOfferDelayMs - Engine::kTripLogIntervalMs);
+    TEST_EQUAL(count(env, Event::FirmwareUpdateAvailable), 0, ());
+    env.m_clock.Advance(Engine::kTripLogIntervalMs * 3);
+    TEST_EQUAL(count(env, Event::FirmwareUpdateAvailable), 1, ());
+    auto status = env.m_engine.GetStatus();
+    TEST_EQUAL(status.m_boxFirmware, "0.3.2", ());
+    TEST_EQUAL(status.m_bundledFirmware, "0.3.3", ());
+    TEST_EQUAL(status.m_firmwareUpdate, Esp32Update::State::None, ());
+    TEST_EQUAL(reads, 0, ());
+
+    env.m_engine.StartFirmwareUpdate();
+    TEST_EQUAL(reads, 1, ());
+    status = env.m_engine.GetStatus();
+    TEST_EQUAL(status.m_firmwareUpdate, Esp32Update::State::Starting, ());
+    TEST_EQUAL(status.m_sourceState, SourceState::Updating, ());
+    TEST(status.m_bundledFirmware.empty(), ());
+    TEST(env.m_delegate.m_esp32BleSent.back().find(",OTA_BEGIN,1000,") != std::string::npos, ());
+
+    env.m_engine.CancelFirmwareUpdate();
+    env.m_clock.Advance(Engine::kTripLogIntervalMs);
+    TEST_EQUAL(count(env, Event::FirmwareUpdateFailed), 1, ());
+    TEST_EQUAL(env.m_engine.GetStatus().m_firmwareUpdateError, "CANCELED", ());
+    // Not asked again about the same firmware.
+    env.m_clock.Advance(Engine::kFirmwareOfferDelayMs * 2);
+    TEST_EQUAL(count(env, Event::FirmwareUpdateAvailable), 1, ());
+  }
+  {
+    // The same firmware: nothing to ask about, but it can be sent again.
+    Env env(true /* inertial */);
+    env.m_engine.SetFirmwares(firmwares);
+    env.m_engine.SetEsp32Bluetooth(true);
+    connect(env, "0.3.3");
+    env.m_clock.Advance(Engine::kFirmwareOfferDelayMs * 2);
+    TEST_EQUAL(count(env, Event::FirmwareUpdateAvailable), 0, ());
+    TEST_EQUAL(env.m_engine.GetStatus().m_bundledFirmware, "0.3.3", ());
+  }
+  {
+    // The car drives: the user is asked before the next trip, when the box is connected again.
+    Env env(true /* inertial */);
+    env.m_engine.SetFirmwares(firmwares);
+    env.m_engine.SetEsp32Bluetooth(true);
+    connect(env, "0.3.2");
+    int64_t seq = 0;
+    auto const drive = [&](int64_t ms, int speedKmh)
+    {
+      for (int64_t t = 0; t < ms; t += 20)
+      {
+        env.m_clock.Advance(20);
+        ++seq;
+        env.m_engine.OnEsp32BleBytes(BoxDataLine(seq, 100'000 + seq * 20, 0, speedKmh, kCalibratedFlags));
+      }
+    };
+    drive(1500, 36);
+    drive(Engine::kFirmwareOfferDelayMs * 2, 0);
+    TEST_EQUAL(count(env, Event::FirmwareUpdateAvailable), 0, ());
+    env.m_engine.OnEsp32BleState(BleState::Searching);
+    env.m_clock.Advance(Engine::kTripLogIntervalMs);
+    connect(env, "0.3.2");
+    drive(Engine::kFirmwareOfferDelayMs + Engine::kTripLogIntervalMs * 2, 0);
+    TEST_EQUAL(count(env, Event::FirmwareUpdateAvailable), 1, ());
+  }
+  {
+    // A box of another kind or reached over Wi-Fi is not updated.
+    Env env(true /* inertial */);
+    env.m_engine.SetFirmwares({{"0.3.3", "esp32c3", "c3supermini", [] { return std::string(); }}});
+    env.m_engine.SetEsp32Bluetooth(true);
+    connect(env, "0.3.2");
+    env.m_clock.Advance(Engine::kFirmwareOfferDelayMs * 2);
+    TEST_EQUAL(count(env, Event::FirmwareUpdateAvailable), 0, ());
+    auto const status = env.m_engine.GetStatus();
+    TEST_EQUAL(status.m_boxFirmware, "0.3.2", ());
+    TEST(status.m_bundledFirmware.empty(), ());
+  }
 }
 
 UNIT_TEST(NoGps_Engine_GpsIsBackAfterRoadIsLost)

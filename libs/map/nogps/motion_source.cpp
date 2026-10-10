@@ -29,6 +29,7 @@ std::string DebugPrint(SourceState state)
   case SourceState::BoxSleeping: return "BOX_SLEEPING";
   case SourceState::ObdSleeping: return "OBD_SLEEPING";
   case SourceState::Connected: return "CONNECTED";
+  case SourceState::Updating: return "UPDATING";
   }
   UNREACHABLE();
 }

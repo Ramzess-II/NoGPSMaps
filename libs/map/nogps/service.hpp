@@ -62,6 +62,11 @@ public:
   Engine & GetEngine() { return m_engine; }
   Clock const & GetClock() const { return m_clock; }
 
+  // The firmwares of the ESP32 sensor box among the resources of the application: the list of a release as
+  // tools/make_release.py of the firmware writes it, and its files next to it.
+  static constexpr char const * kFirmwareDir = "nogps-firmware/";
+  static constexpr char const * kFirmwareList = "firmware.json";
+
 private:
   SystemClock m_clock;
   PlatformScheduler m_scheduler;

@@ -162,6 +162,8 @@
 		205E01232CF45A9588DCA75E /* engine.hpp in Headers */ = {isa = PBXBuildFile; fileRef = D7E30E0A0B2A772D86C3DB8D /* engine.hpp */; };
 		E793DE6AA83FC12D2DE3AEF4 /* esp32_source.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CCE8958AC9A22EDA4173C308 /* esp32_source.cpp */; };
 		EA028C66D059DB8F5FDADD05 /* esp32_source.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 6E4B54C3FDDBADF0D6B99552 /* esp32_source.hpp */; };
+		A7C10B5E2E98F00100E5D2A1 /* esp32_update.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A7C10B602E98F00100E5D2A1 /* esp32_update.cpp */; };
+		A7C10B5F2E98F00100E5D2A1 /* esp32_update.hpp in Headers */ = {isa = PBXBuildFile; fileRef = A7C10B612E98F00100E5D2A1 /* esp32_update.hpp */; };
 		1C5409F39F6C18B09C389D00 /* inertial_navigator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B645D7BF39FF5E94AC075D4D /* inertial_navigator.cpp */; };
 		7FE05A6E13EC417A84352102 /* inertial_navigator.hpp in Headers */ = {isa = PBXBuildFile; fileRef = D07F2DFB8EED09937FA87D0F /* inertial_navigator.hpp */; };
 		8A50E93EC62CB714D9C23487 /* map_api.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 1462255FBD1C062C7DFD5223 /* map_api.hpp */; };
@@ -365,6 +367,8 @@
 		D7E30E0A0B2A772D86C3DB8D /* engine.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = engine.hpp; sourceTree = "<group>"; };
 		CCE8958AC9A22EDA4173C308 /* esp32_source.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = esp32_source.cpp; sourceTree = "<group>"; };
 		6E4B54C3FDDBADF0D6B99552 /* esp32_source.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = esp32_source.hpp; sourceTree = "<group>"; };
+		A7C10B602E98F00100E5D2A1 /* esp32_update.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = esp32_update.cpp; sourceTree = "<group>"; };
+		A7C10B612E98F00100E5D2A1 /* esp32_update.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = esp32_update.hpp; sourceTree = "<group>"; };
 		B645D7BF39FF5E94AC075D4D /* inertial_navigator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = inertial_navigator.cpp; sourceTree = "<group>"; };
 		D07F2DFB8EED09937FA87D0F /* inertial_navigator.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = inertial_navigator.hpp; sourceTree = "<group>"; };
 		1462255FBD1C062C7DFD5223 /* map_api.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = map_api.hpp; sourceTree = "<group>"; };
@@ -605,6 +609,8 @@
 				D7E30E0A0B2A772D86C3DB8D /* engine.hpp */,
 				CCE8958AC9A22EDA4173C308 /* esp32_source.cpp */,
 				6E4B54C3FDDBADF0D6B99552 /* esp32_source.hpp */,
+				A7C10B602E98F00100E5D2A1 /* esp32_update.cpp */,
+				A7C10B612E98F00100E5D2A1 /* esp32_update.hpp */,
 				B645D7BF39FF5E94AC075D4D /* inertial_navigator.cpp */,
 				D07F2DFB8EED09937FA87D0F /* inertial_navigator.hpp */,
 				1462255FBD1C062C7DFD5223 /* map_api.hpp */,
@@ -667,6 +673,7 @@
 				22ECC73EBF87E8B7B341C147 /* elm327_session.hpp in Headers */,
 				205E01232CF45A9588DCA75E /* engine.hpp in Headers */,
 				EA028C66D059DB8F5FDADD05 /* esp32_source.hpp in Headers */,
+				A7C10B5F2E98F00100E5D2A1 /* esp32_update.hpp in Headers */,
 				7FE05A6E13EC417A84352102 /* inertial_navigator.hpp in Headers */,
 				8A50E93EC62CB714D9C23487 /* map_api.hpp in Headers */,
 				31020396F993FF96B99D52BF /* phone_motion.hpp in Headers */,
@@ -889,6 +896,7 @@
 				12D4198924069FB90BBC66EB /* elm327_session.cpp in Sources */,
 				983069152901763EEC9448AE /* engine.cpp in Sources */,
 				E793DE6AA83FC12D2DE3AEF4 /* esp32_source.cpp in Sources */,
+				A7C10B5E2E98F00100E5D2A1 /* esp32_update.cpp in Sources */,
 				1C5409F39F6C18B09C389D00 /* inertial_navigator.cpp in Sources */,
 				61FF3CDF8DFAE152B84F53D1 /* motion_source.cpp in Sources */,
 				F48364C194A6810D714F1A43 /* phone_motion.cpp in Sources */,

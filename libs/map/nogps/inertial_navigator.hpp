@@ -194,6 +194,8 @@ public:
   BleState GetBleState() const;
   /// \returns nothing if the car movement doesn't come from the ESP32 sensor box.
   std::optional<Esp32Source::DataRate> GetEsp32DataRate() const;
+  /// \returns the ESP32 sensor box, nullptr if the source is another one.
+  Esp32Source * GetEsp32() { return m_esp32; }
   /// \returns the last speed in km/h, or -1 if it is unknown or stale.
   int GetSpeedKmh() const;
   CalibrationState GetCalibrationState();

@@ -5,11 +5,85 @@
 #include "routing/following_info.hpp"
 
 #include "platform/location.hpp"
+#include "platform/platform.hpp"
+
+#include "coding/reader.hpp"
+
+#include "base/exception.hpp"
+#include "base/logging.hpp"
+
+#include <glaze/json.hpp>
 
 namespace nogps
 {
+// The list of a release of the box firmware. Read by the names of the fields, which needs types with linkage.
+namespace firmware_json
+{
+struct File
+{
+  std::string file;
+  std::string version;
+  std::string chip;
+  std::string board;
+  uint64_t size = 0;
+};
+
+struct List
+{
+  std::vector<File> files;
+};
+}  // namespace firmware_json
+
 namespace
 {
+std::string ReadResource(std::string const & name)
+{
+  std::string data;
+  GetPlatform().GetReader(name)->ReadAsString(data);
+  return data;
+}
+
+std::vector<Firmware> LoadFirmwares()
+{
+  std::vector<Firmware> firmwares;
+  try
+  {
+    firmware_json::List list;
+    std::string const json = ReadResource(std::string(Service::kFirmwareDir) + Service::kFirmwareList);
+    glz::opts constexpr opts{.error_on_unknown_keys = false};
+    if (auto const error = glz::read<opts>(list, json); error)
+    {
+      LOG(LERROR, ("Wrong list of the box firmwares:", glz::format_error(error, json)));
+      return {};
+    }
+    for (auto const & file : list.files)
+    {
+      LOG(LINFO, ("Box firmware", file.version, "for", file.chip, file.board));
+      firmwares.push_back({file.version, file.chip, file.board, [file]
+      {
+        try
+        {
+          auto data = ReadResource(Service::kFirmwareDir + file.file);
+          if (data.size() == file.size)
+            return data;
+          LOG(LERROR, ("Wrong size of", file.file, data.size(), "instead of", file.size));
+        }
+        catch (RootException const & e)
+        {
+          LOG(LERROR, ("Can't read", file.file, e.Msg()));
+        }
+        return std::string();
+      }});
+    }
+  }
+  catch (RootException const & e)
+  {
+    // An application without the firmware of the box does not update it.
+    LOG(LINFO, ("No box firmwares:", e.Msg()));
+  }
+  return firmwares;
+}
+
 // The core takes a negative bearing for an unknown one: it is built with fast math, which does not support NaN.
 double ToCoreBearing(std::optional<double> bearingDeg)
 {
@@ -98,5 +172,7 @@ std::string RoutingMapApi::GetDistanceLeft() const
 Service::Service(Delegate & delegate, RoutingManager & routing, RoutingMapApi::ShowCarHeadingFn && showCarHeading)
   : m_map(routing, m_clock, std::move(showCarHeading))
   , m_engine(delegate, m_map, m_storage, m_clock, m_scheduler)
-{}
+{
+  m_engine.SetFirmwares(LoadFirmwares());
+}
 }  // namespace nogps

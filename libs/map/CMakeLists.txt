@@ -59,6 +59,8 @@ set(SRC
   nogps/esp32_protocol.hpp
   nogps/esp32_source.cpp
   nogps/esp32_source.hpp
+  nogps/esp32_update.cpp
+  nogps/esp32_update.hpp
   nogps/geo.cpp
   nogps/geo.hpp
   nogps/gps_return_detector.cpp

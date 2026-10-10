@@ -31,6 +31,9 @@ std::string DebugPrint(Event event)
   case Event::MotionSourceStopped: return "MotionSourceStopped";
   case Event::MarkNoRoad: return "MarkNoRoad";
   case Event::NotCalibrated: return "NotCalibrated";
+  case Event::FirmwareUpdateAvailable: return "FirmwareUpdateAvailable";
+  case Event::FirmwareUpdateDone: return "FirmwareUpdateDone";
+  case Event::FirmwareUpdateFailed: return "FirmwareUpdateFailed";
   }
   UNREACHABLE();
 }

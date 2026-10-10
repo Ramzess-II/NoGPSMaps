@@ -120,6 +120,7 @@ std::optional<Reply> ParseReply(Fields const & fields)
   if (fields[2] == "OK")
   {
     reply.m_ok = true;
+    reply.m_values.assign(fields.begin() + 3, fields.end());
   }
   else if (fields[2] == "PROGRESS")
   {
@@ -152,6 +153,36 @@ std::optional<Event> ParseEvent(Fields const & fields)
   event.m_code = fields[5];
   event.m_text = fields[6];
   return event;
+}
+
+std::optional<Info> ParseInfo(Fields const & fields)
+{
+  // Version, firmware, build date, chip, board, id, flash size, largest image, partition, its state, abilities.
+  int version;
+  if (!IsLine(fields, 6, "NGI") || !strings::to_int(fields[1], version) || version != kVersion)
+    return {};
+  Info info;
+  info.m_firmware = fields[2];
+  info.m_chip = fields[4];
+  info.m_board = fields[5];
+  if (fields.size() > 11)
+    for (auto const ability : strings::Tokenize(fields[11], " "))
+      if (ability == "OTA")
+        info.m_canUpdate = true;
+  return info;
+}
+
+std::optional<UpdateProgress> ParseUpdateProgress(Fields const & fields)
+{
+  int version;
+  UpdateProgress progress;
+  if (!IsLine(fields, 4, "NGO") || !strings::to_int(fields[1], version) || version != kVersion ||
+      !strings::to_uint(fields[2], progress.m_received))
+  {
+    return {};
+  }
+  progress.m_state = fields[3];
+  return progress;
 }
 
 std::optional<int64_t> ParseLastEventNumber(Fields const & fields)

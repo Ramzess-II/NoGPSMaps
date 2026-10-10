@@ -45,6 +45,8 @@ enum class SourceState
   // The sensor box is connected and doesn't talk to the car with the engine stopped.
   ObdSleeping,
   Connected,
+  // The sensor box takes a new firmware: it sends no data until it restarts with it.
+  Updating,
 };
 
 /// How the lines of the ESP32 sensor box come.

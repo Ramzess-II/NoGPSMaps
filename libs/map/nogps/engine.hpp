@@ -1,6 +1,7 @@
 #pragma once
 
 #include "map/nogps/delegate.hpp"
+#include "map/nogps/esp32_update.hpp"
 #include "map/nogps/gps_return_detector.hpp"
 #include "map/nogps/gps_spoofing_detector.hpp"
 #include "map/nogps/gyro_calibrator.hpp"
@@ -17,6 +18,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace nogps
 {
@@ -82,6 +84,16 @@ struct Status
   int m_calibrationProgress = 0;
   bool m_hasInertialPosition = false;
   bool m_paused = false;
+
+  // The firmware of the ESP32 sensor box, empty until the box tells it.
+  std::string m_boxFirmware;
+  // The firmware for this box that comes with the application, if the box can take it now: it is connected
+  // over Bluetooth. Empty otherwise.
+  std::string m_bundledFirmware;
+  Esp32Update::State m_firmwareUpdate = Esp32Update::State::None;
+  int m_firmwareUpdateProgress = 0;
+  // Why the update has failed, see Esp32Update::GetError().
+  std::string m_firmwareUpdateError;
 };
 
 /// Navigation without GPS: it chooses the position to show from GPS, cell towers, the marks of the user and the
@@ -155,6 +167,8 @@ public:
   // a couple of seconds after it wakes up.
   static int constexpr kNotCalibratedSpeedKmh = 10;
   static int64_t constexpr kNotCalibratedDelayMs = 5000;
+  // A new firmware is offered when the sensor box has been heard for this long: it tells the car speed by then.
+  static int64_t constexpr kFirmwareOfferDelayMs = 5000;
   // Meters the position is moved by with the buttons, the user chooses one of them.
   static int constexpr kShiftStepsM[] = {10, 20, 50, 100};
 
@@ -222,6 +236,13 @@ public:
   /// Forgets the car speed errors, e.g. after new tyres.
   void ClearSpeedCalibration();
 
+  /// The firmwares of the ESP32 sensor box that come with the application: the box should work with the one
+  /// for it, the application is tested with it.
+  void SetFirmwares(std::vector<Firmware> firmwares);
+  /// Sends the firmware of Status::m_bundledFirmware to the box.
+  void StartFirmwareUpdate();
+  void CancelFirmwareUpdate();
+
   /// Switches to the next of kShiftStepsM.
   void CycleShiftStep();
   /// The buttons moving the position along the road are shown: they calibrate the speed of the car.
@@ -258,6 +279,9 @@ private:
   void CheckGpsLost();
   void CheckMotionSourceStopped();
   void CheckNotCalibrated();
+  void CheckFirmwareUpdate();
+  /// \returns the firmware for the connected sensor box, nullptr if there is none or the box can't take it now.
+  Firmware const * FindBoxFirmware();
   void OnGpsSpoofingChanged(bool spoofed);
   void RebuildRouteIfOffRoute(Fix const & fix);
   void SaveTrustedPosition();
@@ -324,6 +348,15 @@ private:
   // Since when the car drives with the gyroscope not calibrated, and when the user was told about it.
   std::optional<int64_t> m_notCalibratedSinceMs;
   std::optional<int64_t> m_notCalibratedWarnedMs;
+
+  std::vector<Firmware> m_firmwares;
+  Esp32Update::State m_firmwareUpdateState = Esp32Update::State::None;
+  // The firmware of the box and of the application the user was asked about, not to ask again.
+  std::string m_offeredFirmware;
+  // Since when the box is known, and if the car has driven since: the update is offered before a trip, not at
+  // a traffic light.
+  std::optional<int64_t> m_boxKnownSinceMs;
+  bool m_drivenWithBox = false;
 
   GpsSpoofingDetector m_spoofingDetector;
   GpsReturnDetector m_gpsReturnDetector;

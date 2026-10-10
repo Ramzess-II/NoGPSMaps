@@ -200,6 +200,30 @@ UNIT_TEST(NoGps_Esp32_ParsesLinesOfFirmware)
   TEST_EQUAL(ParseObdState(*status), "DISABLED", ());
   TEST_EQUAL(ParseLastEventNumber(*status), 3, ());
 
+  auto const info =
+      ParseInfo(*Parse("$NGI,1,0.3.3,2026-10-10T07:33,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,WIFI BLE OTA*C597"));
+  TEST(info, ());
+  TEST_EQUAL(info->m_firmware, "0.3.3", ());
+  TEST_EQUAL(info->m_chip, "esp32s3", ());
+  TEST_EQUAL(info->m_board, "s3zero", ());
+  TEST(info->m_canUpdate, ());
+  // The first firmware with Bluetooth didn't take a firmware over it.
+  auto const oldInfo =
+      ParseInfo(*Parse("$NGI,1,0.3.0,2026-10-08T19:43,esp32s3,s3zero,1B00,4096,2031616,ota_0,VALID,WIFI BLE*BBC4"));
+  TEST(oldInfo, ());
+  TEST(!oldInfo->m_canUpdate, ());
+  TEST(!ParseInfo(*Parse("$NGE,1,7,845100,I,CAL_AUTO,-386*AC09")), ());
+
+  auto const received = ParseUpdateProgress(*Parse("$NGO,1,4320,RESEND*4B18"));
+  TEST(received, ());
+  TEST_EQUAL(received->m_received, 4320, ());
+  TEST_EQUAL(received->m_state, "RESEND", ());
+  // What an accepted command returns: the size of a piece and of the window.
+  auto const begun = ParseReply(*Parse("$NGA,21,OK,240,4096*88F0"));
+  TEST(begun, ());
+  TEST(begun->m_ok, ());
+  TEST_EQUAL(begun->m_values, std::vector<std::string>({"240", "4096"}), ());
+
   auto const event = ParseEvent(*Parse("$NGE,1,7,845100,I,CAL_AUTO,-386*AC09"));
   TEST(event, ());
   TEST_EQUAL(event->m_number, 7, ());
