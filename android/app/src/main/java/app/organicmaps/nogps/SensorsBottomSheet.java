@@ -21,6 +21,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.content.ContextCompat;
+import app.organicmaps.BuildConfig;
 import app.organicmaps.R;
 import app.organicmaps.sdk.location.NoGps;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
@@ -59,6 +60,9 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
 
   private SwitchCompat mSwitch;
   private TextView mAdapter;
+  private View mFirmwareRow;
+  private TextView mFirmware;
+  private TextView mFirmwareButton;
   private TextView mSpeed;
   private TextView mCar;
   private TextView mVoltageMismatch;
@@ -78,6 +82,10 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     final View view = inflater.inflate(R.layout.nogps_sensors_sheet, container, false);
     mSwitch = view.findViewById(R.id.nogps_inertial_switch);
     mAdapter = view.findViewById(R.id.nogps_adapter);
+    mFirmwareRow = view.findViewById(R.id.nogps_firmware_row);
+    mFirmware = view.findViewById(R.id.nogps_firmware);
+    mFirmwareButton = view.findViewById(R.id.nogps_firmware_button);
+    mFirmwareButton.setOnClickListener(v -> onFirmwareButton());
     mSpeed = view.findViewById(R.id.nogps_speed);
     mCar = view.findViewById(R.id.nogps_car);
     mVoltageMismatch = view.findViewById(R.id.nogps_voltage_mismatch);
@@ -286,6 +294,8 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
       mAdapter.setText(getString(R.string.nogps_sensors_adapter, adapter));
     }
 
+    updateFirmware(enabled && esp32 ? status : null);
+
     final int speed = enabled ? status.speedKmh : -1;
     mSpeed.setText(getString(R.string.nogps_sensors_speed, speed >= 0 ? getString(R.string.nogps_speed_kmh, speed)
                                                                       : getString(R.string.nogps_unknown)));
@@ -339,6 +349,58 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
       mReadiness.setText(getString(R.string.nogps_sensors_not_ready, String.join(", ", missing)));
       mReadiness.setTextColor(ContextCompat.getColor(requireContext(), R.color.nogps_status_none));
     }
+  }
+
+  /**
+   * Shows the firmware of the sensor box, the button to send it the one of the application, or how that goes.
+   * @param status null if the box is not used.
+   */
+  private void updateFirmware(@Nullable NoGps.Status status)
+  {
+    final NoGps.FirmwareUpdate update = status != null ? status.getFirmwareUpdate() : NoGps.FirmwareUpdate.NONE;
+    final boolean updating = isUpdating(update);
+    if (status == null || (!updating && status.boxFirmware.isEmpty()))
+    {
+      mFirmwareRow.setVisibility(View.GONE);
+      return;
+    }
+    mFirmwareRow.setVisibility(View.VISIBLE);
+    final String state = switch (update)
+    {
+      case STARTING -> getString(R.string.nogps_firmware_starting);
+      case SENDING -> getString(R.string.nogps_firmware_sending, status.firmwareUpdateProgress);
+      case VERIFYING -> getString(R.string.nogps_firmware_verifying);
+      case RESTARTING -> getString(R.string.nogps_firmware_restarting);
+      case NONE, DONE, FAILED -> status.boxFirmware;
+    };
+    mFirmware.setText(getString(R.string.nogps_sensors_firmware, state));
+
+    // The box works with the firmware the application is tested with: there is nothing to install. A debug
+    // build sends it again to try the update itself.
+    final boolean install = !status.bundledFirmware.isEmpty()
+                         && (BuildConfig.DEBUG || !status.bundledFirmware.equals(status.boxFirmware));
+    // A box that has taken the firmware restarts by itself.
+    final boolean cancel = updating && update != NoGps.FirmwareUpdate.RESTARTING;
+    mFirmwareButton.setVisibility(install || cancel ? View.VISIBLE : View.GONE);
+    if (cancel)
+      mFirmwareButton.setText(R.string.cancel);
+    else if (install)
+      mFirmwareButton.setText(getString(R.string.nogps_firmware_install, status.bundledFirmware));
+  }
+
+  private static boolean isUpdating(@NonNull NoGps.FirmwareUpdate update)
+  {
+    return update == NoGps.FirmwareUpdate.STARTING || update == NoGps.FirmwareUpdate.SENDING
+        || update == NoGps.FirmwareUpdate.VERIFYING || update == NoGps.FirmwareUpdate.RESTARTING;
+  }
+
+  private void onFirmwareButton()
+  {
+    if (isUpdating(NoGps.getStatus().getFirmwareUpdate()))
+      NoGps.nativeCancelFirmwareUpdate();
+    else
+      NoGps.nativeStartFirmwareUpdate();
+    update();
   }
 
   /**
@@ -399,6 +461,7 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
       case BOX_SLEEPING -> R.string.nogps_box_sleeping;
       case OBD_SLEEPING -> R.string.nogps_box_obd_sleeping;
       case CONNECTED -> R.string.nogps_elm_connected;
+      case UPDATING -> R.string.nogps_box_updating;
     };
   }
 
@@ -431,7 +494,8 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
       case NO_ADAPTER, OBD_DISABLED -> R.string.nogps_elm_no_adapter;
       case OBD_CONNECTING -> R.string.nogps_elm_connecting;
       case OBD_ERROR -> R.string.nogps_elm_error;
-      case NO_CAR_DATA, BOX_SLEEPING, OBD_SLEEPING -> R.string.nogps_elm_no_car;
+      // The last one is of the sensor box only.
+      case NO_CAR_DATA, BOX_SLEEPING, OBD_SLEEPING, UPDATING -> R.string.nogps_elm_no_car;
       case CONNECTED -> R.string.nogps_elm_connected;
     };
   }

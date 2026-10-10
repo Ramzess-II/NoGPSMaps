@@ -61,6 +61,8 @@ class Esp32BleTransport
   private static final UUID TX = UUID.fromString("02CB0002-C0C3-40D0-819C-5A85998DCD99");
   // The commands to the box.
   private static final UUID RX = UUID.fromString("02CB0003-C0C3-40D0-819C-5A85998DCD99");
+  // The pieces of a new firmware of the box, section 18 of the same document.
+  private static final UUID OTA = UUID.fromString("02CB0004-C0C3-40D0-819C-5A85998DCD99");
   private static final UUID CLIENT_CONFIG = UUID.fromString("00002902-0000-1000-8000-00805F9B34FB");
   private static final String NAME_PREFIX = "NoGPS-";
   // The box tells in its advertisement if it accepts a new phone now: company, format version 1, flags.
@@ -77,6 +79,9 @@ class Esp32BleTransport
   private static final long NEW_BOX_DELAY_MS = 3000;
   // The box doesn't answer the commands, a few of them wait for the previous one to leave at most.
   private static final int MAX_OUTGOING = 16;
+  // The box takes the pieces of a firmware 4096 bytes ahead of what it has written: 17 pieces.
+  private static final int MAX_FIRMWARE_PIECES = 64;
+  private static final long WRITE_RETRY_MS = 20;
 
   @NonNull
   private final Context mContext;
@@ -92,11 +97,17 @@ class Esp32BleTransport
   private BluetoothGatt mGatt;
   @Nullable
   private BluetoothGattCharacteristic mRx;
+  // A box with an old firmware has none.
+  @Nullable
+  private BluetoothGattCharacteristic mOta;
   // Subscribed to the lines of the box.
   private boolean mReady;
   private int mMtu = 23;
   private final ArrayDeque<byte[]> mOutgoing = new ArrayDeque<>();
+  // The pieces of a firmware go after the lines: a line a second keeps the connection with the box.
+  private final ArrayDeque<byte[]> mFirmware = new ArrayDeque<>();
   private boolean mWriting;
+  private final Runnable mWriter = this::writeNext;
   private long mRetryDelayMs = RETRY_DELAY_MS;
   private final Runnable mStarter = this::start;
 
@@ -142,6 +153,19 @@ class Esp32BleTransport
     if (mOutgoing.size() >= MAX_OUTGOING)
       mOutgoing.poll();
     mOutgoing.add(line);
+    writeNext();
+  }
+
+  /**
+   * A piece of a new firmware of the box. A piece that doesn't fit is dropped: the box tells where it has
+   * stopped, and the core sends from there again.
+   */
+  @UiThread
+  void sendFirmware(@NonNull byte[] piece)
+  {
+    if (!mReady || mOta == null || piece.length > mMtu - 3 || mFirmware.size() >= MAX_FIRMWARE_PIECES)
+      return;
+    mFirmware.add(piece);
     writeNext();
   }
 
@@ -321,9 +345,12 @@ class Esp32BleTransport
     final BluetoothGatt gatt = mGatt;
     mGatt = null;
     mRx = null;
+    mOta = null;
     mReady = false;
     mWriting = false;
     mOutgoing.clear();
+    mFirmware.clear();
+    mMainHandler.removeCallbacks(mWriter);
     if (gatt == null)
       return;
     try
@@ -512,6 +539,7 @@ class Esp32BleTransport
       return;
     }
     mRx = rx;
+    mOta = service.getCharacteristic(OTA);
     subscribe(gatt);
   }
 
@@ -574,34 +602,50 @@ class Esp32BleTransport
   private void writeNext()
   {
     final BluetoothGatt gatt = mGatt;
-    final BluetoothGattCharacteristic rx = mRx;
-    if (mWriting || gatt == null || rx == null || mOutgoing.isEmpty())
+    final boolean firmware = mOutgoing.isEmpty();
+    final ArrayDeque<byte[]> queue = firmware ? mFirmware : mOutgoing;
+    final BluetoothGattCharacteristic characteristic = firmware ? mOta : mRx;
+    if (mWriting || gatt == null || characteristic == null || queue.isEmpty())
       return;
-    final byte[] line = mOutgoing.peek();
+    final byte[] data = queue.peek();
     try
     {
       final boolean started;
-      // Without a response: the box answers a command with a line, and its data are the answer to HELLO.
+      // Without a response: the box answers a command with a line, and its data are the answer to HELLO. It
+      // tells how much of a firmware it has got in lines too.
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
       {
-        started = gatt.writeCharacteristic(rx, line, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE)
+        started = gatt.writeCharacteristic(characteristic, data, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE)
                == BluetoothStatusCodes.SUCCESS;
       }
       else
       {
-        rx.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
-        rx.setValue(line);
-        started = gatt.writeCharacteristic(rx);
+        characteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+        characteristic.setValue(data);
+        started = gatt.writeCharacteristic(characteristic);
       }
-      // A refused write is busy with another operation: the line is dropped, HELLO comes again in a second.
-      mOutgoing.poll();
       mWriting = started;
-      if (!started)
+      if (started)
+      {
+        queue.poll();
+      }
+      else if (firmware)
+      {
+        // The pieces go one after another, a refused one is written again in a moment.
+        mMainHandler.removeCallbacks(mWriter);
+        mMainHandler.postDelayed(mWriter, WRITE_RETRY_MS);
+      }
+      else
+      {
+        // A refused write is busy with another operation: the line is dropped, HELLO comes again in a second.
+        queue.poll();
         writeNext();
+      }
     }
     catch (SecurityException e)
     {
       mOutgoing.clear();
+      mFirmware.clear();
     }
   }
 }

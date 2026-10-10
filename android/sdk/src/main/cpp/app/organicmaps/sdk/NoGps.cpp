@@ -54,6 +54,8 @@ public:
 
   void Esp32BleSend(std::string const & line) override { CallWithBytes("esp32BleSend", line); }
 
+  void Esp32BleSendFirmware(std::string const & piece) override { CallWithBytes("esp32BleSendFirmware", piece); }
+
   void Esp32BleClose() override { CallVoid("esp32BleClose"); }
 
   void OnPosition(nogps::Fix const & fix) override
@@ -305,6 +307,16 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeCalibrate(JNIEnv *,
   NoGpsEngine().Calibrate();
 }
 
+JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeStartFirmwareUpdate(JNIEnv *, jclass)
+{
+  NoGpsEngine().StartFirmwareUpdate();
+}
+
+JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeCancelFirmwareUpdate(JNIEnv *, jclass)
+{
+  NoGpsEngine().CancelFirmwareUpdate();
+}
+
 JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeClearSpeedCalibration(JNIEnv *, jclass)
 {
   NoGpsEngine().ClearSpeedCalibration();
@@ -364,5 +376,10 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeGetStatus(JNIEnv * 
   SetNoGpsField(env, out, "calibrationProgress", status.m_calibrationProgress);
   SetNoGpsField(env, out, "hasInertialPosition", status.m_hasInertialPosition);
   SetNoGpsField(env, out, "paused", status.m_paused);
+  SetNoGpsString(env, out, "boxFirmware", status.m_boxFirmware);
+  SetNoGpsString(env, out, "bundledFirmware", status.m_bundledFirmware);
+  SetNoGpsField(env, out, "firmwareUpdate", static_cast<int>(status.m_firmwareUpdate));
+  SetNoGpsField(env, out, "firmwareUpdateProgress", status.m_firmwareUpdateProgress);
+  SetNoGpsString(env, out, "firmwareUpdateError", status.m_firmwareUpdateError);
 }
 }  // extern "C"

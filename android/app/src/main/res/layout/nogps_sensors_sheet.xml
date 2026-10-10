@@ -81,6 +81,27 @@
       android:text="@string/nogps_sensors_choose" />
   </LinearLayout>
 
+  <LinearLayout
+    android:id="@+id/nogps_firmware_row"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:minHeight="52dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:visibility="gone">
+    <TextView
+      android:id="@+id/nogps_firmware"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:textSize="16sp" />
+    <Button
+      android:id="@+id/nogps_firmware_button"
+      style="?borderlessButtonStyle"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content" />
+  </LinearLayout>
+
   <TextView
     android:id="@+id/nogps_speed"
     android:layout_width="match_parent"

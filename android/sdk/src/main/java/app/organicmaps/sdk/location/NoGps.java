@@ -47,6 +47,25 @@ public final class NoGps
     // The sensor box is connected and doesn't talk to the car with the engine stopped.
     OBD_SLEEPING,
     CONNECTED,
+    // The sensor box takes a new firmware: it sends no data until it restarts with it.
+    UPDATING,
+  }
+
+  /**
+   * The update of the firmware of the ESP32 sensor box.
+   */
+  public enum FirmwareUpdate
+  {
+    NONE,
+    // The box is asked to take the firmware.
+    STARTING,
+    SENDING,
+    // Everything is sent, the box checks it.
+    VERIFYING,
+    // The box restarts with the new firmware.
+    RESTARTING,
+    DONE,
+    FAILED,
   }
 
   /**
@@ -99,6 +118,11 @@ public final class NoGps
     // The car drives without GPS, but the gyroscope is not calibrated or the sensor box has been moved: the
     // position stands still. Repeated while it lasts.
     NOT_CALIBRATED,
+    // The sensor box works with another firmware than the application comes with and can take it now.
+    FIRMWARE_UPDATE_AVAILABLE,
+    // The update of the firmware of the sensor box has ended.
+    FIRMWARE_UPDATE_DONE,
+    FIRMWARE_UPDATE_FAILED,
   }
 
   // nogps::Provider.
@@ -205,6 +229,22 @@ public final class NoGps
     public boolean hasInertialPosition;
     @Keep
     public boolean paused;
+    // The firmware of the ESP32 sensor box, empty until the box tells it.
+    @Keep
+    @NonNull
+    public String boxFirmware = "";
+    // The firmware for this box that comes with the application, if the box can take it now; empty otherwise.
+    @Keep
+    @NonNull
+    public String bundledFirmware = "";
+    @Keep
+    int firmwareUpdate;
+    @Keep
+    public int firmwareUpdateProgress;
+    // Why the update has failed: a code of the box (MOVING, LOW_VOLTAGE etc.) or of the application.
+    @Keep
+    @NonNull
+    public String firmwareUpdateError = "";
 
     @NonNull
     public PositionSource getSource()
@@ -228,6 +268,12 @@ public final class NoGps
     public CalibrationState getCalibration()
     {
       return CalibrationState.values()[calibration];
+    }
+
+    @NonNull
+    public FirmwareUpdate getFirmwareUpdate()
+    {
+      return FirmwareUpdate.values()[firmwareUpdate];
     }
   }
 
@@ -278,6 +324,12 @@ public final class NoGps
 
     @Keep
     void esp32BleSend(@NonNull byte[] line);
+
+    /**
+     * A piece of a new firmware for the box, written to its characteristic for them.
+     */
+    @Keep
+    void esp32BleSendFirmware(@NonNull byte[] piece);
 
     @Keep
     void esp32BleClose();
@@ -422,6 +474,13 @@ public final class NoGps
   public static native void nativeSetEsp32Address(@NonNull String address);
 
   public static native void nativeCalibrate();
+
+  /**
+   * Sends the firmware that comes with the application to the sensor box, see {@link Status#bundledFirmware}.
+   */
+  public static native void nativeStartFirmwareUpdate();
+
+  public static native void nativeCancelFirmwareUpdate();
 
   public static native void nativeClearSpeedCalibration();
 

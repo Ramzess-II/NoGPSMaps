@@ -828,6 +828,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
   {
     final int message = switch (event)
     {
+      case FIRMWARE_UPDATE_AVAILABLE, FIRMWARE_UPDATE_DONE, FIRMWARE_UPDATE_FAILED -> onFirmwareEvent(event);
       // The buttons show the mode, they are updated every second.
       case MANUAL_MODE_CHANGED -> 0;
       case GPS_BACK -> R.string.nogps_gps_back_auto;
@@ -845,6 +846,55 @@ public class MwmActivity extends BaseMwmFragmentActivity
     };
     if (message != 0)
       Toast.makeText(this, message, event == NoGps.Event.MARK_NO_ROAD ? Toast.LENGTH_SHORT : Toast.LENGTH_LONG).show();
+  }
+
+  /**
+   * The firmware of the sensor box: asks the user to install the one of the application and tells how it ended.
+   * @return 0, there is no message of a fixed text.
+   */
+  private int onFirmwareEvent(@NonNull NoGps.Event event)
+  {
+    final NoGps.Status status = NoGps.getStatus();
+    if (event == NoGps.Event.FIRMWARE_UPDATE_DONE)
+    {
+      Toast.makeText(this, getString(R.string.nogps_firmware_done, status.boxFirmware), Toast.LENGTH_LONG).show();
+    }
+    else if (event == NoGps.Event.FIRMWARE_UPDATE_FAILED)
+    {
+      final String reason = firmwareError(status.firmwareUpdateError);
+      Toast.makeText(this, getString(R.string.nogps_firmware_failed, reason), Toast.LENGTH_LONG).show();
+    }
+    else if (!status.bundledFirmware.isEmpty() && !isFinishing() && !getSupportFragmentManager().isStateSaved())
+    {
+      new MaterialAlertDialogBuilder(this, R.style.MwmTheme_AlertDialog)
+          .setTitle(R.string.nogps_firmware_title)
+          .setMessage(getString(R.string.nogps_firmware_offer, status.boxFirmware, status.bundledFirmware))
+          .setPositiveButton(getString(R.string.nogps_firmware_install, status.bundledFirmware),
+                             (dialog, which) -> {
+                               NoGps.nativeStartFirmwareUpdate();
+                               // It shows how the update goes.
+                               if (getSupportFragmentManager().findFragmentByTag(SensorsBottomSheet.TAG) == null)
+                                 new SensorsBottomSheet().show(getSupportFragmentManager(), SensorsBottomSheet.TAG);
+                             })
+          .setNegativeButton(R.string.later, null)
+          .show();
+    }
+    return 0;
+  }
+
+  @NonNull
+  private String firmwareError(@NonNull String code)
+  {
+    return switch (code)
+    {
+      case "MOVING" -> getString(R.string.nogps_firmware_error_moving);
+      case "LOW_VOLTAGE" -> getString(R.string.nogps_firmware_error_voltage);
+      case "LINK" -> getString(R.string.nogps_firmware_error_link);
+      case "CANCELED", "ABORTED" -> getString(R.string.nogps_firmware_error_canceled);
+      case "ROLLBACK" -> getString(R.string.nogps_firmware_error_rollback);
+      case "PENDING" -> getString(R.string.nogps_firmware_error_pending);
+      default -> getString(R.string.nogps_firmware_error_code, code);
+    };
   }
 
   /**

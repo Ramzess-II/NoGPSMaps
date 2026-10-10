@@ -156,6 +156,12 @@ public class LocationHelper implements BaseLocationProvider.Listener
     }
 
     @Override
+    public void esp32BleSendFirmware(@NonNull byte[] piece)
+    {
+      mEsp32Ble.sendFirmware(piece);
+    }
+
+    @Override
     public void esp32BleClose()
     {
       mEsp32Ble.close();
