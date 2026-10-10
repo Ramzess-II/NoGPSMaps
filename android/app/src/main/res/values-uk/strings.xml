@@ -1049,6 +1049,42 @@
     <string name="nogps_box_uncalibrated_stopped">Блок датчиків не відкалібровано, машина на мапі стоїть. Зупиніться й відкалібруйте блок</string>
     <!-- Warning shown while driving without GPS: the gyroscope of the phone is not zeroed -->
     <string name="nogps_gyro_stopped">Гіроскоп не обнулено, машина на мапі стоїть. Зупиніться й обнуліть його</string>
+    <!-- State of the sensor box, shown after its name while it takes a new firmware -->
+    <string name="nogps_box_updating">приймає нову прошивку</string>
+    <!-- Row of the sensors screen: the version of the firmware of the sensor box or what its update does now -->
+    <string name="nogps_sensors_firmware">Прошивка блока: %1$s</string>
+    <!-- Button: sends the firmware that comes with the app to the sensor box, with its version -->
+    <string name="nogps_firmware_install">Встановити %1$s</string>
+    <!-- Title of the question about the firmware of the sensor box -->
+    <string name="nogps_firmware_title">Прошивка блока датчиків</string>
+    <!-- Question shown when the sensor box works with another firmware than the app comes with: the version of the box and of the app -->
+    <string name="nogps_firmware_offer">У блоці прошивка %1$s, а цю версію застосунку перевірено з %2$s. Встановити її? Це триватиме кілька хвилин: автомобіль має стояти, блок не виймайте.</string>
+    <!-- State of the update of the sensor box firmware, shown after "Box firmware:" -->
+    <string name="nogps_firmware_starting">підготовка…</string>
+    <!-- State of the update of the sensor box firmware, shown after "Box firmware:", with the percent sent -->
+    <string name="nogps_firmware_sending">передавання, %d%%</string>
+    <!-- State of the update of the sensor box firmware, shown after "Box firmware:" -->
+    <string name="nogps_firmware_verifying">блок перевіряє…</string>
+    <!-- State of the update of the sensor box firmware, shown after "Box firmware:" -->
+    <string name="nogps_firmware_restarting">блок перезавантажується…</string>
+    <!-- Message: the sensor box works with the new firmware, with its version -->
+    <string name="nogps_firmware_done">У блок датчиків встановлено прошивку %1$s</string>
+    <!-- Message: the firmware of the sensor box is not updated, with the reason -->
+    <string name="nogps_firmware_failed">Прошивку блока не встановлено: %1$s</string>
+    <!-- Why the firmware of the sensor box is not installed -->
+    <string name="nogps_firmware_error_moving">автомобіль їде</string>
+    <!-- Why the firmware of the sensor box is not installed -->
+    <string name="nogps_firmware_error_voltage">напруга нижча за 11,8 В</string>
+    <!-- Why the firmware of the sensor box is not installed -->
+    <string name="nogps_firmware_error_link">зв\'язок із блоком перервався</string>
+    <!-- Why the firmware of the sensor box is not installed -->
+    <string name="nogps_firmware_error_canceled">скасовано</string>
+    <!-- Why the firmware of the sensor box is not installed: the new one didn't start -->
+    <string name="nogps_firmware_error_rollback">блок повернувся до попередньої прошивки</string>
+    <!-- Why the firmware of the sensor box is not installed: the box has just been updated and still checks that -->
+    <string name="nogps_firmware_error_pending">блок ще перевіряє попереднє оновлення, спробуйте пізніше</string>
+    <!-- Why the firmware of the sensor box is not installed: an error code of the box, e.g. SIGNATURE -->
+    <string name="nogps_firmware_error_code">помилка %1$s</string>
     <string name="nogps_clear_speed">Скинути</string>
     <string name="nogps_clear_speed_title">Скинути калібрування швидкості?</string>
     <string name="nogps_clear_speed_message">Поправки швидкості, виміряні за GPS на різних швидкостях і за вашими зсувами, буде забуто. Робіть це після заміни шин або машини. Поки працює GPS, вони вимірюються наново.</string>

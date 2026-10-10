@@ -1039,6 +1039,42 @@
     <string name="nogps_box_uncalibrated_stopped">The sensor box is not calibrated, the car stands still on the map. Stop and calibrate the box</string>
     <!-- Warning shown while driving without GPS: the gyroscope of the phone is not zeroed -->
     <string name="nogps_gyro_stopped">The gyroscope is not zeroed, the car stands still on the map. Stop and zero it</string>
+    <!-- State of the sensor box, shown after its name while it takes a new firmware -->
+    <string name="nogps_box_updating">takes a new firmware</string>
+    <!-- Row of the sensors screen: the version of the firmware of the sensor box or what its update does now -->
+    <string name="nogps_sensors_firmware">Box firmware: %1$s</string>
+    <!-- Button: sends the firmware that comes with the app to the sensor box, with its version -->
+    <string name="nogps_firmware_install">Install %1$s</string>
+    <!-- Title of the question about the firmware of the sensor box -->
+    <string name="nogps_firmware_title">Sensor box firmware</string>
+    <!-- Question shown when the sensor box works with another firmware than the app comes with: the version of the box and of the app -->
+    <string name="nogps_firmware_offer">The box works with firmware %1$s, this version of the app is tested with %2$s. Install it? It takes a few minutes: keep the car standing and the box plugged in.</string>
+    <!-- State of the update of the sensor box firmware, shown after "Box firmware:" -->
+    <string name="nogps_firmware_starting">preparing…</string>
+    <!-- State of the update of the sensor box firmware, shown after "Box firmware:", with the percent sent -->
+    <string name="nogps_firmware_sending">sending, %d%%</string>
+    <!-- State of the update of the sensor box firmware, shown after "Box firmware:" -->
+    <string name="nogps_firmware_verifying">the box checks it…</string>
+    <!-- State of the update of the sensor box firmware, shown after "Box firmware:" -->
+    <string name="nogps_firmware_restarting">the box restarts…</string>
+    <!-- Message: the sensor box works with the new firmware, with its version -->
+    <string name="nogps_firmware_done">Firmware %1$s is installed in the sensor box</string>
+    <!-- Message: the firmware of the sensor box is not updated, with the reason -->
+    <string name="nogps_firmware_failed">The box firmware is not installed: %1$s</string>
+    <!-- Why the firmware of the sensor box is not installed -->
+    <string name="nogps_firmware_error_moving">the car drives</string>
+    <!-- Why the firmware of the sensor box is not installed -->
+    <string name="nogps_firmware_error_voltage">the car battery is below 11.8 V</string>
+    <!-- Why the firmware of the sensor box is not installed -->
+    <string name="nogps_firmware_error_link">the connection to the box was lost</string>
+    <!-- Why the firmware of the sensor box is not installed -->
+    <string name="nogps_firmware_error_canceled">canceled</string>
+    <!-- Why the firmware of the sensor box is not installed: the new one didn't start -->
+    <string name="nogps_firmware_error_rollback">the box has returned to its previous firmware</string>
+    <!-- Why the firmware of the sensor box is not installed: the box has just been updated and still checks that -->
+    <string name="nogps_firmware_error_pending">the box still checks its previous update, try again later</string>
+    <!-- Why the firmware of the sensor box is not installed: an error code of the box, e.g. SIGNATURE -->
+    <string name="nogps_firmware_error_code">error %1$s</string>
     <string name="nogps_clear_speed">Reset</string>
     <string name="nogps_clear_speed_title">Reset the speed calibration?</string>
     <string name="nogps_clear_speed_message">The speed corrections learned from GPS at different speeds and from your corrections will be forgotten. Do it after new tyres or another car. They are learned anew while GPS works.</string>
