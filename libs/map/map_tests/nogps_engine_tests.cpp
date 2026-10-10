@@ -602,6 +602,74 @@ UNIT_TEST(NoGps_Engine_OffersFirmwareOfApplication)
   }
 }
 
+/// Drives along a street going east at 72 km/h, the car looks aside of the street by |asideDeg(t)| degrees.
+/// \param roads the roads instead of the grid of streets with a crossing every 100 m.
+/// \returns how far the calculated position is ahead of the car along the street in the end, nothing if the car
+/// was taken off the street.
+template <class Aside>
+std::optional<double> DriveAside(Aside && asideDeg, Roads * roads, double fromEastM, int seconds)
+{
+  Env env(true /* inertial */, roads);
+  MarkCar(env, fromEastM);
+  double constexpr kSpeedMps = 20;
+  double eastM = fromEastM;
+  double asideWas = 0;
+  for (int i = 1; i <= seconds * 50; ++i)
+  {
+    double const aside = asideDeg(i * 0.02);
+    env.Drive(20, 72, (aside - asideWas) / 0.02);
+    asideWas = aside;
+    eastM += kSpeedMps * 0.02 * std::cos(math::DegToRad(aside));
+  }
+  // The position is aside of the street by a few meters until it is put back.
+  if (env.m_delegate.HasEvent(Event::RoadLost) || std::fabs(North(env.Last().m_position)) > 10)
+    return {};
+  return East(env.Last().m_position) - eastM;
+}
+
+UNIT_TEST(NoGps_Engine_WeavingCarIsNotAheadOfItself)
+{
+  // The car drives a longer way than the road is when it overtakes or goes around holes. The position goes where
+  // the car looks at and is put back to the road every second, so only the way along the road counts.
+  auto const straight = [](double) { return 0.0; };
+  // An overtaking every 10 s: the car turns by 5 degrees within half a second, goes to the next lane for 1.5 s,
+  // straightens, and comes back the same way 3 s later. 3 m longer than 2 km of the road.
+  auto const overtaking = [](double t)
+  {
+    auto const change = [](double s)
+    {
+      if (s < 0 || s >= 2.5)
+        return 0.0;
+      return 5.0 * std::min({s / 0.5, 1.0, (2.5 - s) / 0.5});
+    };
+    double const s = std::fmod(t, 10.0);
+    return change(s) - change(s - 5.5);
+  };
+  // A snake: 1.8 m to each side every 80 m, 10 m longer than 2 km of the road. A wild one: 2.5 m to each side
+  // every 60 m, 34 m longer.
+  auto const snake = [](double t) { return 8 * std::sin(2 * math::pi * t / 4); };
+  auto const wildSnake = [](double t) { return 15 * std::sin(2 * math::pi * t / 3); };
+
+  // 2 km of a road without crossings, and 900 m of the street with them.
+  PieceRoads road({{-3000, 0, 3000, 0}}, {});
+  for (Roads * roads : {static_cast<Roads *>(&road), static_cast<Roads *>(nullptr)})
+  {
+    double const from = roads ? -2500 : -450;
+    int const seconds = roads ? 100 : 45;
+    auto const base = DriveAside(straight, roads, from, seconds);
+    auto const overtakes = DriveAside(overtaking, roads, from, seconds);
+    auto const snakes = DriveAside(snake, roads, from, seconds);
+    auto const wildSnakes = DriveAside(wildSnake, roads, from, seconds);
+    TEST(base && overtakes && snakes && wildSnakes, (roads != nullptr));
+    LOG(LWARNING, (roads ? "A road without crossings, 2 km." : "A street with a crossing every 100 m, 900 m.",
+                   "Ahead of the car: straight", *base, "m, overtaking", *overtakes, "m, a snake", *snakes,
+                   "m, a wild snake", *wildSnakes, "m"));
+    TEST_LESS(std::fabs(*overtakes - *base), 1, ());
+    TEST_LESS(std::fabs(*snakes - *base), 1, ());
+    TEST_LESS(std::fabs(*wildSnakes - *base), 1, ());
+  }
+}
+
 UNIT_TEST(NoGps_Engine_GpsIsBackAfterRoadIsLost)
 {
   Env env(true /* inertial */);
