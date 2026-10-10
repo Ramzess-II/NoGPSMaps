@@ -156,6 +156,26 @@
     android:textSize="16sp"
     android:visibility="gone" />
 
+  <TextView
+    android:id="@+id/nogps_box_calibration_title"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="12dp"
+    android:text="@string/nogps_box_calibration"
+    android:textSize="16sp"
+    android:textStyle="bold"
+    android:visibility="gone" />
+
+  <TextView
+    android:id="@+id/nogps_box_calibration_hint"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="4dp"
+    android:text="@string/nogps_box_calibration_hint"
+    android:textColor="?android:textColorSecondary"
+    android:textSize="14sp"
+    android:visibility="gone" />
+
   <LinearLayout
     android:layout_width="match_parent"
     android:layout_height="wrap_content"

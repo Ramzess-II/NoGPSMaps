@@ -123,6 +123,9 @@ public final class NoGps
     // The update of the firmware of the sensor box has ended.
     FIRMWARE_UPDATE_DONE,
     FIRMWARE_UPDATE_FAILED,
+    // The sensor box has been powered on: it is new in the car, or it was taken out and may be put in another
+    // way. The user should calibrate it on a level place.
+    BOX_CALIBRATION_ADVISED,
   }
 
   // nogps::Provider.
@@ -245,6 +248,9 @@ public final class NoGps
     @Keep
     @NonNull
     public String firmwareUpdateError = "";
+    // The sensor box has been powered on since the user calibrated it.
+    @Keep
+    public boolean boxCalibrationAdvised;
 
     @NonNull
     public PositionSource getSource()

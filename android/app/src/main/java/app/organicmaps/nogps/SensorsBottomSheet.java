@@ -63,6 +63,8 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
   private View mFirmwareRow;
   private TextView mFirmware;
   private TextView mFirmwareButton;
+  private View mBoxCalibrationTitle;
+  private View mBoxCalibrationHint;
   private TextView mSpeed;
   private TextView mCar;
   private TextView mVoltageMismatch;
@@ -93,6 +95,8 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     mLag = view.findViewById(R.id.nogps_lag);
     view.findViewById(R.id.nogps_clear_speed).setOnClickListener(v -> confirmClearSpeed());
     mGyro = view.findViewById(R.id.nogps_gyro);
+    mBoxCalibrationTitle = view.findViewById(R.id.nogps_box_calibration_title);
+    mBoxCalibrationHint = view.findViewById(R.id.nogps_box_calibration_hint);
     mReadiness = view.findViewById(R.id.nogps_readiness);
     mHint = view.findViewById(R.id.nogps_hint);
     mChooseAdapter = view.findViewById(R.id.nogps_choose_adapter);
@@ -317,15 +321,26 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     }
 
     final NoGps.CalibrationState calibration = enabled ? status.getCalibration() : NoGps.CalibrationState.NONE;
-    final String gyro = switch (calibration)
+    // The gyroscope of the phone is only zeroed. The box is calibrated by the user when it is put into the car:
+    // a block of its own tells how.
+    mBoxCalibrationTitle.setVisibility(esp32 ? View.VISIBLE : View.GONE);
+    mBoxCalibrationHint.setVisibility(esp32 ? View.VISIBLE : View.GONE);
+    if (esp32)
     {
-      case NONE -> getString(R.string.nogps_gyro_none);
-      case CALIBRATING -> getString(R.string.nogps_gyro_calibrating, status.calibrationProgress);
-      case DONE -> getString(R.string.nogps_gyro_done);
-      case FAILED_MOVING -> getString(R.string.nogps_gyro_failed);
-      case MOUNT_MOVED -> getString(R.string.nogps_gyro_mount_moved);
-    };
-    mGyro.setText(getString(R.string.nogps_sensors_gyro, gyro));
+      mGyro.setText(getString(R.string.nogps_sensors_box_sensors, boxCalibrationText(status, calibration)));
+    }
+    else
+    {
+      final String gyro = switch (calibration)
+      {
+        case NONE -> getString(R.string.nogps_gyro_none);
+        case CALIBRATING -> getString(R.string.nogps_gyro_calibrating, status.calibrationProgress);
+        case DONE -> getString(R.string.nogps_gyro_done);
+        case FAILED_MOVING -> getString(R.string.nogps_gyro_failed);
+        case MOUNT_MOVED -> getString(R.string.nogps_gyro_mount_moved);
+      };
+      mGyro.setText(getString(R.string.nogps_sensors_gyro, gyro));
+    }
 
     if (!enabled)
     {
@@ -336,7 +351,7 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     if (speed < 0)
       missing.add(getString(R.string.nogps_missing_speed));
     if (calibration != NoGps.CalibrationState.DONE)
-      missing.add(getString(R.string.nogps_missing_gyro));
+      missing.add(getString(esp32 ? R.string.nogps_missing_box_calibration : R.string.nogps_missing_gyro));
     if (!status.hasInertialPosition)
       missing.add(getString(R.string.nogps_missing_position));
     if (missing.isEmpty())
@@ -349,6 +364,22 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
       mReadiness.setText(getString(R.string.nogps_sensors_not_ready, String.join(", ", missing)));
       mReadiness.setTextColor(ContextCompat.getColor(requireContext(), R.color.nogps_status_none));
     }
+  }
+
+  @NonNull
+  private String boxCalibrationText(@NonNull NoGps.Status status, @NonNull NoGps.CalibrationState calibration)
+  {
+    return switch (calibration)
+    {
+      case NONE -> getString(R.string.nogps_box_not_calibrated);
+      case CALIBRATING -> getString(R.string.nogps_box_calibrating, status.calibrationProgress);
+      // The box keeps its calibration, but it may stand in another way since it was plugged in.
+      case DONE ->
+        getString(status.boxCalibrationAdvised ? R.string.nogps_box_calibration_advised
+                                               : R.string.nogps_box_calibrated);
+      case FAILED_MOVING -> getString(R.string.nogps_box_calibration_failed);
+      case MOUNT_MOVED -> getString(R.string.nogps_gyro_mount_moved);
+    };
   }
 
   /**

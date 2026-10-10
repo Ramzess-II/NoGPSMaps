@@ -829,6 +829,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
     final int message = switch (event)
     {
       case FIRMWARE_UPDATE_AVAILABLE, FIRMWARE_UPDATE_DONE, FIRMWARE_UPDATE_FAILED -> onFirmwareEvent(event);
+      case BOX_CALIBRATION_ADVISED -> onBoxCalibrationAdvised();
       // The buttons show the mode, they are updated every second.
       case MANUAL_MODE_CHANGED -> 0;
       case GPS_BACK -> R.string.nogps_gps_back_auto;
@@ -873,13 +874,41 @@ public class MwmActivity extends BaseMwmFragmentActivity
                              (dialog, which) -> {
                                NoGps.nativeStartFirmwareUpdate();
                                // It shows how the update goes.
-                               if (getSupportFragmentManager().findFragmentByTag(SensorsBottomSheet.TAG) == null)
-                                 new SensorsBottomSheet().show(getSupportFragmentManager(), SensorsBottomSheet.TAG);
+                               showSensorsSheet();
                              })
           .setNegativeButton(R.string.later, null)
           .show();
     }
     return 0;
+  }
+
+  /**
+   * The sensor box has been plugged in: asks the user to calibrate it, the car should stand on a level place.
+   * @return 0, there is no message of a fixed text.
+   */
+  private int onBoxCalibrationAdvised()
+  {
+    if (isFinishing() || getSupportFragmentManager().isStateSaved())
+      return 0;
+    new MaterialAlertDialogBuilder(this, R.style.MwmTheme_AlertDialog)
+        .setTitle(R.string.nogps_box_calibration)
+        .setMessage(R.string.nogps_box_calibration_offer)
+        .setPositiveButton(R.string.nogps_sensors_calibrate_box,
+                           (dialog, which) -> {
+                             NoGps.nativeCalibrate();
+                             // It shows how the calibration goes.
+                             showSensorsSheet();
+                           })
+        .setNegativeButton(R.string.later, null)
+        .show();
+    return 0;
+  }
+
+  private void showSensorsSheet()
+  {
+    if (!getSupportFragmentManager().isStateSaved()
+        && getSupportFragmentManager().findFragmentByTag(SensorsBottomSheet.TAG) == null)
+      new SensorsBottomSheet().show(getSupportFragmentManager(), SensorsBottomSheet.TAG);
   }
 
   @NonNull
