@@ -1,0 +1,13 @@
+{
+  "version": "0.3.3",
+  "files": [
+    {
+      "file": "nogps-esp32s3-s3zero-0.3.3.bin",
+      "version": "0.3.3",
+      "chip": "esp32s3",
+      "board": "s3zero",
+      "size": 1183744,
+      "sha256": "99d3cf2cb863144607f31dc7fbea436957f8e8ee62f7091274804b68225f33f0"
+    }
+  ]
+}
