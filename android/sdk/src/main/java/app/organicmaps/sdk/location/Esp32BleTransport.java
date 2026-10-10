@@ -27,6 +27,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.ParcelUuid;
+import android.os.SystemClock;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.UiThread;
@@ -72,6 +73,8 @@ class Esp32BleTransport
   private static final long MAX_RETRY_DELAY_MS = 60_000;
   // Android turns a scan lasting half an hour into one that finds nothing, so it is started anew.
   private static final long RESCAN_INTERVAL_MS = 5 * 60 * 1000;
+  // A new box waits this long for a paired one to be found: both may be near.
+  private static final long NEW_BOX_DELAY_MS = 3000;
   // The box doesn't answer the commands, a few of them wait for the previous one to leave at most.
   private static final int MAX_OUTGOING = 16;
 
@@ -84,6 +87,7 @@ class Esp32BleTransport
   private BluetoothLeScanner mScanner;
   @Nullable
   private ScanCallback mScanCallback;
+  private long mScanStartMs;
   @Nullable
   private BluetoothGatt mGatt;
   @Nullable
@@ -240,6 +244,7 @@ class Esp32BleTransport
     }
     mScanner = scanner;
     mScanCallback = callback;
+    mScanStartMs = SystemClock.elapsedRealtime();
     setState(STATE_SEARCHING);
     mMainHandler.postDelayed(mStarter, RESCAN_INTERVAL_MS);
   }
@@ -271,16 +276,19 @@ class Esp32BleTransport
     final boolean bonded = device.getBondState() == BluetoothDevice.BOND_BONDED;
     if (!bonded)
     {
-      // The box accepts a new phone for two minutes after it is powered. The first box is paired by itself, the
-      // phone asks for its code; with a box paired already, another one near is somebody else's.
+      // The box accepts a new phone for two minutes after it is powered, the phone asks for its code.
       final ScanRecord record = result.getScanRecord();
       final byte[] data = record != null ? record.getManufacturerSpecificData(MANUFACTURER_ID) : null;
       final boolean pairingOpen = data != null && data.length >= 2 && (data[1] & FLAG_PAIRING_OPEN) != 0;
-      if (!pairingOpen || hasPairedBox(adapter))
+      if (!pairingOpen)
       {
         setState(STATE_PAIRING_CLOSED);
         return;
       }
+      // A box paired already is taken first if it is near: the new one may be somebody else's. Without it the
+      // new box is a second or a replaced one of the user.
+      if (hasPairedBox(adapter) && SystemClock.elapsedRealtime() - mScanStartMs < NEW_BOX_DELAY_MS)
+        return;
     }
     Logger.i(TAG, "Found " + device.getAddress() + " rssi " + result.getRssi() + " bonded " + bonded);
     mMainHandler.removeCallbacks(mStarter);
