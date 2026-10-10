@@ -295,36 +295,46 @@ UNIT_TEST(NoGps_Engine_StopsCarThatLeftRoads)
   TEST_GREATER(East(env.Last().m_position), 300, ());
 }
 
-UNIT_TEST(NoGps_Engine_MarkAheadOnBendKeepsFollowedHeading)
+UNIT_TEST(NoGps_Engine_MarkLooksAlongRoadWhateverGyroscopeCounted)
 {
-  // The street going east bends 25 degrees to the left at 100 m, a street going north crosses it at -100 m.
-  double const sin65 = std::sin(math::DegToRad(65.0));
-  double const cos65 = std::cos(math::DegToRad(65.0));
-  PieceRoads roads({{-300, 0, 100, 0}, {100, 0, 100 + 300 * sin65, 300 * cos65}, {-100, -300, -100, 300}},
-                   {{-100, 0}});
+  // The street going east, a street going north crosses it at -100 m.
+  PieceRoads roads({{-300, 0, 600, 0}, {-100, -300, -100, 300}}, {{-100, 0}});
   Env env(true /* inertial */, &roads);
-  MarkCar(env, 30);
-  env.Drive(4000, 36, 0);
-  env.Drive(1000, 0, 0);
-  TestAlmostEqualAbs(East(env.Last().m_position), 82, 3);
+  MarkCar(env, 0);
+  env.Drive(2000, 18, 0);
   TestAlmostEqualAbs(*env.Last().m_bearingDeg, 90, 1);
 
-  // The car stands 20 m before the bend, the user taps 15 m behind the bend: the car still looks east, not along
-  // the road at the tap.
-  TEST(env.m_engine.PlaceMarkByTap(At(100 + 15 * sin65, 15 * cos65)), ());
-  env.Drive(500, 0, 0);
-  TestAlmostEqualAbs(North(env.Last().m_position), 15 * cos65, 1);
-  TestAlmostEqualAbs(*env.Last().m_bearingDeg, 90, 1);
-  TestAlmostEqualAbs(*env.m_map.m_carHeading, 90, 1);
+  // The heading has gone 18 degrees aside of the street the car drives along: the car has left a parking place,
+  // and its turns were taken for the turns of the road. The mark is drawn across the street.
+  env.Drive(1000, 18, 18);
+  env.Drive(4000, 18, 0);
+  TestAlmostEqualAbs(*env.Last().m_bearingDeg, 108, 1);
+  TestAlmostEqualAbs(North(env.Last().m_position), 0, 2);
 
-  // The car drives to the bend and through it: it looks along the road after the bend, not 25 degrees aside.
-  env.Drive(2000, 36, 0);
-  env.Drive(1000, 36, -25);
-  env.Drive(3000, 36, 0);
+  // The user marks the car on the street while it drives: it looks along the street at once, and keeps looking.
+  double const east = East(env.Last().m_position);
+  TEST(env.m_engine.PlaceMarkByTap(At(east + 10, 2)), ());
+  env.Drive(InertialNavigator::kOutputIntervalMs, 18, 0);
+  TestAlmostEqualAbs(*env.Last().m_bearingDeg, 90, 0.01);
+  TestAlmostEqualAbs(*env.m_map.m_carHeading, 90, 0.01);
+  TestAlmostEqualAbs(North(env.Last().m_position), 0, 0.01);
+  env.Drive(2000, 18, 0);
+  TestAlmostEqualAbs(*env.Last().m_bearingDeg, 90, 0.01);
+  TestAlmostEqualAbs(East(env.Last().m_position), east + 10 + 10.5, 4);
+  TestAlmostEqualAbs(North(env.Last().m_position), 0, 0.01);
+
+  // The same with a heading 25 degrees to the other side, and the way of the street is the one the car goes.
+  env.Drive(1000, 18, -25);
+  env.Drive(InertialNavigator::kOutputIntervalMs, 18, 0);
   TestAlmostEqualAbs(*env.Last().m_bearingDeg, 65, 3);
-  auto const & position = env.Last().m_position;
-  TestAlmostEqualAbs((East(position) - 100) * cos65 - North(position) * sin65, 0, 1);
-  TEST(!env.m_delegate.HasEvent(Event::RoadLost), ());
+  TEST(env.m_engine.PlaceMarkByTap(At(East(env.Last().m_position), -2)), ());
+  env.Drive(InertialNavigator::kOutputIntervalMs, 18, 0);
+  TestAlmostEqualAbs(*env.Last().m_bearingDeg, 90, 0.01);
+  // It is turned around by the button only.
+  env.m_engine.ReverseDirection();
+  TestAlmostEqualAbs(*env.Last().m_bearingDeg, 270, 0.01);
+  env.m_engine.ReverseDirection();
+  TestAlmostEqualAbs(*env.Last().m_bearingDeg, 90, 0.01);
 
   // A mark on the crossing street: the car has turned to it and looks along it.
   env.Drive(1000, 0, 0);
@@ -332,6 +342,38 @@ UNIT_TEST(NoGps_Engine_MarkAheadOnBendKeepsFollowedHeading)
   env.Drive(500, 0, 0);
   TestAlmostEqualAbs(East(env.Last().m_position), -100, 1);
   TestAlmostEqualAbs(AngleDiff(*env.Last().m_bearingDeg, 0), 0, 1);
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), ());
+}
+
+UNIT_TEST(NoGps_Engine_MarkAheadOnBendComesBackToRoad)
+{
+  // The street going east bends 25 degrees to the left at 100 m.
+  double const sin65 = std::sin(math::DegToRad(65.0));
+  double const cos65 = std::cos(math::DegToRad(65.0));
+  PieceRoads roads({{-300, 0, 100, 0}, {100, 0, 100 + 600 * sin65, 600 * cos65}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 30);
+  env.Drive(4000, 36, 0);
+  env.Drive(1000, 0, 0);
+  TestAlmostEqualAbs(East(env.Last().m_position), 82, 3);
+
+  // The car stands 20 m before the bend, the user taps 15 m behind it: the mark is where the user has put it and
+  // looks along the street there.
+  TEST(env.m_engine.PlaceMarkByTap(At(100 + 15 * sin65, 15 * cos65)), ());
+  env.Drive(500, 0, 0);
+  TestAlmostEqualAbs(North(env.Last().m_position), 15 * cos65, 1);
+  TestAlmostEqualAbs(*env.Last().m_bearingDeg, 65, 0.5);
+
+  // The car drives through the bend the mark has passed already: the mark looks 25 degrees aside of the street, is
+  // kept on it, and looks along it again in 50 m.
+  env.Drive(2000, 36, 0);
+  env.Drive(1000, 36, -25);
+  TestAlmostEqualAbs(*env.Last().m_bearingDeg, 40, 3);
+  env.Drive(30000, 36, 0);
+  TestAlmostEqualAbs(*env.Last().m_bearingDeg, 65, 3);
+  auto const & position = env.Last().m_position;
+  TestAlmostEqualAbs((East(position) - 100) * cos65 - North(position) * sin65, 0, 1);
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), ());
 }
 
 UNIT_TEST(NoGps_Engine_TellsThatMovedBoxDoesNotFollowCar)

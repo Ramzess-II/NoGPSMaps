@@ -141,22 +141,6 @@ void InertialNavigator::SetRoadPosition(ms::LatLon const & position, double bear
   SetHeading(bearingDeg, HeadingSource::Road);
 }
 
-double InertialNavigator::SetMarkPosition(ms::LatLon const & position, double bearingDeg)
-{
-  // The user taps ahead of the car or behind it, where the road has bent already: the direction of the road there
-  // would turn the car aside from its roads for good, the heading is corrected by a road only while the car is
-  // snapped to it. A heading the car is not snapped to the marked road with is replaced: the gyroscope has not
-  // followed the car, or the car has turned to a crossing road.
-  double const diff = AngleDiff(bearingDeg, m_deadReckoning.GetHeading());
-  bool const keepHeading = IsReady() && std::fabs(diff) <= DeadReckoning::kMaxSnapHeadingDiffDeg;
-  m_deadReckoning.SetPosition(position);
-  SetRoadPoint(position);
-  m_turning = false;
-  if (!keepHeading)
-    SetHeading(bearingDeg, HeadingSource::Road);
-  return m_deadReckoning.GetHeading();
-}
-
 void InertialNavigator::OnPositionCorrected(ms::LatLon const & position, double bearingDeg, double appliedM)
 {
   m_speedScale.OnCorrection(appliedM);
