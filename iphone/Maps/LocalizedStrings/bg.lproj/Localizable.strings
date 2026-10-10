@@ -1269,12 +1269,10 @@
 "nogps_resume" = "Resume the movement";
 "nogps_status_paused" = "Pause";
 "nogps_source_phone" = "Phone + ELM327 (Bluetooth)";
-"nogps_source_esp32" = "ESP32 sensor box (Wi-Fi)";
 
-/* Choice of where the car speed and turns come from, next to "ESP32 sensor box (Wi-Fi)" */
+/* Choice of where the car speed and turns come from, next to "Phone + ELM327 (Bluetooth)" */
 "nogps_source_esp32_bt" = "ESP32 sensor box (Bluetooth)";
 "nogps_sensors_box" = "Box: %1$@";
-"nogps_box_connecting" = "searching, connect to the NoGPS Wi-Fi";
 
 /* State of the sensor box, shown after its name: "Box: ESP32 · searching by Bluetooth" */
 "nogps_box_bt_searching" = "searching by Bluetooth";

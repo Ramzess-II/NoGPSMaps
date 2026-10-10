@@ -1269,12 +1269,10 @@
 "nogps_resume" = "Продовжити рух";
 "nogps_status_paused" = "Пауза";
 "nogps_source_phone" = "Телефон + ELM327 (Bluetooth)";
-"nogps_source_esp32" = "Блок ESP32 (Wi-Fi)";
 
-/* Choice of where the car speed and turns come from, next to "ESP32 sensor box (Wi-Fi)" */
+/* Choice of where the car speed and turns come from, next to "Phone + ELM327 (Bluetooth)" */
 "nogps_source_esp32_bt" = "Блок ESP32 (Bluetooth)";
 "nogps_sensors_box" = "Блок: %1$@";
-"nogps_box_connecting" = "шукаю блок, підключіться до Wi-Fi NoGPS";
 
 /* State of the sensor box, shown after its name: "Box: ESP32 · searching by Bluetooth" */
 "nogps_box_bt_searching" = "шукаю блок через Bluetooth";
