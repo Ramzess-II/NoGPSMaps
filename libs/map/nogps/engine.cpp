@@ -20,6 +20,25 @@ namespace nogps
 {
 namespace
 {
+/// \returns true if the firmware |version| like "0.4.0" is newer than |current|. A version that is not numbers
+/// with dots is not compared: nobody knows which one is newer.
+bool IsNewerFirmware(std::string const & version, std::string const & current)
+{
+  auto const parse = [](std::string const & s, std::vector<int> & numbers)
+  {
+    for (auto const & part : strings::Tokenize(s, "."))
+    {
+      int number = 0;
+      if (!strings::to_int(part, number) || number < 0)
+        return false;
+      numbers.push_back(number);
+    }
+    return !numbers.empty();
+  };
+  std::vector<int> newNumbers, currentNumbers;
+  return parse(version, newNumbers) && parse(current, currentNumbers) && newNumbers > currentNumbers;
+}
+
 // A GPS position without an accuracy is used anyway: some devices don't tell it.
 bool IsAccuracySatisfied(Fix const & fix)
 {
@@ -560,10 +579,11 @@ void Engine::CheckFirmwareUpdate()
     m_boxKnownSinceMs = now;
   if (m_inertial->GetSpeedKmh() > 0)
     m_drivenWithBox = true;
-  // The box refuses an update while the car drives.
+  // The box refuses an update while the car drives. An older firmware is not offered: a box updated by a newer
+  // application would be taken back by an older one. It is still installed from the sensors screen by hand.
   auto const * firmware = FindBoxFirmware();
   if (m_drivenWithBox || now - *m_boxKnownSinceMs < kFirmwareOfferDelayMs || !firmware ||
-      firmware->m_version == box->GetInfo()->m_firmware)
+      !IsNewerFirmware(firmware->m_version, box->GetInfo()->m_firmware))
   {
     return;
   }

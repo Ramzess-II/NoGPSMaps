@@ -590,6 +590,32 @@ UNIT_TEST(NoGps_Engine_OffersFirmwareOfApplication)
     TEST_EQUAL(status.m_boxFirmware, "0.3.2", ());
     TEST(status.m_bundledFirmware.empty(), ());
   }
+  {
+    // The box was updated by a newer application: an older firmware is not offered, the user may still install it.
+    Env env(true /* inertial */);
+    env.m_engine.SetFirmwares(firmwares);
+    connect(env, "0.4.0");
+    env.m_clock.Advance(Engine::kFirmwareOfferDelayMs * 2);
+    TEST_EQUAL(count(env, Event::FirmwareUpdateAvailable), 0, ());
+    TEST_EQUAL(env.m_engine.GetStatus().m_bundledFirmware, "0.3.3", ());
+  }
+  {
+    // The numbers are compared, not the letters.
+    Env env(true /* inertial */);
+    env.m_engine.SetFirmwares({{"0.10.0", "esp32s3", "s3zero", [] { return std::string(1000, 'x'); }}});
+    connect(env, "0.9.2");
+    env.m_clock.Advance(Engine::kFirmwareOfferDelayMs * 2);
+    TEST_EQUAL(count(env, Event::FirmwareUpdateAvailable), 1, ());
+  }
+  {
+    // A firmware of a developer: nobody knows whether it is older.
+    Env env(true /* inertial */);
+    env.m_engine.SetFirmwares(firmwares);
+    connect(env, "0.3.2-dev");
+    env.m_clock.Advance(Engine::kFirmwareOfferDelayMs * 2);
+    TEST_EQUAL(count(env, Event::FirmwareUpdateAvailable), 0, ());
+    TEST_EQUAL(env.m_engine.GetStatus().m_bundledFirmware, "0.3.3", ());
+  }
 }
 
 UNIT_TEST(NoGps_Engine_GpsIsBackAfterRoadIsLost)
