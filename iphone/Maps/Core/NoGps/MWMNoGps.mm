@@ -18,7 +18,8 @@ NSString * const MWMNoGpsEventKey = @"event";
 namespace
 {
 /// The iOS part of the navigation without GPS: the car movement comes from the ESP32 sensor box only. The phone with
-/// an ELM327 adapter is not offered: iOS has no Bluetooth SPP for the adapters.
+/// an ELM327 adapter is not offered: iOS has no Bluetooth SPP for the adapters. The box is reached over Bluetooth
+/// LE, which is not made here yet: see Esp32BleOpen() of the delegate and docs/nogps/ios-notes.md.
 class NoGpsDelegate : public nogps::Delegate
 {
 public:
@@ -28,15 +29,6 @@ public:
   void Elm327Connect(std::string const &) override {}
   void Elm327Write(std::string const &) override {}
   void Elm327Close() override {}
-
-  void Esp32Open(std::string const & host, uint16_t port) override { [m_esp32 openWithHost:@(host.c_str()) port:port]; }
-
-  void Esp32Send(std::string const & line) override
-  {
-    [m_esp32 send:[NSData dataWithBytes:line.data() length:line.size()]];
-  }
-
-  void Esp32Close() override { [m_esp32 close]; }
 
   void OnPosition(nogps::Fix const & fix) override
   {
@@ -61,9 +53,6 @@ public:
                                                       MWMNoGpsEventKey: @(static_cast<NSInteger>(event))
                                                     }];
   }
-
-private:
-  Esp32UdpTransport * m_esp32 = [[Esp32UdpTransport alloc] init];
 };
 
 nogps::Engine & Engine()
@@ -76,9 +65,6 @@ nogps::Engine & Engine()
     // The box is the only source of the car movement on iOS.
     if (!engine->GetStatus().m_esp32Source)
       engine->SetEsp32Source(true);
-    // It is reached over its Wi-Fi only until Bluetooth LE is made here, and Bluetooth is the default of the core.
-    if (engine->GetStatus().m_esp32Bluetooth)
-      engine->SetEsp32Bluetooth(false);
   }
   return *engine;
 }
@@ -118,7 +104,6 @@ std::optional<double> NonNegative(double value)
     _shiftStepM = status.m_shiftStepM;
     _shiftButtonsShown = status.m_shiftButtonsShown;
     _inertialEnabled = status.m_inertialEnabled;
-    _esp32Address = @(status.m_esp32Address.c_str());
     _inertialStarted = status.m_inertialStarted;
     _sourceState = static_cast<MWMNoGpsSourceState>(status.m_sourceState);
     _deviceName = @(status.m_deviceName.c_str());
@@ -219,11 +204,6 @@ std::optional<double> NonNegative(double value)
   Engine().SetInertialNavigationEnabled(enabled);
 }
 
-+ (void)setEsp32Address:(NSString *)address
-{
-  Engine().SetEsp32Address(address.UTF8String);
-}
-
 + (void)calibrate
 {
   Engine().Calibrate();
@@ -242,11 +222,6 @@ std::optional<double> NonNegative(double value)
 + (void)setShiftButtonsShown:(BOOL)shown
 {
   Engine().SetShiftButtonsShown(shown);
-}
-
-+ (void)onEsp32Datagram:(NSData *)data
-{
-  Engine().OnEsp32Datagram({static_cast<char const *>(data.bytes), data.length});
 }
 
 @end

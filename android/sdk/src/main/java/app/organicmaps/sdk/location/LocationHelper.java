@@ -85,8 +85,6 @@ public class LocationHelper implements BaseLocationProvider.Listener
   @NonNull
   private final Elm327Transport mElm327 = new Elm327Transport();
   @NonNull
-  private final Esp32Transport mEsp32;
-  @NonNull
   private final Esp32BleTransport mEsp32Ble;
   // Some providers (e.g. Google fused) don't report network positions separately, so request them explicitly.
   private final LocationListenerCompat mNetworkListener = this::onLocationChanged;
@@ -123,24 +121,6 @@ public class LocationHelper implements BaseLocationProvider.Listener
     public void elm327Close()
     {
       mElm327.close();
-    }
-
-    @Override
-    public void esp32Open(@NonNull String host, int port)
-    {
-      mEsp32.open(host, port);
-    }
-
-    @Override
-    public void esp32Send(@NonNull byte[] line)
-    {
-      mEsp32.send(line);
-    }
-
-    @Override
-    public void esp32Close()
-    {
-      mEsp32.close();
     }
 
     @Override
@@ -230,7 +210,6 @@ public class LocationHelper implements BaseLocationProvider.Listener
     mLocationProvider = mLocationProviderFactory.getProvider(mContext, this);
     mHandler = new Handler(Looper.getMainLooper());
     mMotionSensors = new MotionSensors(context);
-    mEsp32 = new Esp32Transport(context);
     mEsp32Ble = new Esp32BleTransport(context);
   }
 

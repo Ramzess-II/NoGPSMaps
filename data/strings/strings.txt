@@ -44452,12 +44452,12 @@ vi = Xác định vị trí hiện tại được sử dụng trong các tùy ch
 zh-Hans = 定义当前位置在跟随路线和保存您的最近行进路径的选项中被使用。
 zh-Hant = 判定您目前的位置會用於導航與儲存您最近走過的軌跡。
 
-[NSLocalNetworkUsageDescription]
-comment = Needed to explain why we require access to the local network: the sensor box of the car is on its own Wi-Fi network.
+[NSBluetoothAlwaysUsageDescription]
+comment = Needed to explain why we require access to Bluetooth: the sensor box of the car is reached over Bluetooth LE.
 tags = apple-infoplist
-en = The sensor box in the car gives the turns and the speed of the car over its own Wi-Fi network.
-ru = Блок датчиков в машине передаёт повороты и скорость машины по своей сети Wi-Fi.
-uk = Блок датчиків у машині передає повороти та швидкість машини своєю мережею Wi-Fi.
+en = The sensor box in the car gives the turns and the speed of the car over Bluetooth.
+ru = Блок датчиков в машине передаёт повороты и скорость машины по Bluetooth.
+uk = Блок датчиків у машині передає повороти та швидкість машини через Bluetooth.
 
 [login_osm_credentials]
 comment = Login to OSM button text
@@ -45719,14 +45719,8 @@ en = Phone + ELM327 (Bluetooth)
 ru = Телефон + ELM327 (Bluetooth)
 uk = Телефон + ELM327 (Bluetooth)
 
-[nogps_source_esp32]
-tags = android-app,apple-maps
-en = ESP32 sensor box (Wi-Fi)
-ru = Блок ESP32 (Wi-Fi)
-uk = Блок ESP32 (Wi-Fi)
-
 [nogps_source_esp32_bt]
-comment = Choice of where the car speed and turns come from, next to "ESP32 sensor box (Wi-Fi)"
+comment = Choice of where the car speed and turns come from, next to "Phone + ELM327 (Bluetooth)"
 tags = android-app,apple-maps
 en = ESP32 sensor box (Bluetooth)
 ru = Блок ESP32 (Bluetooth)
@@ -45737,12 +45731,6 @@ tags = android-app,apple-maps
 en = Box: %1$@
 ru = Блок: %1$@
 uk = Блок: %1$@
-
-[nogps_box_connecting]
-tags = android-app,apple-maps
-en = searching, connect to the NoGPS Wi-Fi
-ru = ищу блок, подключитесь к Wi-Fi NoGPS
-uk = шукаю блок, підключіться до Wi-Fi NoGPS
 
 [nogps_box_bt_searching]
 comment = State of the sensor box, shown after its name: "Box: ESP32 · searching by Bluetooth"

@@ -110,15 +110,11 @@ public:
   virtual void Elm327Write(std::string const & data) = 0;
   virtual void Elm327Close() = 0;
 
-  /// The ESP32 sensor box over UDP on its Wi-Fi network: the datagrams go to Engine::OnEsp32Datagram().
-  virtual void Esp32Open(std::string const & host, uint16_t port) = 0;
-  virtual void Esp32Send(std::string const & line) = 0;
-  virtual void Esp32Close() = 0;
-
-  /// The same box over Bluetooth LE. The platform searches the box by its service, connects, subscribes to the
-  /// characteristic with its lines and keeps doing it until closed: the bytes go to Engine::OnEsp32BleBytes()
-  /// as they come, every change of the state to Engine::OnEsp32BleState(). The UUIDs and the pairing are in
-  /// docs/nogps/esp32-firmware-spec.md, section 17. A platform without it has nothing to do here.
+  /// The ESP32 sensor box over Bluetooth LE, the only link to it. The platform searches the box by its service,
+  /// connects, subscribes to the characteristic with its lines and keeps doing it until closed: the bytes go
+  /// to Engine::OnEsp32BleBytes() as they come, every change of the state to Engine::OnEsp32BleState(). The
+  /// UUIDs and the pairing are in docs/nogps/esp32-firmware-spec.md, section 17. A platform that hasn't made
+  /// it yet doesn't get the box.
   virtual void Esp32BleOpen() {}
   virtual void Esp32BleSend(std::string const & /* line */) {}
   /// A piece of a new firmware for the box: written to its characteristic for them without a response, in the

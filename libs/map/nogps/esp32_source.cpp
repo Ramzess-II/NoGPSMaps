@@ -9,14 +9,12 @@
 
 namespace nogps
 {
-Esp32Source::Esp32Source(Delegate & delegate, Scheduler & scheduler, Clock const & clock, std::string address,
-                         MotionSource::Listener & listener, Esp32Link link)
+Esp32Source::Esp32Source(Delegate & delegate, Scheduler & scheduler, Clock const & clock,
+                         MotionSource::Listener & listener)
   : m_delegate(delegate)
   , m_clock(clock)
-  , m_address(std::move(address))
   , m_listener(listener)
   , m_helloTimer(scheduler)
-  , m_link(link)
   , m_update(*this, scheduler, clock)
 {}
 
@@ -29,12 +27,9 @@ void Esp32Source::Start()
 {
   if (m_running)
     return;
-  LOG(LINFO, ("link =", m_link, "address =", m_address));
+  LOG(LINFO, ("ESP32 started"));
   m_running = true;
-  if (m_link == Esp32Link::Ble)
-    m_delegate.Esp32BleOpen();
-  else
-    m_delegate.Esp32Open(m_address, kBoxPort);
+  m_delegate.Esp32BleOpen();
   SendHello();
 }
 
@@ -45,10 +40,7 @@ void Esp32Source::Stop()
   LOG(LINFO, ("ESP32 stopped"));
   m_running = false;
   m_helloTimer.Stop();
-  if (m_link == Esp32Link::Ble)
-    m_delegate.Esp32BleClose();
-  else
-    m_delegate.Esp32Close();
+  m_delegate.Esp32BleClose();
   m_bleState = BleState::Off;
   m_bleLine.clear();
   m_dataTimesMs.clear();
@@ -82,14 +74,13 @@ int Esp32Source::SendUpdateCommand(std::string const & command)
 
 void Esp32Source::SendFirmwarePiece(std::string const & piece)
 {
-  if (m_link == Esp32Link::Ble && m_bleState == BleState::Connected)
+  if (m_bleState == BleState::Connected)
     m_delegate.Esp32BleSendFirmware(piece);
 }
 
 bool Esp32Source::CanUpdate() const
 {
-  return m_running && m_link == Esp32Link::Ble && m_bleState == BleState::Connected && m_info && m_info->m_canUpdate &&
-         !m_update.IsActive();
+  return m_running && m_bleState == BleState::Connected && m_info && m_info->m_canUpdate && !m_update.IsActive();
 }
 
 void Esp32Source::StartUpdate(Firmware const & firmware)
@@ -108,11 +99,8 @@ void Esp32Source::OnInfo(esp32::Info const & info)
 
 void Esp32Source::Send(std::string_view command, int id)
 {
-  auto const line = esp32::Command(id, command);
-  if (m_link != Esp32Link::Ble)
-    m_delegate.Esp32Send(line);
-  else if (m_bleState == BleState::Connected)
-    m_delegate.Esp32BleSend(line);
+  if (m_bleState == BleState::Connected)
+    m_delegate.Esp32BleSend(esp32::Command(id, command));
 }
 
 void Esp32Source::OnBleState(BleState state)
@@ -137,7 +125,7 @@ void Esp32Source::OnBleState(BleState state)
 
 void Esp32Source::OnBleBytes(std::string_view bytes)
 {
-  if (!m_running || m_link != Esp32Link::Ble)
+  if (!m_running)
     return;
   for (char const c : bytes)
   {
@@ -177,12 +165,6 @@ Esp32Source::DataRate Esp32Source::GetDataRate() const
   }
   rate.m_maxGapMs = std::max(rate.m_maxGapMs, now - previousMs);
   return rate;
-}
-
-void Esp32Source::OnDatagram(std::string_view text)
-{
-  if (m_running && m_link != Esp32Link::Ble)
-    OnLine(text);
 }
 
 void Esp32Source::OnLine(std::string_view text)
@@ -306,7 +288,7 @@ void Esp32Source::OnEvent(esp32::Event const & event)
 
 void Esp32Source::RequestLostEvents(int64_t fromNumber)
 {
-  // The events were lost over Wi-Fi or came before the connection, the journal of the box has them.
+  // The events were lost or came before the connection, the journal of the box has them.
   int64_t const now = m_clock.NowMs();
   if (m_eventsRequestMs && now - *m_eventsRequestMs < kEventsRequestIntervalMs)
     return;
@@ -393,7 +375,7 @@ SourceState Esp32Source::GetState() const
 
 bool Esp32Source::IsSleeping() const
 {
-  // The box switches its Wi-Fi off a minute after the engine is stopped, so a box that has gone after it has told
+  // The box switches its radio off a minute after the engine is stopped, so a box that has gone after it has told
   // about the stopped engine is not lost.
   if (!m_lastDataMs)
     return false;

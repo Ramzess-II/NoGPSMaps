@@ -321,12 +321,6 @@ void Engine::OnElm327Closed(std::string const & reason)
     m_inertial->OnElm327Closed(reason);
 }
 
-void Engine::OnEsp32Datagram(std::string_view text)
-{
-  if (m_inertial)
-    m_inertial->OnEsp32Datagram(text);
-}
-
 void Engine::OnEsp32BleBytes(std::string_view bytes)
 {
   if (m_inertial)
@@ -728,22 +722,6 @@ void Engine::SetEsp32Source(bool esp32)
 {
   LOG(LINFO, ("esp32 =", esp32));
   m_storage.Set(Storage::kEsp32Source, esp32);
-  if (IsInertialNavigationEnabled() && m_inertial)
-    m_inertial->Start();
-}
-
-void Engine::SetEsp32Bluetooth(bool bluetooth)
-{
-  LOG(LINFO, ("bluetooth =", bluetooth));
-  m_storage.Set(Storage::kEsp32Bluetooth, bluetooth);
-  if (IsInertialNavigationEnabled() && m_inertial)
-    m_inertial->Start();
-}
-
-void Engine::SetEsp32Address(std::string const & address)
-{
-  LOG(LINFO, ("address =", address));
-  m_storage.Set(Storage::kEsp32Address, address);
   if (IsInertialNavigationEnabled() && m_inertial)
     m_inertial->Start();
 }
@@ -1187,9 +1165,7 @@ Status Engine::GetStatus()
 
   status.m_inertialEnabled = IsInertialNavigationEnabled();
   status.m_esp32Source = m_storage.IsEsp32Source();
-  status.m_esp32Bluetooth = m_storage.IsEsp32Bluetooth();
   status.m_elm327Address = m_storage.Get<std::string>(Storage::kElm327Address, "");
-  status.m_esp32Address = m_storage.Get<std::string>(Storage::kEsp32Address, "192.168.4.1");
   status.m_inertialStarted = status.m_inertialEnabled && m_inertial;
   if (status.m_inertialStarted)
   {
@@ -1285,14 +1261,11 @@ std::string Engine::GetTripLine()
   if (m_inertial && IsInertialNavigationEnabled())
   {
     line += " obd=" + DebugPrint(m_inertial->GetSourceState()) + " speed=" + std::to_string(m_inertial->GetSpeedKmh());
-    // The ESP32 box: its link, with what Bluetooth does, and how its data came during the last second: the lines
-    // and the longest pause between them in milliseconds.
+    // The ESP32 box: what Bluetooth does, and how its data came during the last second: the lines and the
+    // longest pause between them in milliseconds. "BLE" is from the time the box had Wi-Fi too.
     if (auto const rate = m_inertial->GetEsp32DataRate())
     {
-      auto const link = m_inertial->GetEsp32Link();
-      line += " link=" + DebugPrint(link);
-      if (link == Esp32Link::Ble)
-        line += "/" + DebugPrint(m_inertial->GetBleState());
+      line += " link=BLE/" + DebugPrint(m_inertial->GetBleState());
       line += " box=" + std::to_string(rate->m_lines) + "/" + std::to_string(rate->m_maxGapMs);
       // The firmware of the box and its update with the percent sent.
       auto const * box = m_inertial->GetEsp32();

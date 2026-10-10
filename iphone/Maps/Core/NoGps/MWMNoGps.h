@@ -76,7 +76,6 @@ NS_SWIFT_NAME(NoGpsStatus)
 @property(nonatomic, readonly) BOOL shiftButtonsShown;
 
 @property(nonatomic, readonly) BOOL inertialEnabled;
-@property(nonatomic, readonly) NSString * esp32Address;
 // The rest is known while the inertial navigation works.
 @property(nonatomic, readonly) BOOL inertialStarted;
 @property(nonatomic, readonly) MWMNoGpsSourceState sourceState;
@@ -125,14 +124,10 @@ NS_SWIFT_NAME(NoGps)
 + (void)togglePause;
 + (void)setGpsDisabled:(BOOL)disabled;
 + (void)setInertialNavigationEnabled:(BOOL)enabled;
-+ (void)setEsp32Address:(NSString *)address;
 + (void)calibrate;
 + (void)clearSpeedCalibration;
 + (void)cycleShiftStep;
 + (void)setShiftButtonsShown:(BOOL)shown;
-
-/// A datagram of the ESP32 sensor box.
-+ (void)onEsp32Datagram:(NSData *)data;
 
 @end
 

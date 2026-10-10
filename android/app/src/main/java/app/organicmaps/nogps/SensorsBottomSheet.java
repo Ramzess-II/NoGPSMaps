@@ -104,10 +104,7 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
 
     final RadioGroup source = view.findViewById(R.id.nogps_source);
     final NoGps.Status status = NoGps.getStatus();
-    if (!status.esp32Source)
-      source.check(R.id.nogps_source_phone);
-    else
-      source.check(status.esp32Bluetooth ? R.id.nogps_source_esp32_bt : R.id.nogps_source_esp32);
+    source.check(status.esp32Source ? R.id.nogps_source_esp32_bt : R.id.nogps_source_phone);
     source.setOnCheckedChangeListener((group, checkedId) -> onSourceChosen(checkedId));
 
     mSwitch.setChecked(status.inertialEnabled);
@@ -131,7 +128,7 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     mHandler.post(mUpdater);
     final NoGps.Status status = NoGps.getStatus();
     // Once: the user may have refused.
-    if (status.inertialEnabled && status.esp32Source && status.esp32Bluetooth && !mBoxBluetoothAsked)
+    if (status.inertialEnabled && status.esp32Source && !mBoxBluetoothAsked)
       askBoxBluetooth();
   }
 
@@ -146,10 +143,8 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
   {
     if (radioId != R.id.nogps_source_phone)
     {
-      final boolean bluetooth = radioId == R.id.nogps_source_esp32_bt;
-      NoGps.nativeSetEsp32Bluetooth(bluetooth);
       NoGps.nativeSetEsp32Source(true);
-      if (bluetooth && NoGps.getStatus().inertialEnabled)
+      if (NoGps.getStatus().inertialEnabled)
         askBoxBluetooth();
       update();
       return;
@@ -168,7 +163,7 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     if (!enabled || status.esp32Source)
     {
       NoGps.nativeSetInertialNavigationEnabled(enabled);
-      if (enabled && status.esp32Bluetooth)
+      if (enabled)
         askBoxBluetooth();
       update();
       return;
@@ -501,8 +496,6 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
    */
   private static int boxSearchText(@NonNull NoGps.Status status)
   {
-    if (!status.esp32Bluetooth)
-      return R.string.nogps_box_connecting;
     return switch (status.getBleState())
     {
       case NO_PERMISSION -> R.string.nogps_box_bt_no_permission;

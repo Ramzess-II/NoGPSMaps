@@ -149,19 +149,19 @@ UNIT_TEST(NoGps_Esp32Source_SendsHelloAndReadsData)
   TestClock clock;
   TestDelegate delegate;
   MotionRecorder listener;
-  Esp32Source source(delegate, clock, clock, "192.168.4.1", listener);
+  Esp32Source source(delegate, clock, clock, listener);
   source.Start();
-  TEST(delegate.m_esp32Open, ());
-  TEST_EQUAL(delegate.m_esp32Host, "192.168.4.1", ());
-  TEST_EQUAL(delegate.m_esp32Port, Esp32Source::kBoxPort, ());
-  TEST_EQUAL(delegate.m_esp32Sent, std::vector<std::string>{esp32::Command(1, "HELLO")}, ());
+  TEST(delegate.m_esp32BleOpen, ());
+  // The first HELLO had nobody to go to.
+  source.OnBleState(BleState::Connected);
+  TEST_EQUAL(delegate.m_esp32BleSent, std::vector<std::string>{esp32::Command(2, "HELLO")}, ());
   clock.Advance(Esp32Source::kHelloIntervalMs);
-  TEST_EQUAL(delegate.m_esp32Sent.back(), esp32::Command(2, "HELLO"), ());
+  TEST_EQUAL(delegate.m_esp32BleSent.back(), esp32::Command(3, "HELLO"), ());
   TEST_EQUAL(source.GetState(), SourceState::Connecting, ());
 
-  source.OnDatagram(BoxDataLine(1, 5000, 0, 36, kCalibratedFlags));
+  source.OnBleBytes(BoxDataLine(1, 5000, 0, 36, kCalibratedFlags));
   clock.Advance(20);
-  source.OnDatagram(BoxDataLine(2, 5020, 500, 36, kCalibratedFlags));
+  source.OnBleBytes(BoxDataLine(2, 5020, 500, 36, kCalibratedFlags));
   TEST_EQUAL(listener.m_speeds, std::vector<int>({36, 36}), ());
   TEST_ALMOST_EQUAL_ABS(listener.m_yawDeg, 0.5, 1e-9, ());
   TEST_ALMOST_EQUAL_ABS(listener.m_dtSec, 0.02, 1e-9, ());
@@ -171,12 +171,12 @@ UNIT_TEST(NoGps_Esp32Source_SendsHelloAndReadsData)
 
   // A lost line loses nothing: the box sends the totals.
   clock.Advance(40);
-  source.OnDatagram(BoxDataLine(4, 5060, 1500, 36, kCalibratedFlags));
+  source.OnBleBytes(BoxDataLine(4, 5060, 1500, 36, kCalibratedFlags));
   TEST_ALMOST_EQUAL_ABS(listener.m_yawDeg, 1.5, 1e-9, ());
   TEST_ALMOST_EQUAL_ABS(listener.m_dtSec, 0.06, 1e-9, ());
 
   // A broken line is ignored.
-  source.OnDatagram("$NGD,1,5,5080,1500,0,0,36,0,17*0000");
+  source.OnBleBytes("$NGD,1,5,5080,1500,0,0,36,0,17*0000\r\n");
   TEST_EQUAL(listener.m_motions, 2, ());
 
   clock.Advance(Esp32Source::kDataTimeoutMs + 1);
@@ -189,12 +189,9 @@ UNIT_TEST(NoGps_Esp32Source_ReadsLinesOfBluetoothStream)
   TestClock clock;
   TestDelegate delegate;
   MotionRecorder listener;
-  Esp32Source source(delegate, clock, clock, "192.168.4.1", listener, Esp32Link::Ble);
+  Esp32Source source(delegate, clock, clock, listener);
   source.Start();
-  // Bluetooth only: the box has one radio, a phone in its Wi-Fi network disturbs its Bluetooth.
   TEST(delegate.m_esp32BleOpen, ());
-  TEST(!delegate.m_esp32Open, ());
-  TEST_EQUAL(source.GetLink(), Esp32Link::Ble, ());
   source.OnBleState(BleState::Connected);
 
   // Two lines in a piece.
@@ -219,51 +216,29 @@ UNIT_TEST(NoGps_Esp32Source_ReadsLinesOfBluetoothStream)
   TEST_EQUAL(listener.m_speeds.size(), 4, ());
   TEST_ALMOST_EQUAL_ABS(listener.m_yawDeg, 2.0, 1e-9, ());
 
-  // A datagram is not from the chosen link.
-  source.OnDatagram(BoxDataLine(6, 5100, 2500, 40, kCalibratedFlags));
-  TEST_EQUAL(listener.m_speeds.size(), 4, ());
-
   source.Stop();
   TEST(!delegate.m_esp32BleOpen, ());
 }
 
-UNIT_TEST(NoGps_Esp32Source_CallsBoxOverChosenLinkOnly)
+UNIT_TEST(NoGps_Esp32Source_CallsBoxWhileConnectedOnly)
 {
+  // Nothing is sent until the phone is connected, then HELLO goes at once and every second.
   TestClock clock;
-  {
-    // Wi-Fi: Bluetooth is not touched.
-    TestDelegate delegate;
-    MotionRecorder listener;
-    Esp32Source source(delegate, clock, clock, "192.168.4.1", listener);
-    source.Start();
-    clock.Advance(Esp32Source::kHelloIntervalMs);
-    TEST(delegate.m_esp32Open, ());
-    TEST(!delegate.m_esp32BleOpen, ());
-    TEST_EQUAL(delegate.m_esp32Sent.size(), 2, ());
-    TEST(delegate.m_esp32BleSent.empty(), ());
-    TEST_EQUAL(source.GetLink(), Esp32Link::Wifi, ());
-    source.OnBleBytes(BoxDataLine(1, 5000, 0, 36, kCalibratedFlags));
-    TEST(listener.m_speeds.empty(), ());
-  }
-  {
-    // Bluetooth: nothing is sent until the phone is connected, then HELLO goes at once and every second.
-    TestDelegate delegate;
-    MotionRecorder listener;
-    Esp32Source source(delegate, clock, clock, "192.168.4.1", listener, Esp32Link::Ble);
-    source.Start();
-    source.OnBleState(BleState::Searching);
-    clock.Advance(Esp32Source::kHelloIntervalMs);
-    TEST(delegate.m_esp32BleSent.empty(), ());
-    TEST_EQUAL(source.GetBleState(), BleState::Searching, ());
-    source.OnBleState(BleState::Connected);
-    TEST_EQUAL(delegate.m_esp32BleSent.size(), 1, ());
-    clock.Advance(Esp32Source::kHelloIntervalMs);
-    TEST_EQUAL(delegate.m_esp32BleSent.size(), 2, ());
-    TEST(delegate.m_esp32Sent.empty(), ());
-    source.OnBleState(BleState::Searching);
-    clock.Advance(Esp32Source::kHelloIntervalMs);
-    TEST_EQUAL(delegate.m_esp32BleSent.size(), 2, ());
-  }
+  TestDelegate delegate;
+  MotionRecorder listener;
+  Esp32Source source(delegate, clock, clock, listener);
+  source.Start();
+  source.OnBleState(BleState::Searching);
+  clock.Advance(Esp32Source::kHelloIntervalMs);
+  TEST(delegate.m_esp32BleSent.empty(), ());
+  TEST_EQUAL(source.GetBleState(), BleState::Searching, ());
+  source.OnBleState(BleState::Connected);
+  TEST_EQUAL(delegate.m_esp32BleSent.size(), 1, ());
+  clock.Advance(Esp32Source::kHelloIntervalMs);
+  TEST_EQUAL(delegate.m_esp32BleSent.size(), 2, ());
+  source.OnBleState(BleState::Searching);
+  clock.Advance(Esp32Source::kHelloIntervalMs);
+  TEST_EQUAL(delegate.m_esp32BleSent.size(), 2, ());
 }
 
 UNIT_TEST(NoGps_Esp32Source_CountsDataLinesOfLastSecond)
@@ -271,8 +246,9 @@ UNIT_TEST(NoGps_Esp32Source_CountsDataLinesOfLastSecond)
   TestClock clock;
   TestDelegate delegate;
   MotionRecorder listener;
-  Esp32Source source(delegate, clock, clock, "192.168.4.1", listener);
+  Esp32Source source(delegate, clock, clock, listener);
   source.Start();
+  source.OnBleState(BleState::Connected);
   TEST_EQUAL(source.GetDataRate().m_lines, 0, ());
   TEST_EQUAL(source.GetDataRate().m_maxGapMs, Esp32Source::kDataTimeoutMs, ());
 
@@ -281,12 +257,12 @@ UNIT_TEST(NoGps_Esp32Source_CountsDataLinesOfLastSecond)
   for (int i = 0; i < 100; ++i)
   {
     clock.Advance(20);
-    source.OnDatagram(BoxDataLine(i, boxTimeMs += 20, 0, 36, kCalibratedFlags));
+    source.OnBleBytes(BoxDataLine(i, boxTimeMs += 20, 0, 36, kCalibratedFlags));
   }
   TEST_EQUAL(source.GetDataRate().m_lines, 50, ());
   TEST_EQUAL(source.GetDataRate().m_maxGapMs, 20, ());
   clock.Advance(60);
-  source.OnDatagram(BoxDataLine(100, boxTimeMs += 60, 0, 36, kCalibratedFlags));
+  source.OnBleBytes(BoxDataLine(100, boxTimeMs += 60, 0, 36, kCalibratedFlags));
   TEST_EQUAL(source.GetDataRate().m_lines, 48, ());
   TEST_EQUAL(source.GetDataRate().m_maxGapMs, 60, ());
 
@@ -302,24 +278,25 @@ UNIT_TEST(NoGps_Esp32Source_CalibratesAndTimesOut)
   TestClock clock;
   TestDelegate delegate;
   MotionRecorder listener;
-  Esp32Source source(delegate, clock, clock, "192.168.4.1", listener);
+  Esp32Source source(delegate, clock, clock, listener);
   source.Start();
-  source.OnDatagram(BoxDataLine(1, 5000, 0, 0, kCalibratedFlags));
+  source.OnBleState(BleState::Connected);
+  source.OnBleBytes(BoxDataLine(1, 5000, 0, 0, kCalibratedFlags));
 
   source.Calibrate();
-  TEST_EQUAL(delegate.m_esp32Sent.back(), esp32::Command(1, "CAL_UP"), ());
+  TEST_EQUAL(delegate.m_esp32BleSent.back(), esp32::Command(1, "CAL_UP"), ());
   TEST_EQUAL(source.GetCalibrationState(), CalibrationState::Calibrating, ());
   // A reply to another command doesn't count.
-  source.OnDatagram(BoxLine("NGA,7,OK"));
+  source.OnBleBytes(BoxLine("NGA,7,OK"));
   TEST_EQUAL(source.GetCalibrationState(), CalibrationState::Calibrating, ());
-  source.OnDatagram(BoxLine("NGA,1,PROGRESS,40"));
+  source.OnBleBytes(BoxLine("NGA,1,PROGRESS,40"));
   TEST_EQUAL(source.GetCalibrationProgressPercent(), 40, ());
-  source.OnDatagram(BoxLine("NGA,1,OK"));
+  source.OnBleBytes(BoxLine("NGA,1,OK"));
   TEST_EQUAL(source.GetCalibrationState(), CalibrationState::Done, ());
 
   source.Calibrate();
-  TEST_EQUAL(delegate.m_esp32Sent.back(), esp32::Command(2, "CAL_UP"), ());
-  source.OnDatagram(BoxLine("NGA,2,ERR,MOVING"));
+  TEST_EQUAL(delegate.m_esp32BleSent.back(), esp32::Command(2, "CAL_UP"), ());
+  source.OnBleBytes(BoxLine("NGA,2,ERR,MOVING"));
   TEST_EQUAL(source.GetCalibrationState(), CalibrationState::FailedMoving, ());
 
   // The box doesn't answer.
@@ -333,29 +310,30 @@ UNIT_TEST(NoGps_Esp32Source_RequestsLostEvents)
   TestClock clock;
   TestDelegate delegate;
   MotionRecorder listener;
-  Esp32Source source(delegate, clock, clock, "192.168.4.1", listener);
+  Esp32Source source(delegate, clock, clock, listener);
   source.Start();
-  auto const sent = [&delegate] { return delegate.m_esp32Sent.size(); };
+  source.OnBleState(BleState::Connected);
+  auto const sent = [&delegate] { return delegate.m_esp32BleSent.size(); };
 
   // The events before the connection are asked from the journal of the box.
   size_t count = sent();
-  source.OnDatagram(BoxLine("NGE,1,5,1000,W,OBD_LOST,no answer"));
+  source.OnBleBytes(BoxLine("NGE,1,5,1000,W,OBD_LOST,no answer"));
   TEST_EQUAL(sent(), count + 1, ());
-  TEST_EQUAL(delegate.m_esp32Sent.back(), esp32::Command(1, "EVENTS,0"), ());
+  TEST_EQUAL(delegate.m_esp32BleSent.back(), esp32::Command(1, "EVENTS,0"), ());
   // The next event in a row asks nothing.
   count = sent();
-  source.OnDatagram(BoxLine("NGE,1,6,1100,I,OBD_OK,"));
+  source.OnBleBytes(BoxLine("NGE,1,6,1100,I,OBD_OK,"));
   TEST_EQUAL(sent(), count, ());
   // A gap is asked not more often than once in a while.
-  source.OnDatagram(BoxLine("NGE,1,8,1200,I,CAL_AUTO,-386"));
+  source.OnBleBytes(BoxLine("NGE,1,8,1200,I,CAL_AUTO,-386"));
   TEST_EQUAL(sent(), count, ());
   clock.Advance(Esp32Source::kEventsRequestIntervalMs);
-  source.OnDatagram(BoxLine("NGE,1,10,1300,I,CAL_AUTO,-386"));
-  TEST_EQUAL(delegate.m_esp32Sent.back(), esp32::Command(2, "EVENTS,9"), ());
+  source.OnBleBytes(BoxLine("NGE,1,10,1300,I,CAL_AUTO,-386"));
+  TEST_EQUAL(delegate.m_esp32BleSent.back(), esp32::Command(2, "EVENTS,9"), ());
   // The status tells the last event of the box.
   clock.Advance(Esp32Source::kEventsRequestIntervalMs);
-  source.OnDatagram(BoxLine("NGS,1,0.2.0,ICM20602,500,OK,,12,331,0,OK,0x12,NONE,38400,-386,12"));
-  TEST_EQUAL(delegate.m_esp32Sent.back(), esp32::Command(3, "EVENTS,11"), ());
+  source.OnBleBytes(BoxLine("NGS,1,0.2.0,ICM20602,500,OK,,12,331,0,OK,0x12,NONE,38400,-386,12"));
+  TEST_EQUAL(delegate.m_esp32BleSent.back(), esp32::Command(3, "EVENTS,11"), ());
 }
 
 UNIT_TEST(NoGps_Esp32Source_TellsWhenBoxWasPoweredOn)
@@ -365,20 +343,21 @@ UNIT_TEST(NoGps_Esp32Source_TellsWhenBoxWasPoweredOn)
     TestClock clock;
     TestDelegate delegate;
     MotionRecorder listener;
-    Esp32Source source(delegate, clock, clock, "192.168.4.1", listener);
+    Esp32Source source(delegate, clock, clock, listener);
     source.Start();
+    source.OnBleState(BleState::Connected);
 
     // The journal of the box tells how it has started.
-    source.OnDatagram(BoxDataLine(1, 5000, 0, 0, kCalibratedFlags));
+    source.OnBleBytes(BoxDataLine(1, 5000, 0, 0, kCalibratedFlags));
     TEST(!source.GetPowerOn(), ());
-    source.OnDatagram(poweredOn);
+    source.OnBleBytes(poweredOn);
     TEST(source.GetPowerOn(), ());
     TEST_EQUAL(source.GetPowerOn()->m_uptimeMs, 5000, ());
     TEST_EQUAL(source.GetPowerOn()->m_unixMs, clock.UnixNowMs() - 5000, ());
 
     // The same power-on later.
     clock.Advance(600);
-    source.OnDatagram(BoxDataLine(2, 5600, 900, 0, kCalibratedFlags));
+    source.OnBleBytes(BoxDataLine(2, 5600, 900, 0, kCalibratedFlags));
     clock.Advance(300);
     TEST_EQUAL(source.GetPowerOn()->m_uptimeMs, 5900, ());
     TEST_EQUAL(source.GetPowerOn()->m_unixMs, clock.UnixNowMs() - 5900, ());
@@ -387,18 +366,18 @@ UNIT_TEST(NoGps_Esp32Source_TellsWhenBoxWasPoweredOn)
     // The box has restarted by itself: it counts its time, rotation and events from the start. The car has not
     // turned back, and the box stays where it was.
     clock.Advance(400);
-    source.OnDatagram(BoxDataLine(1, 1200, 0, 0, kCalibratedFlags));
+    source.OnBleBytes(BoxDataLine(1, 1200, 0, 0, kCalibratedFlags));
     TEST(!source.GetPowerOn(), ());
     TEST_EQUAL(listener.m_motions, 1, ());
     TEST_ALMOST_EQUAL_ABS(listener.m_yawDeg, 0.9, 1e-9, ());
-    source.OnDatagram(BoxLine("NGE,1,1,40,I,BOOT,fw 0.3.3 reset SW"));
+    source.OnBleBytes(BoxLine("NGE,1,1,40,I,BOOT,fw 0.3.3 reset SW"));
     TEST(!source.GetPowerOn(), ());
 
     // It was taken out and plugged in again.
     clock.Advance(500);
-    source.OnDatagram(BoxDataLine(1, 800, 0, 0, kCalibratedFlags));
+    source.OnBleBytes(BoxDataLine(1, 800, 0, 0, kCalibratedFlags));
     TEST(!source.GetPowerOn(), ());
-    source.OnDatagram(poweredOn);
+    source.OnBleBytes(poweredOn);
     TEST(source.GetPowerOn(), ());
     TEST_EQUAL(source.GetPowerOn()->m_uptimeMs, 800, ());
 
@@ -411,22 +390,23 @@ UNIT_TEST(NoGps_Esp32Source_TellsWhenBoxWasPoweredOn)
     TestClock clock;
     TestDelegate delegate;
     MotionRecorder listener;
-    Esp32Source source(delegate, clock, clock, "192.168.4.1", listener);
+    Esp32Source source(delegate, clock, clock, listener);
     source.Start();
-    source.OnDatagram(BoxDataLine(1, Esp32Source::kBoxTimeWrapMs - 10, 0, 0, kCalibratedFlags));
-    source.OnDatagram(poweredOn);
+    source.OnBleState(BleState::Connected);
+    source.OnBleBytes(BoxDataLine(1, Esp32Source::kBoxTimeWrapMs - 10, 0, 0, kCalibratedFlags));
+    source.OnBleBytes(poweredOn);
     clock.Advance(20);
-    source.OnDatagram(BoxDataLine(2, 10, 500, 0, kCalibratedFlags));
+    source.OnBleBytes(BoxDataLine(2, 10, 500, 0, kCalibratedFlags));
     TEST(source.GetPowerOn(), ());
     TEST_EQUAL(listener.m_motions, 1, ());
     TEST_ALMOST_EQUAL_ABS(listener.m_dtSec, 0.02, 1e-9, ());
   }
   {
-    // Over Bluetooth another box may be found after a connection is lost: its journal is read from the start.
+    // Another box may be found after a connection is lost: its journal is read from the start.
     TestClock clock;
     TestDelegate delegate;
     MotionRecorder listener;
-    Esp32Source source(delegate, clock, clock, "", listener, Esp32Link::Ble);
+    Esp32Source source(delegate, clock, clock, listener);
     source.Start();
     source.OnBleState(BleState::Connected);
     source.OnBleBytes(BoxDataLine(1, 5000, 0, 0, kCalibratedFlags));
@@ -449,20 +429,21 @@ UNIT_TEST(NoGps_Esp32Source_TellsSleepingBox)
   TestClock clock;
   TestDelegate delegate;
   MotionRecorder listener;
-  Esp32Source source(delegate, clock, clock, "192.168.4.1", listener);
+  Esp32Source source(delegate, clock, clock, listener);
   source.Start();
-  source.OnDatagram(BoxDataLine(1, 5000, 0, 0, esp32::kFlagImuOk));
+  source.OnBleState(BleState::Connected);
+  source.OnBleBytes(BoxDataLine(1, 5000, 0, 0, esp32::kFlagImuOk));
   TEST_EQUAL(source.GetState(), SourceState::NoCarData, ());
-  source.OnDatagram(BoxLine("NGS,1,0.2.0,ICM20602,500,NO_ADAPTER,,,331,0,OK,0x12,NO_ADAPTER,0,-386,4,,,"));
+  source.OnBleBytes(BoxLine("NGS,1,0.2.0,ICM20602,500,NO_ADAPTER,,,331,0,OK,0x12,NO_ADAPTER,0,-386,4,,,"));
   TEST_EQUAL(source.GetState(), SourceState::NoAdapter, ());
   // The adapter is searched again: it is still missing.
-  source.OnDatagram(BoxLine("NGS,1,0.2.0,ICM20602,500,INIT,,,331,0,OK,0x12,NONE,0,-386,4,,,"));
+  source.OnBleBytes(BoxLine("NGS,1,0.2.0,ICM20602,500,INIT,,,331,0,OK,0x12,NONE,0,-386,4,,,"));
   TEST_EQUAL(source.GetState(), SourceState::NoAdapter, ());
-  source.OnDatagram(BoxLine("NGS,1,0.2.0,ICM20602,500,SEARCHING,,,331,0,OK,0x12,NONE,0,-386,4,,,"));
+  source.OnBleBytes(BoxLine("NGS,1,0.2.0,ICM20602,500,SEARCHING,,,331,0,OK,0x12,NONE,0,-386,4,,,"));
   TEST_EQUAL(source.GetState(), SourceState::ObdConnecting, ());
 
-  // The engine is stopped: the box switches its Wi-Fi off later, it is not lost.
-  source.OnDatagram(BoxLine("NGS,1,0.2.0,ICM20602,500,OK,,12,331,0,OK,0x12,NONE,38400,-386,14,OFF,,12480"));
+  // The engine is stopped: the box switches its radio off later, it is not lost.
+  source.OnBleBytes(BoxLine("NGS,1,0.2.0,ICM20602,500,OK,,12,331,0,OK,0x12,NONE,38400,-386,14,OFF,,12480"));
   TEST(source.GetCarInfo(), ());
   TEST_EQUAL(source.GetCarInfo()->m_engineRunning, false, ());
   clock.Advance(Esp32Source::kDataTimeoutMs + 1);
@@ -470,7 +451,7 @@ UNIT_TEST(NoGps_Esp32Source_TellsSleepingBox)
   TEST(!source.GetCarInfo(), ());
 
   source.Stop();
-  TEST(!delegate.m_esp32Open, ());
+  TEST(!delegate.m_esp32BleOpen, ());
   TEST_EQUAL(source.GetState(), SourceState::Disconnected, ());
 }
 
@@ -557,7 +538,7 @@ public:
   TestClock m_clock;
   TestDelegate m_delegate;
   MotionRecorder m_listener;
-  Esp32Source m_source{m_delegate, m_clock, m_clock, "192.168.4.1", m_listener, Esp32Link::Ble};
+  Esp32Source m_source{m_delegate, m_clock, m_clock, m_listener};
   std::string m_image;
   // The firmware as the box has got it.
   std::string m_written;
@@ -731,7 +712,7 @@ UNIT_TEST(NoGps_Esp32Source_AsksBoxAboutItself)
   TestClock clock;
   TestDelegate delegate;
   MotionRecorder listener;
-  Esp32Source source(delegate, clock, clock, "192.168.4.1", listener, Esp32Link::Ble);
+  Esp32Source source(delegate, clock, clock, listener);
   source.Start();
   source.OnBleState(BleState::Connected);
   auto const infoRequests = [&delegate]

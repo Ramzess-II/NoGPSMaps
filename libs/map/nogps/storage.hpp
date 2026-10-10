@@ -16,9 +16,6 @@ public:
   static std::string_view constexpr kInertialEnabled = "NoGpsInertialEnabled";
   static std::string_view constexpr kElm327Address = "NoGpsElm327Address";
   static std::string_view constexpr kEsp32Source = "NoGpsEsp32Source";
-  static std::string_view constexpr kEsp32Address = "NoGpsEsp32Address";
-  // The ESP32 sensor box is reached over Bluetooth LE, not over its Wi-Fi network.
-  static std::string_view constexpr kEsp32Bluetooth = "NoGpsEsp32Bluetooth";
   static std::string_view constexpr kShiftStepM = "NoGpsShiftStep";
   static std::string_view constexpr kShiftButtonsShown = "NoGpsShiftButtons";
   static std::string_view constexpr kSpeedScale = "NoGpsSpeedScale";
@@ -55,11 +52,10 @@ public:
     SetString(key, settings::ToString(value));
   }
 
-  // Out of the box the navigation is on and looks for the sensor box over Bluetooth. Who has chosen the ELM327
-  // adapter or the box, when they were not the defaults, keeps the phone and the Wi-Fi of the box.
+  // Out of the box the navigation is on and looks for the sensor box. Who has chosen the ELM327 adapter, when
+  // the phone was the default source, keeps the phone.
   bool IsInertialEnabled() const { return Get<bool>(kInertialEnabled, true); }
   bool IsEsp32Source() const { return Get<bool>(kEsp32Source, Get<std::string>(kElm327Address, "").empty()); }
-  bool IsEsp32Bluetooth() const { return Get<bool>(kEsp32Bluetooth, !GetString(kEsp32Source).has_value()); }
 };
 
 /// The storage in the settings of the app.

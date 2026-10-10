@@ -176,7 +176,7 @@ final class NoGpsSensorsViewController: MWMTableViewController {
   private func boxStateKey(_ state: NoGpsSourceState) -> String {
     switch state {
     case .disconnected: return "nogps_elm_disconnected"
-    case .connecting: return "nogps_box_connecting"
+    case .connecting: return "nogps_box_bt_searching"
     case .noAdapter: return "nogps_elm_no_adapter"
     case .obdDisabled: return "nogps_box_obd_disabled"
     case .obdConnecting: return "nogps_box_obd_connecting"

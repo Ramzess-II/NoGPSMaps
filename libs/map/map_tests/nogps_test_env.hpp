@@ -98,14 +98,6 @@ public:
   void Elm327Connect(std::string const & address) override { m_elm327Connects.push_back(address); }
   void Elm327Write(std::string const & data) override { m_elm327Writes.push_back(data); }
   void Elm327Close() override { ++m_elm327Closes; }
-  void Esp32Open(std::string const & host, uint16_t port) override
-  {
-    m_esp32Host = host;
-    m_esp32Port = port;
-    m_esp32Open = true;
-  }
-  void Esp32Send(std::string const & line) override { m_esp32Sent.push_back(line); }
-  void Esp32Close() override { m_esp32Open = false; }
   void Esp32BleOpen() override { m_esp32BleOpen = true; }
   void Esp32BleSend(std::string const & line) override { m_esp32BleSent.push_back(line); }
   void Esp32BleSendFirmware(std::string const & piece) override { m_firmwarePieces.push_back(piece); }
@@ -123,10 +115,6 @@ public:
   std::vector<std::string> m_elm327Connects;
   std::vector<std::string> m_elm327Writes;
   int m_elm327Closes = 0;
-  std::string m_esp32Host;
-  uint16_t m_esp32Port = 0;
-  bool m_esp32Open = false;
-  std::vector<std::string> m_esp32Sent;
   bool m_esp32BleOpen = false;
   std::vector<std::string> m_esp32BleSent;
   std::vector<std::string> m_firmwarePieces;

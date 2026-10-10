@@ -18,23 +18,20 @@ namespace nogps
 class Clock;
 class Delegate;
 
-/// The NoGPS ESP32 sensor box: it is fixed in the car and sends the car rotation and speed over its own Wi-Fi
-/// network or over Bluetooth LE, the phone can be held in hands. The box zeroes its gyroscope by itself on
-/// every stop. The lines are the same over both links, the user chooses one of them: the box has one radio,
-/// and a phone in its Wi-Fi network disturbs its Bluetooth.
+/// The NoGPS ESP32 sensor box: it is fixed in the car and sends the car rotation and speed over Bluetooth LE,
+/// the phone can be held in hands. The box zeroes its gyroscope by itself on every stop.
 class Esp32Source
   : public MotionSource
   , private Esp32Update::Link
 {
 public:
-  static uint16_t constexpr kBoxPort = 4210;
   // The box sends data while it hears the phone.
   static int64_t constexpr kHelloIntervalMs = 1000;
   // The box sends 50 lines a second, a longer silence means it is lost.
   static int64_t constexpr kDataTimeoutMs = 1000;
   // A calibration takes ~3 s on the box.
   static int64_t constexpr kCalibrationTimeoutMs = 10'000;
-  // Events lost over Wi-Fi are asked again not more often than this.
+  // The events missed are asked again not more often than this.
   static int64_t constexpr kEventsRequestIntervalMs = 2000;
   // More than the box keeps in its journal.
   static size_t constexpr kMaxLoggedEvents = 64;
@@ -64,10 +61,7 @@ public:
     int64_t m_maxGapMs = 0;
   };
 
-  /// \param address the address of the box in its Wi-Fi network, 192.168.4.1 for its own access point.
-  /// \param link the link to reach the box by, Wi-Fi or Bluetooth.
-  Esp32Source(Delegate & delegate, Scheduler & scheduler, Clock const & clock, std::string address,
-              MotionSource::Listener & listener, Esp32Link link = Esp32Link::Wifi);
+  Esp32Source(Delegate & delegate, Scheduler & scheduler, Clock const & clock, MotionSource::Listener & listener);
   ~Esp32Source() override;
 
   // MotionSource overrides:
@@ -81,13 +75,10 @@ public:
   std::string GetDeviceName() const override;
   std::optional<CarInfo> GetCarInfo() const override;
 
-  /// A line of the box that has come over Wi-Fi.
-  void OnDatagram(std::string_view text);
   /// The bytes of the box as they come over Bluetooth: a line may be cut in pieces, a piece may have several lines.
   void OnBleBytes(std::string_view bytes);
   void OnBleState(BleState state);
   BleState GetBleState() const { return m_bleState; }
-  Esp32Link GetLink() const { return m_link; }
   DataRate GetDataRate() const;
 
   /// \returns when the box was powered on, if this is how it has started and its data come. Nothing after a
@@ -124,13 +115,11 @@ private:
 
   Delegate & m_delegate;
   Clock const & m_clock;
-  std::string const m_address;
   MotionSource::Listener & m_listener;
   Timer m_helloTimer;
   bool m_running = false;
   int m_helloId = 0;
 
-  Esp32Link const m_link;
   BleState m_bleState = BleState::Off;
   // The line being received over Bluetooth, from its "$" on.
   std::string m_bleLine;

@@ -63,10 +63,7 @@ struct Status
 
   bool m_inertialEnabled = false;
   bool m_esp32Source = false;
-  // The ESP32 sensor box is reached over Bluetooth LE, not over its Wi-Fi network.
-  bool m_esp32Bluetooth = false;
   std::string m_elm327Address;
-  std::string m_esp32Address;
   // The rest is known while the inertial navigation works.
   bool m_inertialStarted = false;
   SourceState m_sourceState = SourceState::Disconnected;
@@ -197,7 +194,6 @@ public:
   void OnElm327Connected();
   void OnElm327Bytes(std::string_view data);
   void OnElm327Closed(std::string const & reason);
-  void OnEsp32Datagram(std::string_view text);
   // The ESP32 sensor box over Bluetooth LE, see Delegate::Esp32BleOpen().
   void OnEsp32BleBytes(std::string_view bytes);
   void OnEsp32BleState(BleState state);
@@ -235,9 +231,6 @@ public:
   void SetElm327Address(std::string const & address);
   /// Chooses where the car movement comes from: the ESP32 sensor box or the phone with an ELM327 adapter.
   void SetEsp32Source(bool esp32);
-  /// Chooses the link to the ESP32 sensor box: Bluetooth LE or its own Wi-Fi network.
-  void SetEsp32Bluetooth(bool bluetooth);
-  void SetEsp32Address(std::string const & address);
   void Calibrate();
   /// Forgets the car speed errors, e.g. after new tyres.
   void ClearSpeedCalibration();

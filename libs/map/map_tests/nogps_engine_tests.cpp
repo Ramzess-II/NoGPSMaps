@@ -33,11 +33,12 @@ public:
     // The inertial navigation takes the roads when it starts.
     m_map.m_roads = roads;
     m_storage.Set(Storage::kInertialEnabled, inertial);
-    // The box talks over its Wi-Fi in the tests.
-    m_storage.Set(Storage::kEsp32Source, true);
-    m_storage.Set(Storage::kEsp32Bluetooth, false);
     m_engine.Start();
+    ConnectBox();
   }
+
+  /// The platform has found the box and has connected to it.
+  void ConnectBox() { m_engine.OnEsp32BleState(BleState::Connected); }
 
   /// The ESP32 box sends its data 50 times a second for |ms|: the car drives at |speedKmh| turning at |yawRateDegS|,
   /// clockwise is positive.
@@ -48,7 +49,7 @@ public:
       m_clock.Advance(20);
       m_boxTimeMs += 20;
       m_yawMdeg += yawRateDegS * 20;
-      m_engine.OnEsp32Datagram(BoxDataLine(++m_seq, m_boxTimeMs, std::llround(m_yawMdeg), speedKmh, flags));
+      m_engine.OnEsp32BleBytes(BoxDataLine(++m_seq, m_boxTimeMs, std::llround(m_yawMdeg), speedKmh, flags));
     }
   }
 
@@ -126,9 +127,7 @@ UNIT_TEST(NoGps_Engine_LooksForBoxOverBluetoothOutOfTheBox)
     auto const status = user.Start();
     TEST(status.m_inertialEnabled, ());
     TEST(status.m_esp32Source, ());
-    TEST(status.m_esp32Bluetooth, ());
     TEST(user.m_delegate.m_esp32BleOpen, ());
-    TEST(!user.m_delegate.m_esp32Open, ());
     TEST(user.m_delegate.m_elm327Connects.empty(), ());
   }
   {
@@ -149,22 +148,20 @@ UNIT_TEST(NoGps_Engine_LooksForBoxOverBluetoothOutOfTheBox)
     TEST_EQUAL(user.m_delegate.m_elm327Connects.size(), 1, ());
   }
   {
-    // The box was chosen before it could talk over Bluetooth: it stays on its Wi-Fi.
+    // The box was reached over its Wi-Fi, which it has no more: it is found over Bluetooth.
     NewUser user;
     user.m_storage.Set(Storage::kInertialEnabled, true);
     user.m_storage.Set(Storage::kEsp32Source, true);
-    auto const status = user.Start();
-    TEST(status.m_esp32Source, ());
-    TEST(!status.m_esp32Bluetooth, ());
-    TEST(user.m_delegate.m_esp32Open, ());
-    TEST(!user.m_delegate.m_esp32BleOpen, ());
+    user.m_storage.SetString("NoGpsEsp32Bluetooth", "false");
+    TEST(user.Start().m_esp32Source, ());
+    TEST(user.m_delegate.m_esp32BleOpen, ());
   }
 }
 
 UNIT_TEST(NoGps_Engine_StartsTheBox)
 {
   Env env(true /* inertial */);
-  TEST(env.m_delegate.m_esp32Open, ());
+  TEST(env.m_delegate.m_esp32BleOpen, ());
   // The accelerometer goes to the trip log, the gyroscope is in the box.
   TEST(env.m_delegate.m_sensorsStarted, ());
   TEST(!env.m_delegate.m_gyroscope, ());
@@ -177,7 +174,7 @@ UNIT_TEST(NoGps_Engine_StartsTheBox)
   TEST_EQUAL(status.m_speedKmh, 0, ());
 
   env.m_engine.Stop();
-  TEST(!env.m_delegate.m_esp32Open, ());
+  TEST(!env.m_delegate.m_esp32BleOpen, ());
   TEST(!env.m_delegate.m_sensorsStarted, ());
 }
 
@@ -379,11 +376,11 @@ UNIT_TEST(NoGps_Engine_AdvisesToCalibratePluggedBox)
   auto const advised = [&env] { return env.m_engine.GetStatus().m_boxCalibrationAdvised; };
   // The first event of the journal of the box: how it has started.
   auto const boot = [&env](std::string const & reason)
-  { env.m_engine.OnEsp32Datagram(BoxLine("NGE,1,1,40,I,BOOT,fw 0.3.3 reset " + reason)); };
+  { env.m_engine.OnEsp32BleBytes(BoxLine("NGE,1,1,40,I,BOOT,fw 0.3.3 reset " + reason)); };
   // The box tells about itself, its firmware doesn't count its power-ons.
   auto const info = [&env]
   {
-    env.m_engine.OnEsp32Datagram(
+    env.m_engine.OnEsp32BleBytes(
         BoxLine("NGI,1,0.3.3,2026-10-10T07:33,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,WIFI BLE OTA"));
   };
 
@@ -404,15 +401,16 @@ UNIT_TEST(NoGps_Engine_AdvisesToCalibratePluggedBox)
   TEST(advised(), ());
 
   env.m_engine.Calibrate();
-  std::string const command = env.m_delegate.m_esp32Sent.back();
+  std::string const command = env.m_delegate.m_esp32BleSent.back();
   auto const idEnd = command.find(",CAL_UP*");
   TEST(idEnd != std::string::npos, (command));
-  env.m_engine.OnEsp32Datagram(BoxLine("NGA," + command.substr(5, idEnd - 5) + ",OK"));
+  env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + command.substr(5, idEnd - 5) + ",OK"));
   env.Drive(2000, 0, 0);
   TEST(!advised(), ());
 
   // The journal of the box is read again: the same power-on.
   env.m_engine.SetEsp32Source(true);
+  env.ConnectBox();
   env.Drive(1000, 0, 0);
   info();
   boot("POWERON");
@@ -456,7 +454,7 @@ UNIT_TEST(NoGps_Engine_AdvisesToCalibrateBoxByItsPowerOns)
   // The box tells how many times it was powered on.
   auto const info = [&env](std::string const & id, int powerOns)
   {
-    env.m_engine.OnEsp32Datagram(BoxLine("NGI,1,0.3.5,2026-10-10T11:00,esp32s3,s3zero," + id +
+    env.m_engine.OnEsp32BleBytes(BoxLine("NGI,1,0.3.5,2026-10-10T11:00,esp32s3,s3zero," + id +
                                          ",4096,2031616,ota_0,VALID,WIFI BLE OTA," + std::to_string(powerOns)));
     env.Drive(2000, 0, 0);
   };
@@ -469,7 +467,7 @@ UNIT_TEST(NoGps_Engine_AdvisesToCalibrateBoxByItsPowerOns)
   // It was taken out and plugged in. Its journal tells the same, the user is asked once.
   env.RestartBox();
   env.Drive(1000, 0, 0);
-  env.m_engine.OnEsp32Datagram(BoxLine("NGE,1,1,40,I,BOOT,fw 0.3.5 reset POWERON"));
+  env.m_engine.OnEsp32BleBytes(BoxLine("NGE,1,1,40,I,BOOT,fw 0.3.5 reset POWERON"));
   info("C47D", 1);
   TEST_EQUAL(count(), 1, ());
   TEST(env.m_engine.GetStatus().m_boxCalibrationAdvised, ());
@@ -487,7 +485,7 @@ UNIT_TEST(NoGps_Engine_AdvisesToCalibrateBoxByItsPowerOns)
   TEST_EQUAL(env.m_storage.Get<std::string>(Storage::kBoxPowerOns, ""), "C47D:1,42FD:7", ());
 
   // Plugged in again while the car drives: the user is told when it stops.
-  env.m_engine.OnEsp32Datagram(
+  env.m_engine.OnEsp32BleBytes(
       BoxLine("NGI,1,0.3.5,2026-10-10T11:00,esp32s3,s3zero,42FD,4096,2031616,ota_0,VALID,WIFI BLE OTA,8"));
   env.Drive(3000, 36, 0);
   TEST_EQUAL(count(), 2, ());
@@ -520,7 +518,6 @@ UNIT_TEST(NoGps_Engine_OffersFirmwareOfApplication)
     // The box works with another firmware than the application comes with: the user is asked once.
     Env env(true /* inertial */);
     env.m_engine.SetFirmwares(firmwares);
-    env.m_engine.SetEsp32Bluetooth(true);
     connect(env, "0.3.2");
     // Not at once: the box tells if the car drives in a moment.
     env.m_clock.Advance(Engine::kFirmwareOfferDelayMs - Engine::kTripLogIntervalMs);
@@ -553,7 +550,6 @@ UNIT_TEST(NoGps_Engine_OffersFirmwareOfApplication)
     // The same firmware: nothing to ask about, but it can be sent again.
     Env env(true /* inertial */);
     env.m_engine.SetFirmwares(firmwares);
-    env.m_engine.SetEsp32Bluetooth(true);
     connect(env, "0.3.3");
     env.m_clock.Advance(Engine::kFirmwareOfferDelayMs * 2);
     TEST_EQUAL(count(env, Event::FirmwareUpdateAvailable), 0, ());
@@ -563,7 +559,6 @@ UNIT_TEST(NoGps_Engine_OffersFirmwareOfApplication)
     // The car drives: the user is asked before the next trip, when the box is connected again.
     Env env(true /* inertial */);
     env.m_engine.SetFirmwares(firmwares);
-    env.m_engine.SetEsp32Bluetooth(true);
     connect(env, "0.3.2");
     int64_t seq = 0;
     auto const drive = [&](int64_t ms, int speedKmh)
@@ -585,10 +580,9 @@ UNIT_TEST(NoGps_Engine_OffersFirmwareOfApplication)
     TEST_EQUAL(count(env, Event::FirmwareUpdateAvailable), 1, ());
   }
   {
-    // A box of another kind or reached over Wi-Fi is not updated.
+    // A box of another kind is not updated.
     Env env(true /* inertial */);
     env.m_engine.SetFirmwares({{"0.3.3", "esp32c3", "c3supermini", [] { return std::string(); }}});
-    env.m_engine.SetEsp32Bluetooth(true);
     connect(env, "0.3.2");
     env.m_clock.Advance(Engine::kFirmwareOfferDelayMs * 2);
     TEST_EQUAL(count(env, Event::FirmwareUpdateAvailable), 0, ());
@@ -818,7 +812,7 @@ double DriveWithLateSpeed(bool accelerometer)
                     static_cast<long long>(boxTimeMs), reportedKmh, kCalibratedFlags);
     }
     size_t const positions = env.m_delegate.m_positions.size();
-    env.m_engine.OnEsp32Datagram(BoxLine(body));
+    env.m_engine.OnEsp32BleBytes(BoxLine(body));
     // The third and the fourth time the car speeds up and brakes.
     double const inCycle = std::fmod(t, kCycleSec);
     bool const changing = (inCycle >= 1.5 && inCycle < 3) || (inCycle >= 16.5 && inCycle < 18);

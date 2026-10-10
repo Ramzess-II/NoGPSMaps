@@ -40,21 +40,13 @@ enum class SourceState
   ObdError,
   // Connected, but the car doesn't tell its speed (ignition off, protocol search).
   NoCarData,
-  // The sensor box has gone after the engine was stopped: it switches its Wi-Fi off to save the car battery.
+  // The sensor box has gone after the engine was stopped: it switches its radio off to save the car battery.
   BoxSleeping,
   // The sensor box is connected and doesn't talk to the car with the engine stopped.
   ObdSleeping,
   Connected,
   // The sensor box takes a new firmware: it sends no data until it restarts with it.
   Updating,
-};
-
-/// How the lines of the ESP32 sensor box come.
-enum class Esp32Link
-{
-  None,
-  Wifi,
-  Ble,
 };
 
 enum class CalibrationState
@@ -69,7 +61,6 @@ enum class CalibrationState
 };
 
 std::string DebugPrint(SourceState state);
-std::string DebugPrint(Esp32Link link);
 std::string DebugPrint(CalibrationState state);
 
 /// Where the inertial navigation takes the car movement from: the speed of the car and its rotation.

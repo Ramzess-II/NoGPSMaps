@@ -1707,7 +1707,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
         || !LocationUtils.checkFineLocationPermission(this))
       return;
     final NoGps.Status status = NoGps.getStatus();
-    if (!status.inertialEnabled || !status.esp32Source || !status.esp32Bluetooth)
+    if (!status.inertialEnabled || !status.esp32Source)
       return;
     sBoxBluetoothPermissionAsked = true;
     if (ActivityCompat.checkSelfPermission(this, BLUETOOTH_SCAN) == PERMISSION_GRANTED

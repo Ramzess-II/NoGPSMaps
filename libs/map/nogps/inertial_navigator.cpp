@@ -49,9 +49,7 @@ void InertialNavigator::Start()
   MotionSource::Listener & listener = *this;
   if (esp32)
   {
-    auto source = std::make_unique<Esp32Source>(
-        m_delegate, m_scheduler, m_clock, m_storage.Get<std::string>(Storage::kEsp32Address, "192.168.4.1"), listener,
-        m_storage.IsEsp32Bluetooth() ? Esp32Link::Ble : Esp32Link::Wifi);
+    auto source = std::make_unique<Esp32Source>(m_delegate, m_scheduler, m_clock, listener);
     m_esp32 = source.get();
     m_source = std::move(source);
   }
@@ -377,12 +375,6 @@ void InertialNavigator::OnElm327Closed(std::string const & reason)
     m_phone->GetElm327()->OnClosed(reason);
 }
 
-void InertialNavigator::OnEsp32Datagram(std::string_view text)
-{
-  if (m_esp32)
-    m_esp32->OnDatagram(text);
-}
-
 void InertialNavigator::OnEsp32BleBytes(std::string_view bytes)
 {
   if (m_esp32)
@@ -393,11 +385,6 @@ void InertialNavigator::OnEsp32BleState(BleState state)
 {
   if (m_esp32)
     m_esp32->OnBleState(state);
-}
-
-Esp32Link InertialNavigator::GetEsp32Link() const
-{
-  return m_esp32 ? m_esp32->GetLink() : Esp32Link::None;
 }
 
 BleState InertialNavigator::GetBleState() const

@@ -180,14 +180,9 @@ public final class NoGps
     public boolean inertialEnabled;
     @Keep
     public boolean esp32Source;
-    // The sensor box is reached over Bluetooth LE, not over its Wi-Fi network.
-    @Keep
-    public boolean esp32Bluetooth;
     // Empty if no adapter is chosen.
     @Keep
     public String elm327Address = "";
-    @Keep
-    public String esp32Address = "";
     // The rest is known while the inertial navigation works.
     @Keep
     public boolean inertialStarted;
@@ -310,19 +305,7 @@ public final class NoGps
     void elm327Close();
 
     /**
-     * The ESP32 sensor box over UDP on its Wi-Fi network: the datagrams go to {@link #onEsp32Datagram}.
-     */
-    @Keep
-    void esp32Open(@NonNull String host, int port);
-
-    @Keep
-    void esp32Send(@NonNull byte[] line);
-
-    @Keep
-    void esp32Close();
-
-    /**
-     * The same box over Bluetooth LE: the bytes go to {@link #nativeOnEsp32BleBytes}, the state to
+     * The ESP32 sensor box over Bluetooth LE: the bytes go to {@link #nativeOnEsp32BleBytes}, the state to
      * {@link #nativeOnEsp32BleState}.
      */
     @Keep
@@ -448,8 +431,6 @@ public final class NoGps
 
   static native void nativeOnElm327Closed(@NonNull String reason);
 
-  static native void nativeOnEsp32Datagram(@NonNull byte[] data);
-
   static native void nativeOnEsp32BleBytes(@NonNull byte[] data);
 
   /**
@@ -474,10 +455,6 @@ public final class NoGps
   public static native void nativeSetElm327Address(@NonNull String address);
 
   public static native void nativeSetEsp32Source(boolean esp32);
-
-  public static native void nativeSetEsp32Bluetooth(boolean bluetooth);
-
-  public static native void nativeSetEsp32Address(@NonNull String address);
 
   public static native void nativeCalibrate();
 

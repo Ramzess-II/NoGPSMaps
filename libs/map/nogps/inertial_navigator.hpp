@@ -158,7 +158,6 @@ public:
   void OnElm327Connected();
   void OnElm327Bytes(std::string_view data);
   void OnElm327Closed(std::string const & reason);
-  void OnEsp32Datagram(std::string_view text);
   void OnEsp32BleBytes(std::string_view bytes);
   void OnEsp32BleState(BleState state);
 
@@ -189,8 +188,7 @@ public:
   SourceState GetSourceState() const;
   /// \returns the name of the sensor device to show, empty for the phone.
   std::string GetDeviceName() const;
-  /// The link the ESP32 sensor box is reached by and what the platform does about Bluetooth.
-  Esp32Link GetEsp32Link() const;
+  /// What the platform does about Bluetooth to reach the ESP32 sensor box.
   BleState GetBleState() const;
   /// \returns nothing if the car movement doesn't come from the ESP32 sensor box.
   std::optional<Esp32Source::DataRate> GetEsp32DataRate() const;
