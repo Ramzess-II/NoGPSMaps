@@ -54,6 +54,12 @@ public:
   {
     SetString(key, settings::ToString(value));
   }
+
+  // Out of the box the navigation is on and looks for the sensor box over Bluetooth. Who has chosen the ELM327
+  // adapter or the box, when they were not the defaults, keeps the phone and the Wi-Fi of the box.
+  bool IsInertialEnabled() const { return Get<bool>(kInertialEnabled, true); }
+  bool IsEsp32Source() const { return Get<bool>(kEsp32Source, Get<std::string>(kElm327Address, "").empty()); }
+  bool IsEsp32Bluetooth() const { return Get<bool>(kEsp32Bluetooth, !GetString(kEsp32Source).has_value()); }
 };
 
 /// The storage in the settings of the app.

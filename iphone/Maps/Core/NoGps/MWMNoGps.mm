@@ -76,6 +76,9 @@ nogps::Engine & Engine()
     // The box is the only source of the car movement on iOS.
     if (!engine->GetStatus().m_esp32Source)
       engine->SetEsp32Source(true);
+    // It is reached over its Wi-Fi only until Bluetooth LE is made here, and Bluetooth is the default of the core.
+    if (engine->GetStatus().m_esp32Bluetooth)
+      engine->SetEsp32Bluetooth(false);
   }
   return *engine;
 }

@@ -45,13 +45,13 @@ void InertialNavigator::Start()
   // The source may have changed: a sensor box with another gyroscope or the phone.
   m_turnSignChecker = {};
   m_bendMatcher = {};
-  bool const esp32 = m_storage.Get<bool>(Storage::kEsp32Source, false);
+  bool const esp32 = m_storage.IsEsp32Source();
   MotionSource::Listener & listener = *this;
   if (esp32)
   {
     auto source = std::make_unique<Esp32Source>(
         m_delegate, m_scheduler, m_clock, m_storage.Get<std::string>(Storage::kEsp32Address, "192.168.4.1"), listener,
-        m_storage.Get<bool>(Storage::kEsp32Bluetooth, false) ? Esp32Link::Ble : Esp32Link::Wifi);
+        m_storage.IsEsp32Bluetooth() ? Esp32Link::Ble : Esp32Link::Wifi);
     m_esp32 = source.get();
     m_source = std::move(source);
   }

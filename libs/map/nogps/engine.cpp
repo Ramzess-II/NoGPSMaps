@@ -703,7 +703,7 @@ void Engine::RestoreTrustedPosition()
 
 bool Engine::IsInertialNavigationEnabled() const
 {
-  return m_storage.Get<bool>(Storage::kInertialEnabled, false);
+  return m_storage.IsInertialEnabled();
 }
 
 void Engine::SetInertialNavigationEnabled(bool enabled)
@@ -1186,8 +1186,8 @@ Status Engine::GetStatus()
   status.m_shiftButtonsShown = m_storage.Get<bool>(Storage::kShiftButtonsShown, false);
 
   status.m_inertialEnabled = IsInertialNavigationEnabled();
-  status.m_esp32Source = m_storage.Get<bool>(Storage::kEsp32Source, false);
-  status.m_esp32Bluetooth = m_storage.Get<bool>(Storage::kEsp32Bluetooth, false);
+  status.m_esp32Source = m_storage.IsEsp32Source();
+  status.m_esp32Bluetooth = m_storage.IsEsp32Bluetooth();
   status.m_elm327Address = m_storage.Get<std::string>(Storage::kElm327Address, "");
   status.m_esp32Address = m_storage.Get<std::string>(Storage::kEsp32Address, "192.168.4.1");
   status.m_inertialStarted = status.m_inertialEnabled && m_inertial;

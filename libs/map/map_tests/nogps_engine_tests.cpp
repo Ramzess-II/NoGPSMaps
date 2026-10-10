@@ -32,11 +32,10 @@ public:
   {
     // The inertial navigation takes the roads when it starts.
     m_map.m_roads = roads;
-    if (inertial)
-    {
-      m_storage.Set(Storage::kInertialEnabled, true);
-      m_storage.Set(Storage::kEsp32Source, true);
-    }
+    m_storage.Set(Storage::kInertialEnabled, inertial);
+    // The box talks over its Wi-Fi in the tests.
+    m_storage.Set(Storage::kEsp32Source, true);
+    m_storage.Set(Storage::kEsp32Bluetooth, false);
     m_engine.Start();
   }
 
@@ -101,6 +100,65 @@ void MarkCar(Env & env, double eastM)
   TEST(env.m_engine.PlaceMarkByTap(At(eastM, 3)), ());
   TEST_EQUAL(env.Last().m_provider, Provider::Manual, ());
   TestAlmostEqualAbs(East(env.Last().m_position), eastM, 0.5);
+}
+
+/// The engine of a user who has set nothing but what the test saves before the start.
+struct NewUser
+{
+  nogps::Status Start()
+  {
+    m_engine.Start();
+    return m_engine.GetStatus();
+  }
+
+  TestClock m_clock;
+  TestStorage m_storage;
+  TestDelegate m_delegate;
+  TestMap m_map;
+  Engine m_engine{m_delegate, m_map, m_storage, m_clock, m_clock};
+};
+
+UNIT_TEST(NoGps_Engine_LooksForBoxOverBluetoothOutOfTheBox)
+{
+  {
+    // Nothing is chosen: the box is found without touching the settings.
+    NewUser user;
+    auto const status = user.Start();
+    TEST(status.m_inertialEnabled, ());
+    TEST(status.m_esp32Source, ());
+    TEST(status.m_esp32Bluetooth, ());
+    TEST(user.m_delegate.m_esp32BleOpen, ());
+    TEST(!user.m_delegate.m_esp32Open, ());
+    TEST(user.m_delegate.m_elm327Connects.empty(), ());
+  }
+  {
+    // The user has switched the navigation off.
+    NewUser user;
+    user.m_storage.Set(Storage::kInertialEnabled, false);
+    TEST(!user.Start().m_inertialEnabled, ());
+    TEST(!user.m_delegate.m_esp32BleOpen, ());
+    TEST(!user.m_delegate.m_sensorsStarted, ());
+  }
+  {
+    // The adapter was chosen when the phone was the default source: it stays.
+    NewUser user;
+    user.m_storage.Set(Storage::kInertialEnabled, true);
+    user.m_storage.Set(Storage::kElm327Address, std::string("00:11:22:33:44:55"));
+    TEST(!user.Start().m_esp32Source, ());
+    TEST(!user.m_delegate.m_esp32BleOpen, ());
+    TEST_EQUAL(user.m_delegate.m_elm327Connects.size(), 1, ());
+  }
+  {
+    // The box was chosen before it could talk over Bluetooth: it stays on its Wi-Fi.
+    NewUser user;
+    user.m_storage.Set(Storage::kInertialEnabled, true);
+    user.m_storage.Set(Storage::kEsp32Source, true);
+    auto const status = user.Start();
+    TEST(status.m_esp32Source, ());
+    TEST(!status.m_esp32Bluetooth, ());
+    TEST(user.m_delegate.m_esp32Open, ());
+    TEST(!user.m_delegate.m_esp32BleOpen, ());
+  }
 }
 
 UNIT_TEST(NoGps_Engine_StartsTheBox)
