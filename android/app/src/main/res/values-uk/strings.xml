@@ -1036,7 +1036,27 @@
     <string name="nogps_box_bt_waiting">підключено через Bluetooth, чекаю на дані</string>
     <string name="nogps_sensors_calibrate_box">Калібрувати</string>
     <string name="nogps_gyro_mount_moved">блок зсунули, відкалібруйте</string>
-    <string name="nogps_sensors_hint_box">Закріпіть блок нерухомо. Відкалібруйте його один раз, коли машина стоїть на рівному місці, далі блок сам обнуляє гіроскоп на кожній зупинці.</string>
+    <string name="nogps_sensors_hint_box">Закріпіть блок нерухомо. Гіроскоп він обнуляє сам на кожній зупинці.</string>
+    <!-- Heading of the block about the calibration of the sensor box and the title of the question about it -->
+    <string name="nogps_box_calibration">Калібрування блока датчиків</string>
+    <!-- Under the heading "Sensor box calibration": when and how the box is calibrated -->
+    <string name="nogps_box_calibration_hint">Потрібне після встановлення блока та щоразу, коли його виймали або зсували. Машина має стояти на рівній поверхні без ухилів.</string>
+    <!-- Question shown when the sensor box has been powered on: it is new in the car or was taken out. The buttons are "Calibrate" and "Later" -->
+    <string name="nogps_box_calibration_offer">Блок датчиків підключали заново. Відкалібруйте датчики: машина має стояти на рівній поверхні без ухилів.</string>
+    <!-- Row of the sensors screen: the state of the calibration of the sensor box -->
+    <string name="nogps_sensors_box_sensors">Датчики: %s</string>
+    <!-- State of the sensors of the box, shown after "Sensors:" -->
+    <string name="nogps_box_not_calibrated">не відкалібровано</string>
+    <!-- State of the sensors of the box, shown after "Sensors:", with the percent done -->
+    <string name="nogps_box_calibrating">калібрування… %d%%</string>
+    <!-- State of the sensors of the box, shown after "Sensors:" -->
+    <string name="nogps_box_calibrated">відкалібровано</string>
+    <!-- State of the sensors of the box, shown after "Sensors:" -->
+    <string name="nogps_box_calibration_failed">не вийшло, машина рухалася</string>
+    <!-- State of the sensors of the box, shown after "Sensors:": the box has been powered on since its calibration -->
+    <string name="nogps_box_calibration_advised">блок підключали заново, відкалібруйте</string>
+    <!-- What is missing for the navigation without GPS, shown after "Not ready:" -->
+    <string name="nogps_missing_box_calibration">відкалібруйте блок</string>
     <string name="nogps_turns_reversed">Гіроскоп повертає машину не в той бік, що GPS. Перевірте осі в драйвері датчика: без GPS машина повертатиме неправильно</string>
     <string name="nogps_road_lost">Дорогу втрачено, машину зупинено. Позначте себе на мапі</string>
     <string name="nogps_shift_buttons">Калібрування</string>
