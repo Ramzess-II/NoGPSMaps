@@ -94,6 +94,8 @@ struct Status
   int m_firmwareUpdateProgress = 0;
   // Why the update has failed, see Esp32Update::GetError().
   std::string m_firmwareUpdateError;
+  // The sensor box has been powered on since the user calibrated it: it may stand in another way now.
+  bool m_boxCalibrationAdvised = false;
 };
 
 /// Navigation without GPS: it chooses the position to show from GPS, cell towers, the marks of the user and the
@@ -169,6 +171,10 @@ public:
   static int64_t constexpr kNotCalibratedDelayMs = 5000;
   // A new firmware is offered when the sensor box has been heard for this long: it tells the car speed by then.
   static int64_t constexpr kFirmwareOfferDelayMs = 5000;
+  // Two power-ons of the sensor box are the same one if their times differ less than this and this part of the
+  // time the box has worked since: it sleeps most of its time, and its clock is not exact then.
+  static int64_t constexpr kSamePowerOnMs = 30'000;
+  static double constexpr kBoxClockError = 0.1;
   // Meters the position is moved by with the buttons, the user chooses one of them.
   static int constexpr kShiftStepsM[] = {10, 20, 50, 100};
 
@@ -280,6 +286,7 @@ private:
   void CheckMotionSourceStopped();
   void CheckNotCalibrated();
   void CheckFirmwareUpdate();
+  void CheckBoxCalibration();
   /// \returns the firmware for the connected sensor box, nullptr if there is none or the box can't take it now.
   Firmware const * FindBoxFirmware();
   void OnGpsSpoofingChanged(bool spoofed);
@@ -357,6 +364,10 @@ private:
   // a traffic light.
   std::optional<int64_t> m_boxKnownSinceMs;
   bool m_drivenWithBox = false;
+  // The last calibration of the box by the user that is taken into account.
+  std::optional<int64_t> m_boxCalibratedMs;
+  // The box has been powered on, the user is to be told when the car stands.
+  bool m_boxCalibrationAdvicePending = false;
 
   GpsSpoofingDetector m_spoofingDetector;
   GpsReturnDetector m_gpsReturnDetector;

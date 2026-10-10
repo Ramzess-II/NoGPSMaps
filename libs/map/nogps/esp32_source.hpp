@@ -38,12 +38,23 @@ public:
   static int64_t constexpr kEventsRequestIntervalMs = 2000;
   // More than the box keeps in its journal.
   static size_t constexpr kMaxLoggedEvents = 64;
+  // The time of the box is 32 bits of milliseconds and wraps around.
+  static int64_t constexpr kBoxTimeWrapMs = 1LL << 32;
   // The lines of the box are shorter.
   static size_t constexpr kMaxLineSize = 512;
   // A box that has not told about itself is asked after this many hellos, this many times: an old firmware
   // doesn't know the question.
   static int constexpr kInfoRequestHellos = 3;
   static int constexpr kMaxInfoRequests = 3;
+
+  /// A start of the box by a power-on: it was plugged into the car.
+  struct PowerOn
+  {
+    // Milliseconds since the Unix epoch.
+    int64_t m_unixMs = 0;
+    // How long the box has worked since then by its own clock.
+    int64_t m_uptimeMs = 0;
+  };
 
   /// How the data lines came during the last second, for the log of a drive.
   struct DataRate
@@ -79,6 +90,12 @@ public:
   Esp32Link GetLink() const { return m_link; }
   DataRate GetDataRate() const;
 
+  /// \returns when the box was powered on, if this is how it has started and its data come. Nothing after a
+  /// restart of another kind: the box has stayed in its place.
+  std::optional<PowerOn> GetPowerOn() const;
+  /// \returns when the box was calibrated by Calibrate() the last time, nothing if it was not.
+  std::optional<int64_t> GetCalibratedMs() const { return m_calibratedMs; }
+
   /// What the box has told about itself, nothing until it does.
   std::optional<esp32::Info> const & GetInfo() const { return m_info; }
   /// \returns true if the box takes a firmware now: it is connected over Bluetooth and its firmware knows how.
@@ -101,6 +118,7 @@ private:
   void OnInfo(esp32::Info const & info);
   void OnLastEventNumber(int64_t lastNumber);
   void RequestLostEvents(int64_t fromNumber);
+  void ForgetJournal();
   bool IsConnected() const;
   bool IsSleeping() const;
 
@@ -138,12 +156,15 @@ private:
   // The numbers of the events of the box written to the log.
   std::set<int64_t> m_loggedEvents;
   std::optional<int64_t> m_eventsRequestMs;
+  // The journal of the box tells it has started by a power-on.
+  bool m_poweredOn = false;
   int m_nextCommandId = 1;
   // The calibration command waiting for its reply, 0 if none.
   int m_calibrationId = 0;
   int64_t m_calibrationStartMs = 0;
   int m_calibrationProgress = 0;
   bool m_calibrationFailed = false;
+  std::optional<int64_t> m_calibratedMs;
 
   std::optional<esp32::Info> m_info;
   int m_hellosWithoutInfo = 0;

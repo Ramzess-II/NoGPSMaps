@@ -63,6 +63,17 @@ public:
     }
   }
 
+  /// The box starts again: it counts its lines, time and rotation from the start.
+  void RestartBox()
+  {
+    m_seq = 0;
+    m_boxTimeMs = 0;
+    m_yawMdeg = 0;
+  }
+
+  /// The box sends nothing, |ms| pass by its clock.
+  void SleepBox(int64_t ms) { m_boxTimeMs += ms; }
+
   Fix const & Last() const { return m_delegate.m_positions.back(); }
 
   TestClock m_clock;
@@ -298,6 +309,73 @@ UNIT_TEST(NoGps_Engine_TellsThatMovedBoxDoesNotFollowCar)
   // Calibrated again: the car is followed.
   env.Drive(3000, 36, 0);
   TEST_GREATER(Distance(env.Last().m_position, stopped), 10, ());
+}
+
+UNIT_TEST(NoGps_Engine_AdvisesToCalibratePluggedBox)
+{
+  Env env(true /* inertial */);
+  auto const count = [&env]
+  {
+    return std::count(env.m_delegate.m_events.begin(), env.m_delegate.m_events.end(), Event::BoxCalibrationAdvised);
+  };
+  auto const advised = [&env] { return env.m_engine.GetStatus().m_boxCalibrationAdvised; };
+  // The first event of the journal of the box: how it has started.
+  auto const boot = [&env](std::string const & reason)
+  { env.m_engine.OnEsp32Datagram(BoxLine("NGE,1,1,40,I,BOOT,fw 0.3.3 reset " + reason)); };
+
+  // The box was plugged into the car: it may stand in another way than it was calibrated.
+  env.Drive(2000, 0, 0);
+  TEST_EQUAL(count(), 0, ());
+  TEST(!advised(), ());
+  boot("POWERON");
+  env.Drive(2000, 0, 0);
+  TEST_EQUAL(count(), 1, ());
+  TEST(advised(), ());
+  // The user is told once, the status tells it until the box is calibrated.
+  env.Drive(5000, 0, 0);
+  TEST_EQUAL(count(), 1, ());
+  TEST(advised(), ());
+
+  env.m_engine.Calibrate();
+  std::string const command = env.m_delegate.m_esp32Sent.back();
+  auto const idEnd = command.find(",CAL_UP*");
+  TEST(idEnd != std::string::npos, (command));
+  env.m_engine.OnEsp32Datagram(BoxLine("NGA," + command.substr(5, idEnd - 5) + ",OK"));
+  env.Drive(2000, 0, 0);
+  TEST(!advised(), ());
+
+  // The journal of the box is read again: the same power-on.
+  env.m_engine.SetEsp32Source(true);
+  env.Drive(1000, 0, 0);
+  boot("POWERON");
+  env.Drive(2000, 0, 0);
+  TEST_EQUAL(count(), 1, ());
+  TEST(!advised(), ());
+
+  // The box has slept, its clock is 5 % slow then: still the same power-on.
+  env.m_clock.Advance(1'000'000);
+  env.SleepBox(950'000);
+  env.Drive(3000, 0, 0);
+  TEST_EQUAL(count(), 1, ());
+  TEST(!advised(), ());
+
+  // It has restarted by itself and stays in its place.
+  env.RestartBox();
+  env.Drive(1000, 0, 0);
+  boot("SW");
+  env.Drive(2000, 0, 0);
+  TEST_EQUAL(count(), 1, ());
+  TEST(!advised(), ());
+
+  // Plugged in again while the car drives: the user is told when it stops.
+  env.RestartBox();
+  env.Drive(1000, 36, 0);
+  boot("POWERON");
+  env.Drive(3000, 36, 0);
+  TEST_EQUAL(count(), 1, ());
+  TEST(advised(), ());
+  env.Drive(2000, 0, 0);
+  TEST_EQUAL(count(), 2, ());
 }
 
 UNIT_TEST(NoGps_Engine_OffersFirmwareOfApplication)

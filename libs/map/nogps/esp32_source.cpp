@@ -57,6 +57,7 @@ void Esp32Source::Stop()
   m_info.reset();
   m_hellosWithoutInfo = 0;
   m_update.Reset();
+  ForgetJournal();
 }
 
 void Esp32Source::SendHello()
@@ -127,6 +128,7 @@ void Esp32Source::OnBleState(BleState state)
     m_info.reset();
     m_hellosWithoutInfo = 0;
     m_update.OnLinkLost();
+    ForgetJournal();
   }
   // The box starts sending at once, not at the next HELLO.
   if (state == BleState::Connected)
@@ -256,11 +258,19 @@ void Esp32Source::OnData(esp32::Data const & data)
     m_listener.OnSourceAccel({data.m_accelH1, data.m_accelH2, data.m_accelUp});
   }
 
+  // The time of the box has gone back, and not because its 32 bits have wrapped around: the box has restarted
+  // and counts its rotation and its events from the start.
+  if (m_hasLast && data.m_timeMs < m_lastTimeMs && m_lastTimeMs - data.m_timeMs < kBoxTimeWrapMs / 2)
+  {
+    LOG(LINFO, ("The box has restarted"));
+    ForgetJournal();
+    m_hasLast = false;
+  }
+
   // The box sends the totals: a lost line loses nothing, the next one has the rotation.
   if (m_hasLast && fresh)
   {
-    // The time of the box is 32 bits and wraps around.
-    int64_t const dtMs = (data.m_timeMs - m_lastTimeMs) & 0xFFFFFFFFLL;
+    int64_t const dtMs = (data.m_timeMs - m_lastTimeMs) & (kBoxTimeWrapMs - 1);
     double const yawDeltaDeg = IsCalibrated() ? (data.m_yawMdeg - m_lastYawMdeg) / 1000.0 : 0;
     m_listener.OnMotion(yawDeltaDeg, dtMs / 1000.0, now * 1'000'000);
   }
@@ -287,6 +297,9 @@ void Esp32Source::OnEvent(esp32::Event const & event)
     m_voltageMismatch = true;
   else if (event.m_code == "VOLT_CAL")
     m_voltageMismatch = false;
+  // "fw 0.3.3 reset POWERON": the box was plugged in. It restarts by itself for other reasons.
+  else if (event.m_code == "BOOT")
+    m_poweredOn = event.m_text.ends_with("reset POWERON");
   if (event.m_number > lastNumber + 1)
     RequestLostEvents(lastNumber + 1);
 }
@@ -301,13 +314,20 @@ void Esp32Source::RequestLostEvents(int64_t fromNumber)
   Send("EVENTS," + std::to_string(fromNumber), m_nextCommandId++);
 }
 
+void Esp32Source::ForgetJournal()
+{
+  // The journal is asked from its start again.
+  m_loggedEvents.clear();
+  m_poweredOn = false;
+}
+
 void Esp32Source::OnLastEventNumber(int64_t lastNumber)
 {
   if (lastNumber < 0)
     return;
   // The box has restarted and counts its events again.
   if (!m_loggedEvents.empty() && lastNumber < *m_loggedEvents.rbegin())
-    m_loggedEvents.clear();
+    ForgetJournal();
   int64_t const loggedNumber = m_loggedEvents.empty() ? -1 : *m_loggedEvents.rbegin();
   if (lastNumber > loggedNumber)
     RequestLostEvents(loggedNumber + 1);
@@ -325,6 +345,17 @@ void Esp32Source::OnReply(esp32::Reply const & reply)
   LOG(LINFO, ("Calibration: ok =", reply.m_ok, "error =", reply.m_error));
   m_calibrationId = 0;
   m_calibrationFailed = !reply.m_ok;
+  if (reply.m_ok)
+    m_calibratedMs = m_clock.NowMs();
+}
+
+std::optional<Esp32Source::PowerOn> Esp32Source::GetPowerOn() const
+{
+  if (!m_poweredOn || !m_hasLast || !IsConnected())
+    return {};
+  // The box counts its time from its start.
+  int64_t const uptimeMs = m_lastTimeMs + m_clock.NowMs() - *m_lastDataMs;
+  return PowerOn{m_clock.UnixNowMs() - uptimeMs, uptimeMs};
 }
 
 bool Esp32Source::IsConnected() const

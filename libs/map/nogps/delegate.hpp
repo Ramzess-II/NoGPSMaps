@@ -65,6 +65,9 @@ enum class Event
   // The update of the firmware of the sensor box has ended.
   FirmwareUpdateDone,
   FirmwareUpdateFailed,
+  // The sensor box has been powered on: it is new in the car, or it was taken out and may be put in another way.
+  // The user should calibrate it on a level place. Told once for a power-on, while the car stands.
+  BoxCalibrationAdvised,
 };
 
 /// What the platform does about the ESP32 sensor box over Bluetooth LE, told to Engine::OnEsp32BleState().

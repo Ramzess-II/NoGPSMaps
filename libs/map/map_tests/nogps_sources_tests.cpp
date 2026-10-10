@@ -358,6 +358,92 @@ UNIT_TEST(NoGps_Esp32Source_RequestsLostEvents)
   TEST_EQUAL(delegate.m_esp32Sent.back(), esp32::Command(3, "EVENTS,11"), ());
 }
 
+UNIT_TEST(NoGps_Esp32Source_TellsWhenBoxWasPoweredOn)
+{
+  std::string const poweredOn = BoxLine("NGE,1,1,40,I,BOOT,fw 0.3.3 reset POWERON");
+  {
+    TestClock clock;
+    TestDelegate delegate;
+    MotionRecorder listener;
+    Esp32Source source(delegate, clock, clock, "192.168.4.1", listener);
+    source.Start();
+
+    // The journal of the box tells how it has started.
+    source.OnDatagram(BoxDataLine(1, 5000, 0, 0, kCalibratedFlags));
+    TEST(!source.GetPowerOn(), ());
+    source.OnDatagram(poweredOn);
+    TEST(source.GetPowerOn(), ());
+    TEST_EQUAL(source.GetPowerOn()->m_uptimeMs, 5000, ());
+    TEST_EQUAL(source.GetPowerOn()->m_unixMs, clock.UnixNowMs() - 5000, ());
+
+    // The same power-on later.
+    clock.Advance(600);
+    source.OnDatagram(BoxDataLine(2, 5600, 900, 0, kCalibratedFlags));
+    clock.Advance(300);
+    TEST_EQUAL(source.GetPowerOn()->m_uptimeMs, 5900, ());
+    TEST_EQUAL(source.GetPowerOn()->m_unixMs, clock.UnixNowMs() - 5900, ());
+    TEST_EQUAL(listener.m_motions, 1, ());
+
+    // The box has restarted by itself: it counts its time, rotation and events from the start. The car has not
+    // turned back, and the box stays where it was.
+    clock.Advance(400);
+    source.OnDatagram(BoxDataLine(1, 1200, 0, 0, kCalibratedFlags));
+    TEST(!source.GetPowerOn(), ());
+    TEST_EQUAL(listener.m_motions, 1, ());
+    TEST_ALMOST_EQUAL_ABS(listener.m_yawDeg, 0.9, 1e-9, ());
+    source.OnDatagram(BoxLine("NGE,1,1,40,I,BOOT,fw 0.3.3 reset SW"));
+    TEST(!source.GetPowerOn(), ());
+
+    // It was taken out and plugged in again.
+    clock.Advance(500);
+    source.OnDatagram(BoxDataLine(1, 800, 0, 0, kCalibratedFlags));
+    TEST(!source.GetPowerOn(), ());
+    source.OnDatagram(poweredOn);
+    TEST(source.GetPowerOn(), ());
+    TEST_EQUAL(source.GetPowerOn()->m_uptimeMs, 800, ());
+
+    // The box is not heard.
+    clock.Advance(Esp32Source::kDataTimeoutMs + 1);
+    TEST(!source.GetPowerOn(), ());
+  }
+  {
+    // The time of the box is 32 bits and wraps around in 50 days: this is not a restart.
+    TestClock clock;
+    TestDelegate delegate;
+    MotionRecorder listener;
+    Esp32Source source(delegate, clock, clock, "192.168.4.1", listener);
+    source.Start();
+    source.OnDatagram(BoxDataLine(1, Esp32Source::kBoxTimeWrapMs - 10, 0, 0, kCalibratedFlags));
+    source.OnDatagram(poweredOn);
+    clock.Advance(20);
+    source.OnDatagram(BoxDataLine(2, 10, 500, 0, kCalibratedFlags));
+    TEST(source.GetPowerOn(), ());
+    TEST_EQUAL(listener.m_motions, 1, ());
+    TEST_ALMOST_EQUAL_ABS(listener.m_dtSec, 0.02, 1e-9, ());
+  }
+  {
+    // Over Bluetooth another box may be found after a connection is lost: its journal is read from the start.
+    TestClock clock;
+    TestDelegate delegate;
+    MotionRecorder listener;
+    Esp32Source source(delegate, clock, clock, "", listener, Esp32Link::Ble);
+    source.Start();
+    source.OnBleState(BleState::Connected);
+    source.OnBleBytes(BoxDataLine(1, 5000, 0, 0, kCalibratedFlags));
+    source.OnBleBytes(poweredOn);
+    TEST(source.GetPowerOn(), ());
+
+    source.OnBleState(BleState::Searching);
+    clock.Advance(3000);
+    source.OnBleState(BleState::Connected);
+    source.OnBleBytes(BoxDataLine(151, 8000, 0, 0, kCalibratedFlags));
+    TEST(!source.GetPowerOn(), ());
+    source.OnBleBytes(poweredOn);
+    TEST(source.GetPowerOn(), ());
+    TEST_EQUAL(source.GetPowerOn()->m_unixMs, clock.UnixNowMs() - 8000, ());
+  }
+}
+
 UNIT_TEST(NoGps_Esp32Source_TellsSleepingBox)
 {
   TestClock clock;

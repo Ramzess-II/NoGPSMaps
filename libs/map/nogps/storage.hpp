@@ -26,6 +26,10 @@ public:
   static std::string_view constexpr kSpeedLag = "NoGpsSpeedLag";
   static std::string_view constexpr kWrongNetworkPoints = "NoGpsWrongNetworkPoints";
   static std::string_view constexpr kLastTrusted = "NoGpsLastTrusted";
+  // When the ESP32 sensor box was powered on the last time, milliseconds since the Unix epoch.
+  static std::string_view constexpr kBoxPowerOnTime = "NoGpsBoxPowerOnTime";
+  // The box has been powered on since the user calibrated it.
+  static std::string_view constexpr kBoxCalibrationAdvised = "NoGpsBoxCalibrationAdvised";
 
   virtual ~Storage() = default;
 

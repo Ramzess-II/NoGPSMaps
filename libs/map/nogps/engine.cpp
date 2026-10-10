@@ -548,6 +548,48 @@ void Engine::CheckFirmwareUpdate()
   Notify(Event::FirmwareUpdateAvailable);
 }
 
+void Engine::CheckBoxCalibration()
+{
+  auto const * box = m_inertial && IsInertialNavigationEnabled() ? m_inertial->GetEsp32() : nullptr;
+  if (!box)
+  {
+    m_boxCalibrationAdvicePending = false;
+    return;
+  }
+
+  if (auto const calibrated = box->GetCalibratedMs(); calibrated != m_boxCalibratedMs)
+  {
+    m_boxCalibratedMs = calibrated;
+    if (calibrated)
+    {
+      m_boxCalibrationAdvicePending = false;
+      m_storage.Set(Storage::kBoxCalibrationAdvised, false);
+    }
+  }
+
+  // The box keeps its calibration, but it doesn't know that it was taken out of the car and put in another
+  // way: tilted by less than 20 degrees it tells nothing and measures up to 6 % less of every turn.
+  if (auto const powerOn = box->GetPowerOn())
+  {
+    auto const saved = m_storage.Get<int64_t>(Storage::kBoxPowerOnTime, 0);
+    double const tolerance = kSamePowerOnMs + kBoxClockError * powerOn->m_uptimeMs;
+    if (std::fabs(static_cast<double>(powerOn->m_unixMs - saved)) > tolerance)
+    {
+      LOG(LINFO, ("The box was powered on", powerOn->m_uptimeMs / 1000, "s ago, it is to be calibrated"));
+      m_storage.Set(Storage::kBoxPowerOnTime, powerOn->m_unixMs);
+      m_storage.Set(Storage::kBoxCalibrationAdvised, true);
+      m_boxCalibrationAdvicePending = true;
+    }
+  }
+
+  // The box is calibrated while the car stands.
+  if (m_boxCalibrationAdvicePending && m_inertial->GetSpeedKmh() <= 0)
+  {
+    m_boxCalibrationAdvicePending = false;
+    Notify(Event::BoxCalibrationAdvised);
+  }
+}
+
 void Engine::OnGpsSpoofingChanged(bool spoofed)
 {
   LOG(LWARNING, ("GPS spoofed =", spoofed));
@@ -1126,6 +1168,7 @@ Status Engine::GetStatus()
       status.m_firmwareUpdate = box->GetUpdate().GetState();
       status.m_firmwareUpdateProgress = box->GetUpdate().GetProgressPercent();
       status.m_firmwareUpdateError = box->GetUpdate().GetError();
+      status.m_boxCalibrationAdvised = m_storage.Get<bool>(Storage::kBoxCalibrationAdvised, false);
     }
   }
   return status;
@@ -1141,6 +1184,7 @@ void Engine::LogTrip()
   CheckMotionSourceStopped();
   CheckNotCalibrated();
   CheckFirmwareUpdate();
+  CheckBoxCalibration();
   LOG(LINFO, (GetTripLine()));
 
   m_tripLogTimer.Start(kTripLogIntervalMs, [this] { LogTrip(); });
