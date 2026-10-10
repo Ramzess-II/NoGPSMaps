@@ -157,7 +157,8 @@ std::optional<Event> ParseEvent(Fields const & fields)
 
 std::optional<Info> ParseInfo(Fields const & fields)
 {
-  // Version, firmware, build date, chip, board, id, flash size, largest image, partition, its state, abilities.
+  // Version, firmware, build date, chip, board, id, flash size, largest image, partition, its state, abilities,
+  // power-ons.
   int version;
   if (!IsLine(fields, 6, "NGI") || !strings::to_int(fields[1], version) || version != kVersion)
     return {};
@@ -169,6 +170,10 @@ std::optional<Info> ParseInfo(Fields const & fields)
     for (auto const ability : strings::Tokenize(fields[11], " "))
       if (ability == "OTA")
         info.m_canUpdate = true;
+  if (fields.size() > 6)
+    info.m_id = fields[6];
+  if (int64_t powerOns; fields.size() > 12 && strings::to_int(fields[12], powerOns))
+    info.m_powerOns = powerOns;
   return info;
 }
 

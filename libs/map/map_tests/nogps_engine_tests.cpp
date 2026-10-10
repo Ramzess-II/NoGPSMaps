@@ -322,12 +322,21 @@ UNIT_TEST(NoGps_Engine_AdvisesToCalibratePluggedBox)
   // The first event of the journal of the box: how it has started.
   auto const boot = [&env](std::string const & reason)
   { env.m_engine.OnEsp32Datagram(BoxLine("NGE,1,1,40,I,BOOT,fw 0.3.3 reset " + reason)); };
+  // The box tells about itself, its firmware doesn't count its power-ons.
+  auto const info = [&env]
+  {
+    env.m_engine.OnEsp32Datagram(
+        BoxLine("NGI,1,0.3.3,2026-10-10T07:33,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,WIFI BLE OTA"));
+  };
 
   // The box was plugged into the car: it may stand in another way than it was calibrated.
   env.Drive(2000, 0, 0);
+  boot("POWERON");
+  env.Drive(2000, 0, 0);
+  // Not before the box tells what it is.
   TEST_EQUAL(count(), 0, ());
   TEST(!advised(), ());
-  boot("POWERON");
+  info();
   env.Drive(2000, 0, 0);
   TEST_EQUAL(count(), 1, ());
   TEST(advised(), ());
@@ -347,6 +356,7 @@ UNIT_TEST(NoGps_Engine_AdvisesToCalibratePluggedBox)
   // The journal of the box is read again: the same power-on.
   env.m_engine.SetEsp32Source(true);
   env.Drive(1000, 0, 0);
+  info();
   boot("POWERON");
   env.Drive(2000, 0, 0);
   TEST_EQUAL(count(), 1, ());
@@ -376,6 +386,59 @@ UNIT_TEST(NoGps_Engine_AdvisesToCalibratePluggedBox)
   TEST(advised(), ());
   env.Drive(2000, 0, 0);
   TEST_EQUAL(count(), 2, ());
+}
+
+UNIT_TEST(NoGps_Engine_AdvisesToCalibrateBoxByItsPowerOns)
+{
+  Env env(true /* inertial */);
+  auto const count = [&env]
+  {
+    return std::count(env.m_delegate.m_events.begin(), env.m_delegate.m_events.end(), Event::BoxCalibrationAdvised);
+  };
+  // The box tells how many times it was powered on.
+  auto const info = [&env](std::string const & id, int powerOns)
+  {
+    env.m_engine.OnEsp32Datagram(BoxLine("NGI,1,0.3.5,2026-10-10T11:00,esp32s3,s3zero," + id +
+                                         ",4096,2031616,ota_0,VALID,WIFI BLE OTA," + std::to_string(powerOns)));
+    env.Drive(2000, 0, 0);
+  };
+
+  // The box has got the counting firmware in its place in the car: it has not moved.
+  info("C47D", 0);
+  TEST_EQUAL(count(), 0, ());
+  TEST(!env.m_engine.GetStatus().m_boxCalibrationAdvised, ());
+
+  // It was taken out and plugged in. Its journal tells the same, the user is asked once.
+  env.RestartBox();
+  env.Drive(1000, 0, 0);
+  env.m_engine.OnEsp32Datagram(BoxLine("NGE,1,1,40,I,BOOT,fw 0.3.5 reset POWERON"));
+  info("C47D", 1);
+  TEST_EQUAL(count(), 1, ());
+  TEST(env.m_engine.GetStatus().m_boxCalibrationAdvised, ());
+  // The same power-on after a new connection.
+  info("C47D", 1);
+  TEST_EQUAL(count(), 1, ());
+
+  // Another box, new for this phone: it is to be calibrated in its car.
+  info("42FD", 7);
+  TEST_EQUAL(count(), 2, ());
+  // The first one is remembered.
+  info("C47D", 1);
+  info("42FD", 7);
+  TEST_EQUAL(count(), 2, ());
+  TEST_EQUAL(env.m_storage.Get<std::string>(Storage::kBoxPowerOns, ""), "C47D:1,42FD:7", ());
+
+  // Plugged in again while the car drives: the user is told when it stops.
+  env.m_engine.OnEsp32Datagram(
+      BoxLine("NGI,1,0.3.5,2026-10-10T11:00,esp32s3,s3zero,42FD,4096,2031616,ota_0,VALID,WIFI BLE OTA,8"));
+  env.Drive(3000, 36, 0);
+  TEST_EQUAL(count(), 2, ());
+  env.Drive(2000, 0, 0);
+  TEST_EQUAL(count(), 3, ());
+
+  // The memory of the box was erased with its calibration: it counts from the start.
+  info("42FD", 0);
+  TEST_EQUAL(count(), 4, ());
 }
 
 UNIT_TEST(NoGps_Engine_OffersFirmwareOfApplication)

@@ -207,6 +207,15 @@ UNIT_TEST(NoGps_Esp32_ParsesLinesOfFirmware)
   TEST_EQUAL(info->m_chip, "esp32s3", ());
   TEST_EQUAL(info->m_board, "s3zero", ());
   TEST(info->m_canUpdate, ());
+  TEST_EQUAL(info->m_id, "C47D", ());
+  TEST(!info->m_powerOns, ());
+  // A later firmware counts how many times the box was powered on.
+  auto const countingInfo = ParseInfo(
+      *Parse("$NGI,1,0.3.5,2026-10-10T11:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,WIFI BLE OTA,12*94E1"));
+  TEST(countingInfo, ());
+  TEST(countingInfo->m_canUpdate, ());
+  TEST(countingInfo->m_powerOns, ());
+  TEST_EQUAL(*countingInfo->m_powerOns, 12, ());
   // The first firmware with Bluetooth didn't take a firmware over it.
   auto const oldInfo =
       ParseInfo(*Parse("$NGI,1,0.3.0,2026-10-08T19:43,esp32s3,s3zero,1B00,4096,2031616,ota_0,VALID,WIFI BLE*BBC4"));

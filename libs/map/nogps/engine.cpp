@@ -55,6 +55,39 @@ std::string FormatOptional(std::optional<double> value)
   std::snprintf(buf, sizeof(buf), "%.1f", *value);
   return buf;
 }
+
+// The boxes of a user are few, the oldest one is forgotten.
+size_t constexpr kMaxKnownBoxes = 8;
+
+/// Remembers how many times the box was powered on by its own count.
+/// \returns true if the box was powered on since it was seen the last time.
+bool SaveBoxPowerOns(Storage & storage, std::string const & id, int64_t powerOns)
+{
+  std::vector<std::pair<std::string, int64_t>> boxes;
+  auto const saved = storage.Get<std::string>(Storage::kBoxPowerOns, "");
+  for (auto const item : strings::Tokenize(saved, ","))
+  {
+    auto const colon = item.find(':');
+    int64_t count;
+    if (colon != std::string_view::npos && strings::to_int(item.substr(colon + 1), count))
+      boxes.emplace_back(item.substr(0, colon), count);
+  }
+  auto const it = std::find_if(boxes.begin(), boxes.end(), [&id](auto const & box) { return box.first == id; });
+  // A box not seen before with no power-ons has got its firmware in its place in the car: it has not moved.
+  if ((it != boxes.end() ? it->second : 0) == powerOns)
+    return false;
+
+  if (it != boxes.end())
+    boxes.erase(it);
+  boxes.emplace_back(id, powerOns);
+  if (boxes.size() > kMaxKnownBoxes)
+    boxes.erase(boxes.begin());
+  std::string text;
+  for (auto const & [boxId, count] : boxes)
+    text += (text.empty() ? "" : ",") + boxId + ":" + std::to_string(count);
+  storage.Set(Storage::kBoxPowerOns, text);
+  return true;
+}
 }  // namespace
 
 Engine::Engine(Delegate & delegate, MapApi & map, Storage & storage, Clock const & clock, Scheduler & scheduler)
@@ -569,17 +602,31 @@ void Engine::CheckBoxCalibration()
 
   // The box keeps its calibration, but it doesn't know that it was taken out of the car and put in another
   // way: tilted by less than 20 degrees it tells nothing and measures up to 6 % less of every turn.
-  if (auto const powerOn = box->GetPowerOn())
+  auto const & info = box->GetInfo();
+  bool poweredOn = false;
+  if (info && info->m_powerOns)
+  {
+    poweredOn = SaveBoxPowerOns(m_storage, info->m_id, *info->m_powerOns);
+    if (poweredOn)
+      LOG(LINFO, ("The box", info->m_id, "was powered on", *info->m_powerOns, "times, it is to be calibrated"));
+  }
+  // A box that doesn't count its power-ons: its journal tells how it has started. Not before the box tells
+  // about itself, not to ask twice.
+  else if (auto const powerOn = box->GetPowerOn(); info && powerOn)
   {
     auto const saved = m_storage.Get<int64_t>(Storage::kBoxPowerOnTime, 0);
     double const tolerance = kSamePowerOnMs + kBoxClockError * powerOn->m_uptimeMs;
-    if (std::fabs(static_cast<double>(powerOn->m_unixMs - saved)) > tolerance)
+    poweredOn = std::fabs(static_cast<double>(powerOn->m_unixMs - saved)) > tolerance;
+    if (poweredOn)
     {
       LOG(LINFO, ("The box was powered on", powerOn->m_uptimeMs / 1000, "s ago, it is to be calibrated"));
       m_storage.Set(Storage::kBoxPowerOnTime, powerOn->m_unixMs);
-      m_storage.Set(Storage::kBoxCalibrationAdvised, true);
-      m_boxCalibrationAdvicePending = true;
     }
+  }
+  if (poweredOn)
+  {
+    m_storage.Set(Storage::kBoxCalibrationAdvised, true);
+    m_boxCalibrationAdvicePending = true;
   }
 
   // The box is calibrated while the car stands.

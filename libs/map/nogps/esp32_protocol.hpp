@@ -87,6 +87,10 @@ struct Info
   std::string m_board;
   // The box takes a new firmware over Bluetooth.
   bool m_canUpdate = false;
+  // The four characters of the name of the box, NoGPS-XXXX.
+  std::string m_id;
+  // How many times the box was powered on, nothing from a firmware that doesn't count it.
+  std::optional<int64_t> m_powerOns;
 };
 
 /// The firmware the box is receiving.
