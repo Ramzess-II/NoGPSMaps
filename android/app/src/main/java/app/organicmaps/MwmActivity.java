@@ -2,6 +2,8 @@ package app.organicmaps;
 
 import static android.Manifest.permission.ACCESS_COARSE_LOCATION;
 import static android.Manifest.permission.ACCESS_FINE_LOCATION;
+import static android.Manifest.permission.BLUETOOTH_CONNECT;
+import static android.Manifest.permission.BLUETOOTH_SCAN;
 import static android.Manifest.permission.POST_NOTIFICATIONS;
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 import static app.organicmaps.sdk.location.LocationState.FOLLOW;
@@ -188,6 +190,9 @@ public class MwmActivity extends BaseMwmFragmentActivity
 
   @SuppressWarnings("NotNullFieldNotInitialized")
   private ActivityResultLauncher<String> mPostNotificationPermissionRequest;
+  private ActivityResultLauncher<String[]> mBoxBluetoothPermissionRequest;
+  // Once for a start of the app: after two refusals the system doesn't ask any more by itself.
+  private static boolean sBoxBluetoothPermissionAsked;
 
   @SuppressWarnings("NotNullFieldNotInitialized")
   private ActivityResultLauncher<IntentSenderRequest> mLocationResolutionRequest;
@@ -527,6 +532,9 @@ public class MwmActivity extends BaseMwmFragmentActivity
                                                            this::onLocationResolutionResult);
     mPostNotificationPermissionRequest = registerForActivityResult(new ActivityResultContracts.RequestPermission(),
                                                                    this::onPostNotificationPermissionResult);
+    // The state of the box tells whether it is given.
+    mBoxBluetoothPermissionRequest =
+        registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), result -> {});
     mPowerSaveSettings =
         registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), this::onPowerSaveResult);
 
@@ -1683,7 +1691,30 @@ public class MwmActivity extends BaseMwmFragmentActivity
       Logger.i(LOCATION_TAG, "Requesting ACCESS_FINE_LOCATION permission for " + LocationState.nameOf(newMode));
       dismissLocationErrorDialog();
       mLocationPermissionRequest.launch(new String[] {ACCESS_COARSE_LOCATION, ACCESS_FINE_LOCATION});
+      return;
     }
+    requestBoxBluetoothPermission();
+  }
+
+  /**
+   * The navigation without GPS looks for the sensor box over Bluetooth LE out of the box, without the sensors
+   * screen opened. Asked after the location is settled: only one request is shown at a time, and its dialogs
+   * are dismissed when another one comes.
+   */
+  private void requestBoxBluetoothPermission()
+  {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || sBoxBluetoothPermissionAsked
+        || !LocationUtils.checkFineLocationPermission(this))
+      return;
+    final NoGps.Status status = NoGps.getStatus();
+    if (!status.inertialEnabled || !status.esp32Source || !status.esp32Bluetooth)
+      return;
+    sBoxBluetoothPermissionAsked = true;
+    if (ActivityCompat.checkSelfPermission(this, BLUETOOTH_SCAN) == PERMISSION_GRANTED
+        && ActivityCompat.checkSelfPermission(this, BLUETOOTH_CONNECT) == PERMISSION_GRANTED)
+      return;
+    Logger.i(TAG, "Requesting BLUETOOTH_SCAN + BLUETOOTH_CONNECT permissions for the sensor box");
+    mBoxBluetoothPermissionRequest.launch(new String[] {BLUETOOTH_SCAN, BLUETOOTH_CONNECT});
   }
 
   /**
