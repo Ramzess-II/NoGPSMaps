@@ -56,6 +56,9 @@
 
 | Коммит | Что изменилось | Что это значит для iOS |
 |---|---|---|
+| `478408ad` | **Блок включили заново — просьба откалибровать.** Новое событие `Event::BoxCalibrationAdvised` (в конец перечисления, после трёх событий прошивки) и поле `Status::m_boxCalibrationAdvised`. Ядро само читает в журнале блока `BOOT … reset POWERON`, само отличает одно включение от другого (ключи хранилища `NoGpsBoxPowerOnTime`, `NoGpsBoxCalibrationAdvised`) и снимает признак после удачной `Calibrate()`. Заодно: журнал блока перечитывается после каждого нового соединения по Bluetooth, а поворот между двумя запусками блока не считается. | Сборка не ломается. Чтобы заработало — список ниже. |
+| `27f7024b`, `2a112b5b` | Строки калибровки блока: `nogps_box_calibration`, `_calibration_hint`, `_calibration_offer`, `nogps_sensors_box_sensors`, `nogps_box_not_calibrated`, `_calibrating`, `_calibrated`, `_calibration_failed`, `_calibration_advised`, `nogps_missing_box_calibration`. **`nogps_sensors_hint_box` стала короче**: про калибровку в ней больше нет, это ушло в новый раздел. | Уже сгенерированы. Подвал `nogps_sensors_hint_box` в `NoGpsSensorsViewController` покажет новый текст сам. |
+| `f01af330` | Оболочка Android: раздел «Калибровка блока датчиков» в `SensorsBottomSheet` (`boxCalibrationText()`), вопрос в `MwmActivity.onBoxCalibrationAdvised()`. | Образец для iOS. |
 | `ea9860e1` | **Обновление прошивки блока по Bluetooth**, всё в ядре: `Esp32Update` (новые файлы `esp32_update.hpp/.cpp`, в `xcode/map` добавлены вручную — проверь, что проект собирается), `Engine::StartFirmwareUpdate()`, `CancelFirmwareUpdate()`. В конец перечислений добавлены `SourceState::Updating` и события `FirmwareUpdateAvailable`, `FirmwareUpdateDone`, `FirmwareUpdateFailed`. В `Status` — `m_boxFirmware`, `m_bundledFirmware`, `m_firmwareUpdate`, `m_firmwareUpdateProgress`, `m_firmwareUpdateError`. У `Delegate` новый метод `Esp32BleSendFirmware(piece)` с пустой реализацией. | Сборка не ломается, но в `MWMNoGps.h` добавь в конец `MWMNoGpsSourceStateUpdating` и три события, иначе их значения не совпадут. Чтобы обновление заработало — список ниже. |
 | `db048252` | Прошивка вшита в приложение: папка `data/nogps-firmware/` — `firmware.json` и `.bin`. Ядро читает её из ресурсов (`Service`, `GetPlatform().GetReader("nogps-firmware/firmware.json")`). | Добавь папку `data/nogps-firmware` в ресурсы приложения ссылкой на папку (как `countries-strings`). Без неё ядро просто ничего не предлагает. |
 | `539c6f79`, `b5621d67` | Строки обновления: `nogps_sensors_firmware`, `nogps_firmware_install`, `_title`, `_offer`, `_starting`, `_sending`, `_verifying`, `_restarting`, `_done`, `_failed`, `_error_moving`, `_error_voltage`, `_error_link`, `_error_canceled`, `_error_rollback`, `_error_pending`, `_error_code`, и состояние блока `nogps_box_updating`. | Уже сгенерированы. |
@@ -64,6 +67,23 @@
 | `01ee59ba`, `84a01966` | Строки к нему: `nogps_box_moved_stopped` (у блока состояние калибровки `MountMoved`), `nogps_box_uncalibrated_stopped` (остальное). `nogps_gyro_stopped` — для гироскопа телефона, на iOS не нужна. | Уже сгенерированы. |
 | `7ef961a5` | Метка пальцем больше не заменяет курс направлением дороги в точке нажатия, если счисление работает и курс гироскопа отличается от дороги не больше чем на 30°: пользователь нажимает впереди или позади машины, где дорога уже изогнулась. Иначе курс берётся с дороги, как раньше. В строке журнала `SetManualLocation` после `bearing =` (дорога) добавилось `heading =` (куда смотрит машина). | Делать ничего не нужно: всё в ядре, `MWMNoGps` не менялся. |
 | `5b6b140c` | Перекрёсток для поворота ищется не дальше 60 м (`TurnMatcher::kMaxSearchM`, было 300): оценка ошибки растёт на 2 % пути, а настоящая ошибка вдоль дороги по журналам держится в пределах 10 м, и дальние переносы оказывались неверными. | Делать ничего не нужно: всё в ядре. |
+
+**Что сделать в iOS для калибровки блока** (Ramzess, 10 октября: вертикаль блок сам не правит, её калибрует
+человек на ровной поверхности, и приложение просит об этом, когда блок включили заново):
+
+1. В `MWMNoGps.h` добавить в конец `MWMNoGpsEvent` значения в том же порядке, что в `nogps::Event`:
+   `NotCalibrated`, три события прошивки, `BoxCalibrationAdvised`. Сейчас перечисление кончается на
+   `MarkNoRoad`, и новые события приходят числом без имени.
+2. По `BoxCalibrationAdvised` — вопрос: заголовок `nogps_box_calibration`, текст
+   `nogps_box_calibration_offer`, кнопки `nogps_sensors_calibrate_box` (вызывает `Calibrate()` и открывает
+   экран датчиков) и `later`. Ядро шлёт событие один раз на включение блока и только пока машина стоит.
+3. Экран датчиков, источник — блок: отдельная секция с заголовком `nogps_box_calibration` и подписью
+   `nogps_box_calibration_hint`. В ней строка `nogps_sensors_box_sensors` с состоянием вместо
+   `nogps_sensors_gyro`: `nogps_box_not_calibrated`, `nogps_box_calibrating` (с процентом),
+   `nogps_box_calibrated`, `nogps_box_calibration_failed`, `nogps_gyro_mount_moved`; при состоянии `Done` и
+   `boxCalibrationAdvised` — `nogps_box_calibration_advised`. Кнопка — `nogps_sensors_calibrate_box`. Для
+   гироскопа телефона всё как было.
+4. В списке «Не готово: …» для блока — `nogps_missing_box_calibration` вместо `nogps_missing_gyro`.
 
 **Что сделать в iOS для обновления прошивки** (после транспорта Bluetooth из записи 9 октября):
 
