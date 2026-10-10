@@ -44,9 +44,11 @@
 **Блок переходит на Bluetooth LE.** Wi-Fi остаётся. Формат записан в ТЗ версии 4:
 `docs/nogps/esp32-firmware-spec.md`, разделы 17 (Bluetooth) и 18 (обновление прошивки из приложения).
 
-Состояние на 9 октября: ядро и оболочка Android готовы и проверены на плате с прошивкой 0.3.2 — блок
-находится и подключается меньше чем за секунду, данные идут без потерь. В машине Bluetooth ещё не ездил.
-**Транспорт для iOS можно писать** — список в журнале ниже. Обновление прошивки из приложения не сделано нигде.
+Состояние на 10 октября: ядро и оболочка Android готовы, 9 октября блок по Bluetooth проездил в машине
+2 ч 26 мин без разрывов. **Транспорт для iOS можно писать** — список в журнале ниже, запись 9 октября.
+
+**Обновление прошивки блока из приложения** написано в ядре и для Android 10 октября, на плате ещё не
+проверено. Что нужно в iOS — в журнале ниже, запись 10 октября.
 
 ## Журнал
 
@@ -54,10 +56,31 @@
 
 | Коммит | Что изменилось | Что это значит для iOS |
 |---|---|---|
+| `ea9860e1` | **Обновление прошивки блока по Bluetooth**, всё в ядре: `Esp32Update` (новые файлы `esp32_update.hpp/.cpp`, в `xcode/map` добавлены вручную — проверь, что проект собирается), `Engine::StartFirmwareUpdate()`, `CancelFirmwareUpdate()`. В конец перечислений добавлены `SourceState::Updating` и события `FirmwareUpdateAvailable`, `FirmwareUpdateDone`, `FirmwareUpdateFailed`. В `Status` — `m_boxFirmware`, `m_bundledFirmware`, `m_firmwareUpdate`, `m_firmwareUpdateProgress`, `m_firmwareUpdateError`. У `Delegate` новый метод `Esp32BleSendFirmware(piece)` с пустой реализацией. | Сборка не ломается, но в `MWMNoGps.h` добавь в конец `MWMNoGpsSourceStateUpdating` и три события, иначе их значения не совпадут. Чтобы обновление заработало — список ниже. |
+| `db048252` | Прошивка вшита в приложение: папка `data/nogps-firmware/` — `firmware.json` и `.bin`. Ядро читает её из ресурсов (`Service`, `GetPlatform().GetReader("nogps-firmware/firmware.json")`). | Добавь папку `data/nogps-firmware` в ресурсы приложения ссылкой на папку (как `countries-strings`). Без неё ядро просто ничего не предлагает. |
+| `539c6f79`, `b5621d67` | Строки обновления: `nogps_sensors_firmware`, `nogps_firmware_install`, `_title`, `_offer`, `_starting`, `_sending`, `_verifying`, `_restarting`, `_done`, `_failed`, `_error_moving`, `_error_voltage`, `_error_link`, `_error_canceled`, `_error_rollback`, `_error_pending`, `_error_code`, и состояние блока `nogps_box_updating`. | Уже сгенерированы. |
+| `4a63cf54` | Оболочка Android: запись кусков в `Esp32BleTransport.sendFirmware()`, строка и кнопка в `SensorsBottomSheet.updateFirmware()`, вопрос и сообщения в `MwmActivity.onFirmwareEvent()`. | Образец для iOS. |
 | `a6ce0103` | Новое событие `nogps::Event::NotCalibrated`, добавлено **в конец** перечисления: машина едет без GPS, скорость идёт, а гироскоп не откалиброван или блок сообщил, что его сдвинули, — метка стоит. Повторяется раз в 30 с. | В `MWMNoGps.h` добавить `MWMNoGpsEventNotCalibrated` последним значением и показать водителю сообщение, как для `MotionSourceStopped`. Без этого событие просто не покажется. |
 | `01ee59ba`, `84a01966` | Строки к нему: `nogps_box_moved_stopped` (у блока состояние калибровки `MountMoved`), `nogps_box_uncalibrated_stopped` (остальное). `nogps_gyro_stopped` — для гироскопа телефона, на iOS не нужна. | Уже сгенерированы. |
 | `7ef961a5` | Метка пальцем больше не заменяет курс направлением дороги в точке нажатия, если счисление работает и курс гироскопа отличается от дороги не больше чем на 30°: пользователь нажимает впереди или позади машины, где дорога уже изогнулась. Иначе курс берётся с дороги, как раньше. В строке журнала `SetManualLocation` после `bearing =` (дорога) добавилось `heading =` (куда смотрит машина). | Делать ничего не нужно: всё в ядре, `MWMNoGps` не менялся. |
 | `5b6b140c` | Перекрёсток для поворота ищется не дальше 60 м (`TurnMatcher::kMaxSearchM`, было 300): оценка ошибки растёт на 2 % пути, а настоящая ошибка вдоль дороги по журналам держится в пределах 10 м, и дальние переносы оказывались неверными. | Делать ничего не нужно: всё в ядре. |
+
+**Что сделать в iOS для обновления прошивки** (после транспорта Bluetooth из записи 9 октября):
+
+1. Реализовать `Esp32BleSendFirmware(piece)`: запись без ответа в характеристику `02CB0004-…` того же
+   сервиса. Куски писать по порядку вызовов; строки `Esp32BleSend()` идут вне очереди, раньше кусков. Ядро
+   само держит окно блока (не больше 17 кусков по 244 байта впереди), так что очередь на 64 куска достаточна.
+   Кусок, который не удалось записать, можно выбросить: блок скажет, где остановился, и ядро пошлёт заново.
+2. Экран датчиков: строка «Прошивка блока: …» (`nogps_sensors_firmware`) — версия `boxFirmware`, а пока
+   идёт обновление — его состояние (`_starting`, `_sending` с процентом, `_verifying`, `_restarting`). Кнопка
+   «Установить X» (`nogps_firmware_install`), когда `bundledFirmware` не пуста и не равна `boxFirmware`;
+   во время обновления она же — «Отмена» (кроме состояния `Restarting`).
+3. По событию `FirmwareUpdateAvailable` — вопрос `nogps_firmware_title` / `nogps_firmware_offer` с кнопками
+   «Установить X» и «Не сейчас»; согласие — `StartFirmwareUpdate()`. По `FirmwareUpdateDone` и
+   `FirmwareUpdateFailed` — сообщения `nogps_firmware_done` и `nogps_firmware_failed` с причиной по
+   `firmwareUpdateError`: `MOVING`, `LOW_VOLTAGE`, `LINK`, `CANCELED`/`ABORTED`, `ROLLBACK`, `PENDING` — свои
+   строки, остальное — `nogps_firmware_error_code` с кодом.
+4. В `sourceState == Updating` блок не потерян: вместо «нет связи» — `nogps_box_updating`.
 
 ### 9 октября 2026
 
