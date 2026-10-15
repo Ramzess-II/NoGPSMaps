@@ -606,6 +606,7 @@ void InertialNavigator::SetDirection(int direction)
   // A turn of a car driving backwards is not a turn at a crossing, and the road doesn't bend as the car rotates.
   m_turning = false;
   m_bendMatcher.Reset();
+  m_pathMatcher.Reset();
 }
 
 void InertialNavigator::ResetDirection()
@@ -969,11 +970,13 @@ void InertialNavigator::OnMotion(double yawDeltaDeg, double dtSec, int64_t times
     if (back)
     {
       m_deadReckoning.ReverseBy(distance);
+      m_pathMatcher.Reset();
     }
     else
     {
       m_deadReckoning.AdvanceBy(distance);
       m_bendMatcher.OnMotion(rotatedDeg, distance);
+      m_pathMatcher.OnMotion(rotatedDeg, distance, m_deadReckoning.GetHeading());
     }
     m_speedScale.OnDistance(step);
     if (IsReady())
@@ -982,6 +985,8 @@ void InertialNavigator::OnMotion(double yawDeltaDeg, double dtSec, int64_t times
   else
   {
     ResetLag();
+    // The way of a car not followed is not known.
+    m_pathMatcher.Reset();
   }
 
   if (m_roadLost && m_deadReckoning.GetSpeed() > kMovingSpeedMps && now - m_roadLostNotifiedMs >= kRoadLostReminderMs)
@@ -1177,7 +1182,8 @@ void InertialNavigator::MatchBend()
     m_deadReckoning.SetPosition(position);
     return;
   }
-  if (m_deadReckoning.GetSpeed() < kMinBendMoveSpeedMps)
+  bool const slow = m_deadReckoning.GetSpeed() < kMinBendMoveSpeedMps;
+  if (slow && !IsSlowBendConfirmed(*aheadM))
   {
     LOG(LINFO, ("Bend: ahead by", std::round(*aheadM), "m, but the car is too slow to trust it"));
     return;
@@ -1191,8 +1197,24 @@ void InertialNavigator::MatchBend()
     LOG(LINFO, ("Bend: ahead by", std::round(*aheadM), "m, but the road is not followed that far"));
     return;
   }
-  LOG(LINFO, ("Bend: moved along the road by", std::round(-*aheadM), "m"));
+  if (slow)
+    LOG(LINFO, ("Bend: moved along the road by", std::round(-*aheadM), "m, told repeatedly to a slow car"));
+  else
+    LOG(LINFO, ("Bend: moved along the road by", std::round(-*aheadM), "m"));
   SetRoadPosition(walked->m_position, walked->m_bearingDeg);
+}
+
+bool InertialNavigator::IsSlowBendConfirmed(double aheadM)
+{
+  double const distanceM = m_deadReckoning.GetDistanceSinceFix();
+  if (!m_slowBends || m_slowBends->m_fixCount != m_deadReckoning.GetFixCount() ||
+      std::fabs(aheadM - m_slowBends->m_firstAheadM) > kSlowBendAgreeM)
+  {
+    m_slowBends = SlowBends{m_deadReckoning.GetFixCount(), aheadM, distanceM, 1};
+    return false;
+  }
+  ++m_slowBends->m_count;
+  return m_slowBends->m_count >= kSlowBendCount && distanceM - m_slowBends->m_firstDistanceM >= kSlowBendDriveM;
 }
 
 void InertialNavigator::TrackTurn(double yawDeltaDeg, double dtSec, int64_t timestampNs)
@@ -1267,6 +1289,9 @@ void InertialNavigator::MatchTurn(int64_t timestampNs)
                 "is not at a crossing: the car was maneuvering off the roads at up to", m_turnMaxKmh, "km/h"));
     return;
   }
+  // A turn around has no crossing: the car turns on its road, or a ramp loops onto another one.
+  if (turnDeg > TurnMatcher::kMaxTurnDeg && MatchLoop(toBearing))
+    return;
   std::string whyNot;
   auto const crossing =
       TurnMatcher::FindCrossing(m_roads, corner, m_turnFromBearing, toBearing, m_deadReckoning.GetAccuracy(), &whyNot,
@@ -1308,6 +1333,22 @@ void InertialNavigator::MatchTurn(int64_t timestampNs)
               std::round(*m_lastTurnShiftM), "m"));
   // The crossing is a known place, the distance error is gone.
   SetRoadPosition(road->m_point, Orient(road->m_bearingDeg, toBearing));
+}
+
+bool InertialNavigator::MatchLoop(double toBearingDeg)
+{
+  auto const position = m_deadReckoning.GetPosition();
+  std::string why;
+  auto const road = m_pathMatcher.Match(m_roads, position, &why);
+  if (!road)
+  {
+    LOG(LINFO, ("Loop: not moved,", why));
+    return false;
+  }
+  LOG(LINFO, ("Loop: the way driven lies on the roads", std::round(Distance(position, road->m_point)),
+              "m away, moved there,", why));
+  SetRoadPosition(road->m_point, Orient(road->m_bearingDeg, toBearingDeg));
+  return true;
 }
 
 std::string DebugPrint(InertialNavigator::HeadingSource source)

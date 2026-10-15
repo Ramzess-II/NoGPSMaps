@@ -8,6 +8,7 @@
 #include "map/nogps/esp32_source.hpp"
 #include "map/nogps/gyro_calibrator.hpp"
 #include "map/nogps/motion_source.hpp"
+#include "map/nogps/path_matcher.hpp"
 #include "map/nogps/speed_lag.hpp"
 #include "map/nogps/speed_scale.hpp"
 #include "map/nogps/speed_table.hpp"
@@ -114,6 +115,13 @@ public:
   static double constexpr kMinBendShiftM = 8;
   // A slow car weaves around holes and parked cars, that looks like a bend of the road.
   static double constexpr kMinBendMoveSpeedMps = 25 / 3.6;
+  // Unless the bends tell the same place several times while the car drives on. On October 14 they told the mark was
+  // 12-14 m ahead six times in 20 s at 16-26 km/h, and nothing else told the place for 6 km. The trips of October
+  // 11-14 driven again with this rule moved a slow car 4 times: the bends told it was in place after every move, the
+  // one with GPS brought the mark from 8 m to 2 m from it.
+  static int constexpr kSlowBendCount = 3;
+  static double constexpr kSlowBendAgreeM = 3;
+  static double constexpr kSlowBendDriveM = 20;
   // What the accelerometer has added to the position fades away in this time.
   static double constexpr kAccelFadeSec = 10;
   // A turn at a crossing rotates the car faster than a bend of a road.
@@ -388,6 +396,10 @@ private:
   // \returns the branch the car drives along by its heading if the road forks at the position.
   std::optional<RoadPoint> ChooseBranch(ms::LatLon const & position, double headingDeg);
   void MatchBend();
+  // \returns true if the car has been moved to where the way of a turn around lies on the roads, see PathMatcher.
+  bool MatchLoop(double toBearingDeg);
+  // \returns true if the bends of a slow car have told the same place enough times, see kSlowBendCount.
+  bool IsSlowBendConfirmed(double aheadM);
   void TrackTurn(double yawDeltaDeg, double dtSec, int64_t timestampNs);
   void MatchTurn(int64_t timestampNs);
 
@@ -431,7 +443,17 @@ private:
   SpeedScale m_speedScale;
   TurnSignChecker m_turnSignChecker;
   BendMatcher m_bendMatcher;
+  PathMatcher m_pathMatcher;
   int64_t m_lastBendMatchMs = 0;
+  // The places told by the bends of a slow car since the position was set.
+  struct SlowBends
+  {
+    int m_fixCount = 0;
+    double m_firstAheadM = 0;
+    double m_firstDistanceM = 0;
+    int m_count = 0;
+  };
+  std::optional<SlowBends> m_slowBends;
   // The speed errors measured by trusted GPS at different speeds.
   SpeedTable m_speedTable;
   SpeedLag m_speedLag;
