@@ -5,6 +5,7 @@
 
 #include "shaders/programs.hpp"
 
+#include "base/logging.hpp"
 #include "base/math.hpp"
 
 #include "drape/drape_routine.hpp"
@@ -12,6 +13,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cmath>
 
 namespace df
@@ -265,8 +267,8 @@ void RouteRenderer::PrepareRouteArrows(ScreenBase const & screen, PrepareRouteAr
 
     // Calculate arrow borders.
     double dist = kInvalidDistance;
-    if (IsFollowed(subrouteInfo))
-      dist = m_distanceFromBegin - subrouteInfo.m_subroute->m_baseDistance;
+    if (m_followingEnabled)
+      dist = GetPassedDistance(subrouteInfo) - subrouteInfo.m_subroute->m_baseDistance;
 
     // We run asynchronous task to calculate new positions of route arrows.
     auto const subrouteId = subrouteInfo.m_subrouteId;
@@ -482,10 +484,10 @@ void RouteRenderer::RenderSubroute(ref_ptr<dp::GraphicsContext> context, ref_ptr
 
   auto const screenHalfWidth = static_cast<float>(currentHalfWidth * screen.GetScale());
   auto dist = static_cast<float>(kInvalidDistance);
-  if (IsFollowed(subrouteInfo))
+  if (m_followingEnabled)
   {
     auto const distanceOffset = subrouteInfo.m_subroute->m_baseDistance + subrouteData->m_distanceOffset;
-    dist = static_cast<float>(m_distanceFromBegin - distanceOffset);
+    dist = static_cast<float>(GetPassedDistance(subrouteInfo) - distanceOffset);
   }
 
   dp::RenderState const & state = subrouteData->m_renderProperty.m_state;
@@ -588,8 +590,8 @@ void RouteRenderer::RenderSubrouteMarkers(ref_ptr<dp::GraphicsContext> context, 
   }
 
   auto dist = static_cast<float>(kInvalidDistance);
-  if (IsFollowed(subrouteInfo))
-    dist = static_cast<float>(m_distanceFromBegin - subrouteInfo.m_subroute->m_baseDistance);
+  if (m_followingEnabled)
+    dist = static_cast<float>(GetPassedDistance(subrouteInfo) - subrouteInfo.m_subroute->m_baseDistance);
 
   dp::RenderState const & state = subrouteInfo.m_markersData->m_renderProperty.m_state;
   float const currentHalfWidth = GetCurrentHalfWidth(subrouteInfo);
@@ -800,6 +802,20 @@ void RouteRenderer::ClearContextDependentResources()
 void RouteRenderer::UpdateDistanceFromBegin(double distanceFromBegin)
 {
   m_distanceFromBegin = distanceFromBegin;
+
+  // Temporary, see the "ROUTES drawn" line of RoutingManager::InsertRoute(): which routes the passed part is hidden
+  // on, as far as the car has driven along the active one.
+  auto const now = std::chrono::steady_clock::now();
+  if (now - m_lastRouteLogTime < std::chrono::seconds(5))
+    return;
+  m_lastRouteLogTime = now;
+  std::string subroutes;
+  for (auto const & subrouteInfo : m_subroutes)
+  {
+    subroutes += subrouteInfo.m_subroute->IsAlternative() ? " alternative" : " active";
+    subroutes += " hidden to " + std::to_string(m_followingEnabled ? GetPassedDistance(subrouteInfo) : 0.0);
+  }
+  LOG(LINFO, ("ROUTE drawn: following =", m_followingEnabled, "passed =", distanceFromBegin, "subroutes:", subroutes));
 }
 
 void RouteRenderer::SetFollowingEnabled(bool enabled)
